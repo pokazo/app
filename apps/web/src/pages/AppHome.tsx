@@ -26,7 +26,12 @@ export function AppHome() {
   }, [nav]);
 
   async function onOut() {
-    await fetch(apiUrl("/api/auth/sign-out"), { method: "POST", credentials: "include" });
+    await fetch(apiUrl("/api/auth/sign-out"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
     nav("/login");
   }
 
