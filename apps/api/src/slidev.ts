@@ -8,37 +8,23 @@ export async function writeSlides(workDir: string, markdown: string): Promise<st
   await mkdir(workDir, { recursive: true });
   const file = join(workDir, "slides.md");
   await writeFile(file, guardMarkdown(markdown), "utf8");
-  await writeFile(
-    join(workDir, "package.json"),
-    JSON.stringify({
-      private: true,
-      type: "module",
-      dependencies: {
-        "@slidev/cli": "51.8.2",
-        "@slidev/theme-default": "0.25.0",
-      },
-    }),
-  );
   return file;
 }
 
 export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
   const root = fileURLToPath(new URL("../../..", import.meta.url));
+  const apiMods = join(root, "apps/api/node_modules");
+  const bin = join(apiMods, ".bin/slidev");
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      "npx",
-      ["--yes", "@slidev/cli", "build", "slides.md", "--out", "dist", "--base", base],
-      {
-        cwd: workDir,
-        env: {
-          ...process.env,
-          CI: "1",
-          npm_config_yes: "true",
-          NODE_PATH: `${join(root, "node_modules")}:${process.env.NODE_PATH ?? ""}`,
-        },
-        stdio: ["ignore", "pipe", "pipe"],
+    const child = spawn(bin, ["build", "slides.md", "--out", "dist", "--base", base], {
+      cwd: workDir,
+      env: {
+        ...process.env,
+        CI: "1",
+        NODE_PATH: `${apiMods}:${process.env.NODE_PATH ?? ""}`,
       },
-    );
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let stderr = "";
     child.stderr.on("data", (d) => {
       stderr += String(d);
