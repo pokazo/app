@@ -22,12 +22,12 @@ export async function writeSlides(workDir: string, markdown: string): Promise<st
   return file;
 }
 
-export function buildSlidev(workDir: string, timeoutMs = 180_000): Promise<void> {
+export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
   const root = fileURLToPath(new URL("../../..", import.meta.url));
   return new Promise((resolve, reject) => {
     const child = spawn(
       "npx",
-      ["--yes", "@slidev/cli", "build", "slides.md", "--out", "dist", "--base", "./"],
+      ["--yes", "@slidev/cli", "build", "slides.md", "--out", "dist", "--base", base],
       {
         cwd: workDir,
         env: {

@@ -82,8 +82,9 @@ export async function generateDeck(opts: {
   const stripFence = (s: string) => s.replace(/^```(?:md|markdown)?\n?/, "").replace(/\n?```$/, "");
   let md = guardMarkdown(stripFence(text));
   await writeSlides(opts.workDir, md);
+  const base = `/p/${opts.id}/`;
   try {
-    await buildSlidev(opts.workDir);
+    await buildSlidev(opts.workDir, base);
   } catch (err) {
     const repaired = await generateText({
       model: model(config.composeModel),
@@ -92,6 +93,6 @@ export async function generateDeck(opts: {
     });
     md = guardMarkdown(stripFence(repaired.text));
     await writeSlides(opts.workDir, md);
-    await buildSlidev(opts.workDir);
+    await buildSlidev(opts.workDir, base);
   }
 }
