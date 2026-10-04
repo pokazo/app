@@ -4,8 +4,8 @@ export function PkHeader(props: { me?: { name?: string | null; email?: string } 
   return (
     <div className="page-head">
       <header className="top wrap">
-        <Link className="logo" to="/">
-          Показо
+        <Link className="logo" to="/" aria-label="Показо">
+          <img src="/favicon.svg" width="36" height="36" alt="" />
         </Link>
         {props.me ? (
           <span>

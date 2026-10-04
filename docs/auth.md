@@ -25,7 +25,7 @@
 |------|--------|
 | Библиотека | [Better Auth](https://www.better-auth.com/) на Hono |
 | OAuth Яндекс | провайдер OAuth Better Auth / Arctic `yandex` |
-| Email | OTP 6 цифр, 15 мин; SMTP `mail.antonbutov.com`. В письме кнопка «Скопировать код» → `/copy-code` |
+| Email | OTP 6 цифр, 15 мин. Тема `{otp} is your verification code` → карточка Gmail Copy code |
 | БД пользователей | **Postgres** (не SQLite slidev-ai) |
 | Сессия | cookie `pk_session`, `Secure`, `HttpOnly`, `SameSite=Lax`, 30 дней |
 | CSRF | state + PKCE на OAuth; cookie same-site для API |
@@ -65,7 +65,7 @@ type Session = {
 **Email**
 
 1. POST `/api/auth/email-otp/send-verification-otp` `{ email, type: "sign-in" }`
-2. Письмо с кодом из 6 цифр (15 мин) и кнопкой «Скопировать код» (`/copy-code?c=`)
+2. Письмо: тема `{код} is your verification code` (карточка Gmail «Copy code», как у OpenRouter), в теле код крупно. Ссылку для входа не шлём.
 3. POST `/api/auth/sign-in/email-otp` `{ email, otp }`
 4. Сессия как выше. Ссылку для входа не шлём.
 

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Скопировать код — Показо</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; font-family: system-ui, sans-serif; background: #fff; color: #0f1220; }
+      main { max-width: 400px; margin: 64px auto; padding: 28px; border: 1px solid #e6e1f0; border-radius: 16px; box-shadow: 0 18px 50px rgba(15, 18, 32, 0.08); text-align: center; }
+      h1 { font-size: 28px; margin: 0 0 12px; }
+      #otp { width: 100%; border: 0; font: 600 32px/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.35em; text-align: center; color: #0f1220; background: transparent; }
+      #btn { margin-top: 16px; background: #6d28d9; color: #fff; border: 0; padding: 12px 28px; border-radius: 999px; font-size: 16px; font-weight: 600; cursor: pointer; }
+      #status { color: #5b6178; font-size: 14px; margin-top: 16px; }
+      a { color: #6d28d9; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Код входа</h1>
+      <input id="otp" readonly inputmode="numeric" aria-label="Код" />
+      <div><button id="btn" type="button">Скопировать код</button></div>
+      <p id="status">Копирую в буфер обмена…</p>
+      <p><a href="/login">Открыть вход</a></p>
+    </main>
+    <script>
+      const otp = (new URLSearchParams(location.search).get("c") || "").replace(/\D/g, "").slice(0, 8);
+      const input = document.getElementById("otp");
+      const btn = document.getElementById("btn");
+      const status = document.getElementById("status");
+      input.value = otp;
+      function mark(ok) {
+        status.textContent = ok
+          ? "Код скопирован. Вернись на вкладку входа и вставь его."
+          : "Нажми кнопку — так браузер разрешит копирование.";
+        btn.textContent = ok ? "Скопировано" : "Скопировать код";
+      }
+      async function copy() {
+        if (!otp) return false;
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, otp.length);
+        let ok = false;
+        try { ok = document.execCommand("copy"); } catch (e) {}
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(otp);
+            ok = true;
+          } catch (e) {}
+        }
+        mark(ok);
+        return ok;
+      }
+      if (!otp) {
+        status.textContent = "В письме нет кода. Запроси новый на странице входа.";
+        btn.hidden = true;
+      } else {
+        copy();
+        btn.addEventListener("click", () => { copy(); });
+        window.addEventListener("pointerdown", () => { copy(); }, { once: true });
+      }
+    </script>
+  </body>
+</html>
