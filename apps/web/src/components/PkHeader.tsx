@@ -8,11 +8,16 @@ export function PkHeader(props: { me?: { name?: string | null; email?: string } 
           <img src="/favicon.svg" width="36" height="36" alt="" />
         </Link>
         {props.me ? (
-          <span>
-            {props.me.name || props.me.email}{" "}
-            <button type="button" className="pk ghost" onClick={props.onOut}>
-              Выйти
-            </button>
+          <span className="head-actions">
+            <Link className="pk-btn ghost" to="/app">
+              Презентации
+            </Link>
+            <span className="head-email">{props.me.name || props.me.email}</span>
+            {props.onOut ? (
+              <button type="button" className="pk ghost" onClick={props.onOut}>
+                Выйти
+              </button>
+            ) : null}
           </span>
         ) : (
           <Link className="pk-btn ghost" to="/login" data-pk="cta-login">

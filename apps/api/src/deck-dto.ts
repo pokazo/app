@@ -1,0 +1,28 @@
+import { config } from "./env.js";
+
+export type DeckRow = {
+  id: string;
+  topic: string;
+  status: string;
+  error: string | null;
+  slide_count: number;
+  created_at: Date | string;
+  updated_at: Date | string;
+};
+
+function iso(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+export function toDeckDto(deck: DeckRow) {
+  return {
+    deckId: deck.id,
+    topic: deck.topic,
+    status: deck.status,
+    error: deck.error,
+    slideCount: Number(deck.slide_count),
+    createdAt: iso(deck.created_at),
+    updatedAt: iso(deck.updated_at),
+    viewUrl: deck.status === "ready" ? `${config.apiOrigin}/p/${deck.id}/` : null,
+  };
+}

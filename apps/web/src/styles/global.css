@@ -41,6 +41,14 @@ header.top {
 }
 .logo { font-size: 20px; color: var(--pk-ink); text-decoration: none; display: flex; align-items: center; }
 .logo img { width: 36px; height: 36px; border-radius: 9px; display: block; }
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.head-email { color: var(--pk-ink-muted); font-size: 14px; }
 .hero {
   text-align: center;
   padding: 56px 0 72px;
@@ -218,6 +226,45 @@ button.yandex:hover:not(:disabled), a.yandex:hover {
 .card label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin-bottom: 12px; }
 .app-form { max-width: 720px; margin: 0 auto; text-align: left; }
 .app-form h1 { text-align: center; }
+.app-page {
+  padding: 40px 0 72px;
+  background:
+    radial-gradient(900px 280px at 50% -40px, rgba(109, 40, 217, 0.12), transparent 70%),
+    var(--pk-paper);
+}
+.app-page h1 { margin: 0 0 24px; }
+.app-note { text-align: center; margin: 16px 0 0; }
+.app-empty {
+  text-align: center;
+  color: var(--pk-ink-muted);
+  margin: 32px 0 0;
+}
+.deck-list {
+  list-style: none;
+  margin: 32px 0 0;
+  padding: 0;
+}
+.deck-item {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-md);
+  box-shadow: var(--pk-shadow);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+}
+.deck-topic { margin: 0 0 6px; font-weight: 600; }
+.deck-meta { margin: 0; font-size: 14px; color: var(--pk-ink-muted); }
+.deck-status.ready { color: var(--pk-ok); }
+.deck-status.failed { color: var(--pk-danger); }
+.deck-status.queued,
+.deck-status.generating,
+.deck-status.building { color: var(--pk-spot); }
+.deck-error { margin: 8px 0 0; font-size: 13px; word-break: break-word; }
+.deck-item .pk-btn { flex-shrink: 0; height: 40px; padding: 0 16px; }
 .or { text-align: center; color: var(--pk-ink-muted); margin: 16px 0; }
 input.pk.otp, .otp-display {
   font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -242,4 +289,7 @@ footer.foot {
   .hero { padding: 36px 0 48px; }
   .prompt-card .actions { justify-content: stretch; }
   .prompt-card .actions .pk { width: 100%; }
+  .deck-item { flex-direction: column; align-items: stretch; }
+  .deck-item .pk-btn { width: 100%; }
+  .head-email { display: none; }
 }

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
@@ -40,7 +40,17 @@ const THUMBS = [
 
 export function Landing() {
   const [topic, setTopic] = useState("");
+  const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
   const nav = useNavigate();
+
+  useEffect(() => {
+    fetch(apiUrl("/api/auth/me"), { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.email) setMe(data);
+      })
+      .catch(() => {});
+  }, []);
 
   async function goCreate(t: string) {
     const text = t.trim();
@@ -62,7 +72,7 @@ export function Landing() {
 
   return (
     <>
-      <PkHeader />
+      <PkHeader me={me} />
       <main>
         <section className="hero">
           <div className="wrap">

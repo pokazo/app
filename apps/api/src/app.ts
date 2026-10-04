@@ -9,6 +9,7 @@ import { pool } from "./migrate.js";
 import { createAuth } from "./auth.js";
 import { enqueueDeck } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
+import { toDeckDto, type DeckRow } from "./deck-dto.js";
 
 export function createApp() {
   const app = new Hono();
@@ -71,6 +72,20 @@ export function createApp() {
     return c.json({ deckId: id, status: "queued" }, 201);
   });
 
+  app.get("/api/decks", async (c) => {
+    if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session) return c.json({ error: "unauthorized" }, 401);
+    const { rows } = await pool.query<DeckRow>(
+      `SELECT id, topic, status, error, slide_count, created_at, updated_at
+       FROM deck WHERE user_id=$1
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [session.user.id],
+    );
+    return c.json({ decks: rows.map(toDeckDto) });
+  });
+
   app.get("/api/decks/:id", async (c) => {
     if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -80,16 +95,9 @@ export function createApp() {
       id,
       session.user.id,
     ]);
-    const deck = rows[0];
+    const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
-    const viewUrl = deck.status === "ready" ? `${config.apiOrigin}/p/${id}/` : null;
-    return c.json({
-      deckId: deck.id,
-      status: deck.status,
-      topic: deck.topic,
-      error: deck.error,
-      viewUrl,
-    });
+    return c.json(toDeckDto(deck));
   });
 
   app.get("/p/:id/*", async (c) => {

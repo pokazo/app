@@ -15,6 +15,12 @@ describe("health", () => {
     const res = await app.request("/api/auth/me");
     expect(res.status).toBe(503);
   });
+
+  it("deck list without database is unavailable", async () => {
+    const app = createApp();
+    const res = await app.request("/api/decks");
+    expect(res.status).toBe(503);
+  });
 });
 
 describe("md-guard", () => {
