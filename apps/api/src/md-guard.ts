@@ -21,6 +21,11 @@ export function guardMarkdown(md: string): string {
   });
   if (!out.trim().startsWith("---")) {
     out = `---\ntheme: default\n---\n\n${out}`;
+  } else {
+    out = out.replace(/^theme:\s*.+$/m, "theme: default");
+    if (!/^theme:/m.test(out.slice(0, 200))) {
+      out = out.replace(/^---\n/, "---\ntheme: default\n");
+    }
   }
   return out;
 }
