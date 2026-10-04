@@ -1,0 +1,18 @@
+:root {
+  --pk-paper: #f4efe6;
+  --pk-paper-2: #ebe4d8;
+  --pk-ink: #1c1814;
+  --pk-ink-muted: #5c534a;
+  --pk-line: #d4cbbc;
+  --pk-spot: #c45c26;
+  --pk-spot-hover: #a34a1c;
+  --pk-spot-soft: #f3e0d4;
+  --pk-stage: #1c1814;
+  --pk-on-stage: #f4efe6;
+  --pk-danger: #b42318;
+  --pk-ok: #2f6b4f;
+  --pk-r-sm: 8px;
+  --pk-r-md: 12px;
+  --pk-r-pill: 999px;
+  --pk-max: 1120px;
+}

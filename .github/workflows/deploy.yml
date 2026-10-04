@@ -1,0 +1,136 @@
+name: deploy
+
+on:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      api: ${{ steps.filter.outputs.api }}
+      both: ${{ steps.filter.outputs.both }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'deploy/landing/**'
+              - 'deploy/switch.sh'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+            api:
+              - 'apps/api/**'
+              - 'deploy/api/**'
+              - 'deploy/switch.sh'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+            both:
+              - '.github/workflows/deploy.yml'
+              - 'deploy/nginx-host.conf'
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.api == 'true' || needs.changes.outputs.both == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  build-web:
+    needs: [test, changes]
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.both == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/pokazo/web:${{ github.sha }}
+            ghcr.io/pokazo/web:latest
+          build-args: |
+            VITE_API_URL=https://api.pokazo.ru
+
+  build-api:
+    needs: [test, changes]
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.both == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/pokazo/api:${{ github.sha }}
+            ghcr.io/pokazo/api:latest
+
+  deploy-landing:
+    needs: [build-web, changes]
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.both == 'true'
+    runs-on: ubuntu-latest
+    environment: landing
+    steps:
+      - uses: actions/checkout@v4
+      - name: switch
+        env:
+          SSH_KEY: ${{ secrets.LANDING_SSH_KEY }}
+          HOST: ${{ secrets.LANDING_HOST }}
+        run: |
+          printf '%s\n' "$SSH_KEY" > key && chmod 600 key
+          scp -o StrictHostKeyChecking=no -i key deploy/switch.sh "deploy@${HOST}:/tmp/switch.sh"
+          ssh -o StrictHostKeyChecking=no -i key "deploy@${HOST}" \
+            "echo '${{ secrets.GITHUB_TOKEN }}' | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin; sudo bash /tmp/switch.sh web ghcr.io/pokazo/web:${{ github.sha }}"
+
+  deploy-api:
+    needs: [build-api, changes]
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.both == 'true'
+    runs-on: ubuntu-latest
+    environment: api
+    steps:
+      - uses: actions/checkout@v4
+      - name: switch
+        env:
+          SSH_KEY: ${{ secrets.API_SSH_KEY }}
+          HOST: ${{ secrets.API_HOST }}
+        run: |
+          printf '%s\n' "$SSH_KEY" > key && chmod 600 key
+          scp -o StrictHostKeyChecking=no -i key deploy/switch.sh "deploy@${HOST}:/tmp/switch.sh"
+          ssh -o StrictHostKeyChecking=no -i key "deploy@${HOST}" \
+            "echo '${{ secrets.GITHUB_TOKEN }}' | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin; sudo bash /tmp/switch.sh api ghcr.io/pokazo/api:${{ github.sha }}"
