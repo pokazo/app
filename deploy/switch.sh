@@ -34,7 +34,7 @@ fi
 ok=0
 i=0
 while [ $i -lt 30 ]; do
-  if wget -qO- "$CHECK" >/dev/null 2>&1; then ok=1; break; fi
+  if curl -fsS "$CHECK" >/dev/null 2>&1; then ok=1; break; fi
   i=$((i+1))
   sleep 2
 done
