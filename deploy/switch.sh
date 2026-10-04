@@ -27,6 +27,7 @@ if [ "$KIND" = web ]; then
 else
   docker run -d --name "$NAME-$IDLE" --restart unless-stopped --env-file /etc/pokazo/api.env \
     --add-host=host.docker.internal:host-gateway \
+    --network pokazo_default \
     -v /var/lib/pokazo/decks:/app/data/decks -p "127.0.0.1:$PORT:3000" "$IMAGE"
   CHECK="http://127.0.0.1:$PORT/api/health"
 fi
