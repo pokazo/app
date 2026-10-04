@@ -54,16 +54,16 @@ slot-b  контейнер  :18081
 Скрипт `deploy/switch.sh` (одинаковый смысл на обоих серверах):
 
 1. `IDLE=$(a если active=b, иначе b)`
-2. `docker pull ghcr.io/pokazo/{web|api}:$SHA`
-3. `docker stop pokazo-*-$IDLE`; `docker rm`; `docker run` idle на свой порт, `--health-cmd`
-4. Ждать healthy: лендинг `GET /` 200; API `GET /api/health` `{"ok":true}` (таймаут 60s)
-5. Переписать nginx `upstream` на idle-порт, `nginx -s reload` (не restart)
-6. Записать `active-slot=$IDLE`
-7. `docker stop` бывший active (не rm сразу — 30s на in-flight)
+2. `docker pull`; заменить **только idle**-контейнер (live не трогать)
+3. Ждать health на idle-порту: лендинг `GET /` 200; API `GET /api/health`
+4. Nginx `upstream`: новый primary + старый `backup`, `nginx -t` && `reload` (не restart)
+5. Проверка **через :443** (`Host` pokazo.ru / api.pokazo.ru). Провал → откат upstream на старый слот, idle стоп, exit 1
+6. Upstream только новый, reload, ещё раз :443
+7. `active-slot=$IDLE`, 20s drain, `docker stop` бывший active (без rm)
 
-Простой — ноль: nginx не падает, reload атомарный. Два контейнера коротко сосуществуют.
+Два контейнера сосуществуют, пока новый не отвечает снаружи. Nginx не останавливается.
 
-Лендинг: образ nginx со статикой из `vite build` **или** node preview не нужен — статику класть в image `nginx:alpine` + файлы. Два таких контейнера на 18080/18081, снаружи один nginx+certbot на 443.
+Лендинг: образ nginx со статикой из `vite build`. Слоты **19080 / 19081** (localhost). Снаружи один nginx+certbot на 443.
 
 API: два контейнера Hono; Redis/Postgres — **отдельные**, не в blue-green (данные общие). Session cookie и BullMQ смотрят в один Postgres/Redis.
 
@@ -124,3 +124,4 @@ nginx:443 → api slots; контейнеры `api-a/b`; `postgres`, `redis` (о
 | Дата | Что изменили |
 |------|----------------|
 | 2026-10-04 | Разнесение IP, CI на master, blue-green два контейнера, карта paths |
+| 2026-10-04 | switch.sh: backup-слот + health через :443 до стопа старого |
