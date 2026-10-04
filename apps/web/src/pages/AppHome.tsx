@@ -2,7 +2,6 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
-import { PkInput } from "../components/PkInput";
 import { api, apiUrl } from "../api";
 
 type Me = { id: string; email: string; name: string };
@@ -79,23 +78,25 @@ export function AppHome() {
   return (
     <>
       <PkHeader me={me} onOut={onOut} />
-      <main className="wrap hero">
-        <h1>Новая презентация</h1>
-        <form onSubmit={onCreate}>
-          <PkInput
-            style={{ width: "100%" }}
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="Тема доклада…"
-          />
-          <p>
-            <PkButton disabled={topic.trim().length < 5 || Boolean(status)} type="submit">
-              {status ? "Создаём…" : "Создать"}
-            </PkButton>
-          </p>
-        </form>
-        {status ? <p>{label}</p> : null}
-        {err ? <p className="err">{err}</p> : null}
+      <main className="hero">
+        <div className="wrap app-form">
+          <h1>Новая презентация</h1>
+          <form className="prompt-card" onSubmit={onCreate}>
+            <textarea
+              className="pk"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="Тема доклада…"
+            />
+            <div className="actions">
+              <PkButton disabled={topic.trim().length < 5 || Boolean(status)} type="submit">
+                {status ? "Создаём…" : "Создать"}
+              </PkButton>
+            </div>
+          </form>
+          {status ? <p style={{ textAlign: "center" }}>{label}</p> : null}
+          {err ? <p className="err" style={{ textAlign: "center" }}>{err}</p> : null}
+        </div>
       </main>
     </>
   );
