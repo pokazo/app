@@ -218,6 +218,14 @@ button.yandex:hover:not(:disabled), a.yandex:hover {
 .app-form { max-width: 720px; margin: 0 auto; text-align: left; }
 .app-form h1 { text-align: center; }
 .or { text-align: center; color: var(--pk-ink-muted); margin: 16px 0; }
+input.pk.otp, .otp-display {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 28px;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-weight: 600;
+}
+.otp-display { margin: 8px 0 20px; }
 .err { color: var(--pk-danger); }
 footer.foot {
   background: var(--pk-paper-2);

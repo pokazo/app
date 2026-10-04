@@ -27,7 +27,7 @@ MVP — **генератор**: тема → колода Slidev → веб-по
 | Сборка | `@slidev/cli` в Docker-job | spawn не на том же CPU, что HTTP, без сети из md |
 | Логи | **pino** | job_id в каждой строке |
 | Фронт MVP | Vite React `apps/web` | лендинг + login + /app; токены [design-system.md](./design-system.md) |
-| Auth | Better Auth в `apps/api` | Яндекс ID + magic link; [auth.md](./auth.md) |
+| Auth | Better Auth в `apps/api` | Яндекс ID + email OTP; [auth.md](./auth.md) |
 | Прод лендинг | **91.207.75.72** (`pokazo.ru` / `www`) | CI, два Docker, [deploy.md](./deploy.md) |
 | Прод API | **80.87.196.33** (`api.pokazo.ru`) | CI, два Docker, без простоя |
 

@@ -1,16 +1,18 @@
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
-import { genericOAuth, magicLink, yandex } from "better-auth/plugins";
+import { emailOTP, genericOAuth, yandex } from "better-auth/plugins";
 import { config } from "./env.js";
 import { pool } from "./migrate.js";
-import { sendMagicLinkEmail } from "./mail.js";
+import { sendOtpEmail } from "./mail.js";
 
 export function createAuth() {
   if (!pool) return null;
   const plugins: BetterAuthPlugin[] = [
-    magicLink({
+    emailOTP({
+      otpLength: 6,
       expiresIn: 60 * 15,
-      sendMagicLink: async ({ email, url }) => {
-        await sendMagicLinkEmail(email, url);
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type !== "sign-in") return;
+        await sendOtpEmail(email, otp);
       },
     }),
   ];

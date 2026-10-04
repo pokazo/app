@@ -4,7 +4,7 @@
 
 ## Вердикт
 
-Один модуль **`auth` в том же Node/Hono-сервисе**, не Keycloak и не отдельный репозиторий. Вход: **Яндекс ID (OAuth 2.0)** как основной, **magic link на email** как запасной. Сессия — httpOnly cookie. Генерация слайдов только с сессией.
+Один модуль **`auth` в том же Node/Hono-сервисе**, не Keycloak и не отдельный репозиторий. Вход: **Яндекс ID (OAuth 2.0)** как основной, **одноразовый код на email** как запасной. Сессия — httpOnly cookie. Генерация слайдов только с сессией.
 
 **С чего начать:** приложение на [oauth.yandex.ru](https://oauth.yandex.ru/) + Better Auth на Hono.
 
@@ -25,7 +25,7 @@
 |------|--------|
 | Библиотека | [Better Auth](https://www.better-auth.com/) на Hono |
 | OAuth Яндекс | провайдер OAuth Better Auth / Arctic `yandex` |
-| Email | magic link; SMTP позже (Unisender/Postmark). Пока dev: письмо в лог |
+| Email | OTP 6 цифр, 15 мин; SMTP `mail.antonbutov.com`. В письме кнопка «Скопировать код» → `/copy-code` |
 | БД пользователей | **Postgres** (не SQLite slidev-ai) |
 | Сессия | cookie `pk_session`, `Secure`, `HttpOnly`, `SameSite=Lax`, 30 дней |
 | CSRF | state + PKCE на OAuth; cookie same-site для API |
@@ -64,10 +64,10 @@ type Session = {
 
 **Email**
 
-1. POST `/api/auth/sign-in/email` `{ email, next }`
-2. Одноразовый токен 15 мин
-3. Ссылка `/api/auth/magic?token=`
-4. Сессия как выше
+1. POST `/api/auth/email-otp/send-verification-otp` `{ email, type: "sign-in" }`
+2. Письмо с кодом из 6 цифр (15 мин) и кнопкой «Скопировать код» (`/copy-code?c=`)
+3. POST `/api/auth/sign-in/email-otp` `{ email, otp }`
+4. Сессия как выше. Ссылку для входа не шлём.
 
 **Выход:** POST `/api/auth/sign-out`
 
@@ -83,7 +83,7 @@ type Session = {
 
 ## Границы службы
 
-**Внутри auth:** identity, сессия, OAuth, magic link.  
+**Внутри auth:** identity, сессия, OAuth, email OTP.  
 **Снаружи:** биллинг, роли admin, 2FA, привязка нескольких соцсетей.
 
 ## Не брать / оговорки
@@ -97,3 +97,4 @@ type Session = {
 | Дата | Что изменили |
 |------|----------------|
 | 2026-10-04 | Яндекс ID + magic link, Better Auth, cookie session |
+| 2026-10-04 | Email: код вместо magic link, кнопка копирования в письме |
