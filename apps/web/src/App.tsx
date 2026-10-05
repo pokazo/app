@@ -3,6 +3,7 @@ import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { CopyCode } from "./pages/CopyCode";
 import { AppHome } from "./pages/AppHome";
+import { DeckView } from "./pages/DeckView";
 import { Legal } from "./pages/Legal";
 
 export function App() {
@@ -13,6 +14,7 @@ export function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/copy-code" element={<CopyCode />} />
         <Route path="/app" element={<AppHome />} />
+        <Route path="/view/:id" element={<DeckView />} />
         <Route path="/legal/:doc" element={<Legal />} />
       </Routes>
     </BrowserRouter>

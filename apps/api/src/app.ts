@@ -10,6 +10,7 @@ import { createAuth } from "./auth.js";
 import { enqueueDeck } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
+import { outlineTitle, slidesFromOutline } from "./view-meta.js";
 
 export function createApp() {
   const app = new Hono();
@@ -98,6 +99,36 @@ export function createApp() {
     const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
     return c.json(toDeckDto(deck));
+  });
+
+  app.get("/api/view/:id", async (c) => {
+    const id = c.req.param("id");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "dist", "index.html"))) return c.json({ error: "not ready" }, 404);
+    let outline: unknown = null;
+    let input: { topic?: string; slideCount?: number } = {};
+    try {
+      outline = JSON.parse(await readFile(join(dir, "outline.json"), "utf8"));
+    } catch {
+      outline = null;
+    }
+    try {
+      input = JSON.parse(await readFile(join(dir, "input.json"), "utf8")) as typeof input;
+    } catch {
+      input = {};
+    }
+    const slides = slidesFromOutline(outline, Number(input.slideCount ?? 0));
+    if (!slides.length) return c.json({ error: "not ready" }, 404);
+    return c.json({
+      deckId: id,
+      topic: outlineTitle(outline, input.topic ?? ""),
+      slideCount: slides.length,
+      slides,
+      embedBase: `${config.apiOrigin}/p/${id}/`,
+    });
   });
 
   app.get("/p/:id/*", async (c) => {

@@ -23,6 +23,6 @@ export function toDeckDto(deck: DeckRow) {
     slideCount: Number(deck.slide_count),
     createdAt: iso(deck.created_at),
     updatedAt: iso(deck.updated_at),
-    viewUrl: deck.status === "ready" ? `${config.apiOrigin}/p/${deck.id}/` : null,
+    viewUrl: deck.status === "ready" ? `${config.appOrigin}/view/${deck.id}` : null,
   };
 }

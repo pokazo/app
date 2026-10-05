@@ -13,6 +13,8 @@ describe("toDeckDto", () => {
       updated_at: new Date("2026-10-04T18:01:00.000Z"),
     };
     expect(toDeckDto(row).viewUrl).toBeNull();
-    expect(toDeckDto({ ...row, status: "ready" }).viewUrl).toMatch(/\/p\/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\/$/);
+    expect(toDeckDto({ ...row, status: "ready" }).viewUrl).toMatch(
+      /\/view\/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee$/,
+    );
   });
 });

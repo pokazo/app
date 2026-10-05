@@ -21,6 +21,12 @@ describe("health", () => {
     const res = await app.request("/api/decks");
     expect(res.status).toBe(503);
   });
+
+  it("view meta rejects a non-uuid", async () => {
+    const app = createApp();
+    const res = await app.request("/api/view/not-an-id");
+    expect(res.status).toBe(404);
+  });
 });
 
 describe("md-guard", () => {

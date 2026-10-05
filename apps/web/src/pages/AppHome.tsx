@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { api, apiUrl } from "../api";
@@ -107,8 +107,8 @@ export function AppHome() {
         );
         setStatus(d.status);
         void loadDecks();
-        if (d.status === "ready" && d.viewUrl) {
-          window.location.href = d.viewUrl;
+        if (d.status === "ready") {
+          nav(`/view/${created.deckId}`);
           return;
         }
         if (d.status === "failed") {
@@ -167,10 +167,10 @@ export function AppHome() {
                     </p>
                     {d.status === "failed" && d.error ? <p className="err deck-error">{d.error}</p> : null}
                   </div>
-                  {d.status === "ready" && d.viewUrl ? (
-                    <a className="pk-btn primary" href={d.viewUrl}>
+                  {d.status === "ready" ? (
+                    <Link className="pk-btn primary" to={`/view/${d.deckId}`}>
                       Смотреть
-                    </a>
+                    </Link>
                   ) : null}
                 </li>
               ))}
