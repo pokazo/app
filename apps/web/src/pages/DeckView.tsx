@@ -71,6 +71,7 @@ export function DeckView() {
   useEffect(() => {
     document.querySelector(`[data-thumb="${current}"]`)?.scrollIntoView({
       block: "nearest",
+      inline: "nearest",
     });
   }, [current]);
 
