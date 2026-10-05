@@ -149,8 +149,8 @@ export function createApp() {
       ".json": "application/json",
     };
     const ext = extname(target);
-    let body: Buffer | string = await readFile(target);
-    if (ext === ".html") body = injectPlayerChromeHide(body.toString("utf8"));
+    const raw = await readFile(target);
+    const body = ext === ".html" ? injectPlayerChromeHide(raw.toString("utf8")) : new Uint8Array(raw);
     return c.body(body, 200, { "content-type": types[ext] ?? "application/octet-stream" });
   });
 
