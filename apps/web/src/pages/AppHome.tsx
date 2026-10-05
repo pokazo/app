@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { api, apiUrl } from "../api";
-import { APP_HISTORY_PATH, deckStatusLabel, sanitizeDeckTheme } from "../decks";
+import { deckStatusLabel, sanitizeDeckTheme } from "../decks";
 import { ThemePicker } from "../components/ThemePicker";
 
 type Me = { id: string; email: string; name: string };
@@ -94,9 +94,6 @@ export function AppHome() {
           <ThemePicker value={theme} onChange={setTheme} disabled={Boolean(status)} />
           {status ? <p className="app-note">{label}</p> : null}
           {err ? <p className="err app-note">{err}</p> : null}
-          <p className="app-history-link">
-            <Link to={APP_HISTORY_PATH}>История презентаций</Link>
-          </p>
         </div>
       </main>
     </>

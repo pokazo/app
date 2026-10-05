@@ -239,10 +239,6 @@ button.yandex:hover:not(:disabled), a.yandex:hover {
   color: var(--pk-ink-muted);
   margin: 32px 0 0;
 }
-.app-history-link {
-  text-align: center;
-  margin: 24px 0 0;
-}
 .theme-picker {
   margin: 20px 0 0;
   border: 0;
