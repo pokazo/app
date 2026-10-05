@@ -12,6 +12,27 @@ const ALLOWED_LAYOUTS = new Set([
   "statement",
 ]);
 
+function quoteYamlScalar(value: string): string {
+  const t = value.trim();
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    return t;
+  }
+  if (/[:#{}[\],&*?]/.test(t)) {
+    return `"${t.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  return t;
+}
+
+function quoteFrontmatterTitle(md: string): string {
+  const block = md.match(/^---\n([\s\S]*?)\n---/);
+  if (!block) return md;
+  const fm = block[1].replace(/^title:\s*(.+)$/m, (_m, val: string) => `title: ${quoteYamlScalar(val)}`);
+  return md.replace(block[0], `---\n${fm}\n---`);
+}
+
 export function guardMarkdown(md: string): string {
   let out = md.replace(/<script[\s\S]*?<\/script>/gi, "");
   out = out.replace(/<[^>]*\.vue[^>]*>/gi, "");
@@ -27,7 +48,7 @@ export function guardMarkdown(md: string): string {
       out = out.replace(/^---\n/, "---\ntheme: default\n");
     }
   }
-  return out;
+  return quoteFrontmatterTitle(out);
 }
 
 export function isSafePath(next: string | null): string {

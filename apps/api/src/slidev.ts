@@ -1,8 +1,41 @@
+import { existsSync, symlinkSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { guardMarkdown } from "./md-guard.js";
+
+export type SlidevSpawnSpec = {
+  bin: string;
+  args: string[];
+  cwd: string;
+};
+
+function apiDir(): string {
+  const root = fileURLToPath(new URL("../../..", import.meta.url));
+  return join(root, "apps/api");
+}
+
+export function ensureDeckNodeModules(workDir: string): void {
+  const dest = join(workDir, "node_modules");
+  if (existsSync(dest)) return;
+  symlinkSync(join(apiDir(), "node_modules"), dest);
+}
+
+export function slidevSpawnSpec(workDir: string, base: string): SlidevSpawnSpec {
+  return {
+    bin: join(apiDir(), "node_modules/.bin/slidev"),
+    args: ["build", "slides.md", "--out", "dist", "--base", base],
+    cwd: workDir,
+  };
+}
+
+export function assertSlidevDist(workDir: string): void {
+  const index = join(workDir, "dist", "index.html");
+  if (!existsSync(index)) {
+    throw new Error(`slidev produced no dist at ${index}`);
+  }
+}
 
 export async function writeSlides(workDir: string, markdown: string): Promise<string> {
   await mkdir(workDir, { recursive: true });
@@ -12,16 +45,14 @@ export async function writeSlides(workDir: string, markdown: string): Promise<st
 }
 
 export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
-  const root = fileURLToPath(new URL("../../..", import.meta.url));
-  const apiMods = join(root, "apps/api/node_modules");
-  const bin = join(apiMods, ".bin/slidev");
+  ensureDeckNodeModules(workDir);
+  const spec = slidevSpawnSpec(workDir, base);
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, ["build", "slides.md", "--out", "dist", "--base", base], {
-      cwd: workDir,
+    const child = spawn(spec.bin, spec.args, {
+      cwd: spec.cwd,
       env: {
         ...process.env,
         CI: "1",
-        NODE_PATH: `${apiMods}:${process.env.NODE_PATH ?? ""}`,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -33,10 +64,22 @@ export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): 
       child.kill("SIGKILL");
       reject(new Error("slidev build timeout"));
     }, timeoutMs);
+    child.on("error", (err) => {
+      clearTimeout(t);
+      reject(err);
+    });
     child.on("exit", (code) => {
       clearTimeout(t);
-      if (code === 0) resolve();
-      else reject(new Error(stderr || `slidev exit ${code}`));
+      if (code !== 0) {
+        reject(new Error(stderr || `slidev exit ${code}`));
+        return;
+      }
+      try {
+        assertSlidevDist(workDir);
+        resolve();
+      } catch (err) {
+        reject(new Error([String(err), stderr].filter(Boolean).join("\n")));
+      }
     });
   });
 }

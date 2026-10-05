@@ -30,6 +30,11 @@ describe("md-guard", () => {
     expect(out).not.toMatch(/script/i);
     expect(out).toMatch(/layout: default/);
   });
+
+  it("quotes frontmatter title when it contains a colon", () => {
+    const out = guardMarkdown(`---\ntheme: default\ntitle: Веб дизайн: Введение\n---\n\n# Hi`);
+    expect(out).toMatch(/^title: "Веб дизайн: Введение"$/m);
+  });
 });
 
 describe("next path", () => {
