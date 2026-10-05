@@ -11,6 +11,7 @@ import { enqueueDeck } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesFromOutline } from "./view-meta.js";
+import { injectPlayerChromeHide } from "./player-chrome.js";
 
 export function createApp() {
   const app = new Hono();
@@ -147,8 +148,10 @@ export function createApp() {
       ".svg": "image/svg+xml",
       ".json": "application/json",
     };
-    const body = await readFile(target);
-    return c.body(body, 200, { "content-type": types[extname(target)] ?? "application/octet-stream" });
+    const ext = extname(target);
+    let body: Buffer | string = await readFile(target);
+    if (ext === ".html") body = injectPlayerChromeHide(body.toString("utf8"));
+    return c.body(body, 200, { "content-type": types[ext] ?? "application/octet-stream" });
   });
 
   app.get("/p/:id", (c) => c.redirect(`/p/${c.req.param("id")}/`));
