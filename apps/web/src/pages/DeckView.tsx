@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, embedSlideUrl, slidevNavigateMessage } from "../deck-view";
+import { APP_HISTORY_PATH } from "../decks";
 
 type Me = { id: string; email: string; name: string };
 type Slide = { index: number; heading: string };
@@ -118,7 +119,7 @@ export function DeckView() {
             {copied ? "Скопировано" : "Скопировать ссылку"}
           </button>
           {me ? (
-            <Link className="pk-btn ghost" to="/app">
+            <Link className="pk-btn ghost" to={APP_HISTORY_PATH}>
               К списку
             </Link>
           ) : null}

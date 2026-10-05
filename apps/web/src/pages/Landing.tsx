@@ -4,6 +4,8 @@ import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { PkSlideFrame } from "../components/PkSlideFrame";
 import { apiUrl } from "../safe";
+import { sanitizeDeckTheme } from "../decks";
+import { ThemePicker } from "../components/ThemePicker";
 
 const THUMBS = [
   {
@@ -40,6 +42,7 @@ const THUMBS = [
 
 export function Landing() {
   const [topic, setTopic] = useState("");
+  const [theme, setTheme] = useState("auto");
   const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
   const nav = useNavigate();
 
@@ -55,13 +58,14 @@ export function Landing() {
   async function goCreate(t: string) {
     const text = t.trim();
     if (text.length < 5) return;
-    const dest = `/app?topic=${encodeURIComponent(text)}`;
+    const pick = sanitizeDeckTheme(theme);
+    const dest = `/app?topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}`;
     try {
       const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });
       if (res.ok) nav(dest);
-      else nav(`/login?next=/app&topic=${encodeURIComponent(text)}`);
+      else nav(`/login?next=/app&topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}`);
     } catch {
-      nav(`/login?next=/app&topic=${encodeURIComponent(text)}`);
+      nav(`/login?next=/app&topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}`);
     }
   }
 
@@ -93,6 +97,7 @@ export function Landing() {
                 </PkButton>
               </div>
             </form>
+            <ThemePicker value={theme} onChange={setTheme} />
           </div>
         </section>
         <section className="section alt">

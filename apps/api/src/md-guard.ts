@@ -1,3 +1,5 @@
+import { slidevThemeId } from "./themes.js";
+
 const ALLOWED_LAYOUTS = new Set([
   "default",
   "cover",
@@ -33,22 +35,26 @@ function quoteFrontmatterTitle(md: string): string {
   return md.replace(block[0], `---\n${fm}\n---`);
 }
 
-export function guardMarkdown(md: string): string {
+function pinTheme(md: string, theme: string): string {
+  if (!md.trim().startsWith("---")) {
+    return `---\ntheme: ${theme}\n---\n\n${md}`;
+  }
+  let out = md.replace(/^theme:\s*.+$/m, `theme: ${theme}`);
+  if (!/^theme:/m.test(out.slice(0, 200))) {
+    out = out.replace(/^---\n/, `---\ntheme: ${theme}\n`);
+  }
+  return out;
+}
+
+export function guardMarkdown(md: string, theme = "default"): string {
+  const pinned = slidevThemeId(theme);
   let out = md.replace(/<script[\s\S]*?<\/script>/gi, "");
   out = out.replace(/<[^>]*\.vue[^>]*>/gi, "");
   out = out.replace(/^layout:\s*([^\n]+)$/gim, (_m, layout: string) => {
     const id = layout.trim().replace(/['"]/g, "");
     return ALLOWED_LAYOUTS.has(id) ? `layout: ${id}` : "layout: default";
   });
-  if (!out.trim().startsWith("---")) {
-    out = `---\ntheme: default\n---\n\n${out}`;
-  } else {
-    out = out.replace(/^theme:\s*.+$/m, "theme: default");
-    if (!/^theme:/m.test(out.slice(0, 200))) {
-      out = out.replace(/^---\n/, "---\ntheme: default\n");
-    }
-  }
-  return quoteFrontmatterTitle(out);
+  return quoteFrontmatterTitle(pinTheme(out, pinned));
 }
 
 export function isSafePath(next: string | null): string {

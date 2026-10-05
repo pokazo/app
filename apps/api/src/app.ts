@@ -12,6 +12,7 @@ import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesFromOutline } from "./view-meta.js";
 import { injectPlayerChromeHide } from "./player-chrome.js";
+import { sanitizePickerTheme } from "./themes.js";
 
 export function createApp() {
   const app = new Hono();
@@ -67,7 +68,7 @@ export function createApp() {
         body.locale ?? "ru",
         slideCount,
         body.audience ?? "school",
-        body.theme ?? "default",
+        sanitizePickerTheme(body.theme),
       ],
     );
     await enqueueDeck(id);

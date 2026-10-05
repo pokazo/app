@@ -5,6 +5,7 @@ import { Redis } from "ioredis";
 import { config } from "./env.js";
 import { pool } from "./migrate.js";
 import { generateDeck } from "./generate.js";
+import { sanitizePickerTheme } from "./themes.js";
 
 let queue: Queue | null = null;
 let workerStarted = false;
@@ -46,6 +47,7 @@ export async function processDeck(id: string): Promise<void> {
       locale: deck.locale,
       slideCount: deck.slide_count,
       audience: deck.audience,
+      theme: deck.theme,
     }),
   );
   try {
@@ -55,6 +57,7 @@ export async function processDeck(id: string): Promise<void> {
       locale: deck.locale,
       slideCount: deck.slide_count,
       audience: deck.audience,
+      theme: sanitizePickerTheme(deck.theme),
       workDir,
     });
     await writeFile(

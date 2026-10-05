@@ -6,6 +6,7 @@ import { writeFile } from "node:fs/promises";
 import { config } from "./env.js";
 import { buildSlidev, writeSlides } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
+import { slidevThemeId } from "./themes.js";
 
 const Outline = z.object({
   title: z.string(),
@@ -42,25 +43,26 @@ function model(id: string) {
   return openai(id);
 }
 
-const SKILL = `You write Slidev markdown.
-Rules:
-- Separate slides with ---
-- First block is YAML headmatter: theme: default, title
-- Only layouts: cover, default, center, intro, two-cols, quote, section, end
-- two-cols uses ::right::
-- No custom Vue SFCs, no <script>
-- Russian if locale=ru
-- One idea per slide, heading <= 8 words, <= 5 bullets
-`;
-
 export async function generateDeck(opts: {
   id: string;
   topic: string;
   locale: string;
   slideCount: number;
   audience: string;
+  theme: string;
   workDir: string;
 }): Promise<void> {
+  const theme = slidevThemeId(opts.theme);
+  const skill = `You write Slidev markdown.
+Rules:
+- Separate slides with ---
+- First block is YAML headmatter: theme: ${theme}, title
+- Only layouts: cover, default, center, intro, two-cols, quote, section, end
+- two-cols uses ::right::
+- No custom Vue SFCs, no <script>
+- Russian if locale=ru
+- One idea per slide, heading <= 8 words, <= 5 bullets
+`;
   const outline = await generateObject({
     model: model(config.outlineModel),
     schema: Outline,
@@ -75,24 +77,24 @@ export async function generateDeck(opts: {
 
   const { text } = await generateText({
     model: model(config.composeModel),
-    system: SKILL,
+    system: skill,
     prompt: `Собери slides.md по этому JSON:\n${JSON.stringify(outline.object)}\nlocale=${opts.locale}`,
   });
 
   const stripFence = (s: string) => s.replace(/^```(?:md|markdown)?\n?/, "").replace(/\n?```$/, "");
-  let md = guardMarkdown(stripFence(text));
-  await writeSlides(opts.workDir, md);
+  let md = guardMarkdown(stripFence(text), theme);
+  await writeSlides(opts.workDir, md, theme);
   const base = `/p/${opts.id}/`;
   try {
     await buildSlidev(opts.workDir, base);
   } catch (err) {
     const repaired = await generateText({
       model: model(config.composeModel),
-      system: SKILL,
+      system: skill,
       prompt: `Сборка Slidev упала:\n${String(err)}\nИсправь markdown:\n${md}`,
     });
-    md = guardMarkdown(stripFence(repaired.text));
-    await writeSlides(opts.workDir, md);
+    md = guardMarkdown(stripFence(repaired.text), theme);
+    await writeSlides(opts.workDir, md, theme);
     await buildSlidev(opts.workDir, base);
   }
 }

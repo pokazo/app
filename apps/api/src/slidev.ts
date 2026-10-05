@@ -37,10 +37,10 @@ export function assertSlidevDist(workDir: string): void {
   }
 }
 
-export async function writeSlides(workDir: string, markdown: string): Promise<string> {
+export async function writeSlides(workDir: string, markdown: string, theme = "default"): Promise<string> {
   await mkdir(workDir, { recursive: true });
   const file = join(workDir, "slides.md");
-  await writeFile(file, guardMarkdown(markdown), "utf8");
+  await writeFile(file, guardMarkdown(markdown, theme), "utf8");
   return file;
 }
 

@@ -12,9 +12,17 @@ export function Login() {
   const next = useMemo(() => {
     const base = isSafePath(params.get("next"));
     const topic = params.get("topic") ?? "";
-    if (!topic) return base;
-    const join = base.includes("?") ? "&" : "?";
-    return `${base}${join}topic=${encodeURIComponent(topic)}`;
+    const theme = params.get("theme") ?? "";
+    let dest = base;
+    if (topic) {
+      const join = dest.includes("?") ? "&" : "?";
+      dest = `${dest}${join}topic=${encodeURIComponent(topic)}`;
+    }
+    if (theme) {
+      const join = dest.includes("?") ? "&" : "?";
+      dest = `${dest}${join}theme=${encodeURIComponent(theme)}`;
+    }
+    return dest;
   }, [params]);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
