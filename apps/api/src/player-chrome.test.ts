@@ -10,7 +10,14 @@ describe("injectPlayerChromeHide", () => {
   });
 
   it("is idempotent", () => {
-    const once = injectPlayerChromeHide("<html><head></head></html>");
+    const once = injectPlayerChromeHide("<html><head></head><body></body></html>");
     expect(injectPlayerChromeHide(once)).toBe(once);
+  });
+
+  it("injects postMessage nav before </body>", () => {
+    const out = injectPlayerChromeHide("<html><head></head><body></body></html>");
+    expect(out).toContain('id="pk-slidev-nav"');
+    expect(out).toContain('target !== "slidev"');
+    expect(out).toMatch(/<\/script>\s*<\/body>/i);
   });
 });
