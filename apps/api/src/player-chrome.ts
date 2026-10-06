@@ -77,6 +77,25 @@ export function deckAssetContentType(ext: string): string {
   return types[ext] ?? "application/octet-stream";
 }
 
+const LONG_CACHE = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif",
+  ".js",
+  ".css",
+  ".woff",
+  ".woff2",
+  ".svg",
+]);
+
+/** HTML shell must revalidate; hashed assets and slide photos can be cached. */
+export function deckAssetCacheControl(ext: string): string {
+  if (LONG_CACHE.has(ext)) return "public, max-age=86400, immutable";
+  return "no-cache";
+}
+
 export function injectPlayerChromeHide(html: string): string {
   let out = html;
   if (!out.includes('id="pk-hide-slidev-chrome"')) {

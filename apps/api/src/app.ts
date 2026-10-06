@@ -11,7 +11,7 @@ import { enqueueDeck } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesFromOutline } from "./view-meta.js";
-import { injectPlayerChromeHide, deckAssetContentType } from "./player-chrome.js";
+import { injectPlayerChromeHide, deckAssetCacheControl, deckAssetContentType } from "./player-chrome.js";
 import { sanitizePickerTheme } from "./themes.js";
 
 export function createApp() {
@@ -145,7 +145,10 @@ export function createApp() {
     const ext = extname(target);
     const raw = await readFile(target);
     const body = ext === ".html" ? injectPlayerChromeHide(raw.toString("utf8")) : new Uint8Array(raw);
-    return c.body(body, 200, { "content-type": deckAssetContentType(ext) });
+    return c.body(body, 200, {
+      "content-type": deckAssetContentType(ext),
+      "cache-control": deckAssetCacheControl(ext),
+    });
   });
 
   app.get("/p/:id", (c) => c.redirect(`/p/${c.req.param("id")}/`));

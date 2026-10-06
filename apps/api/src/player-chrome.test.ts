@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deckAssetContentType, injectPlayerChromeHide } from "./player-chrome.js";
+import { deckAssetCacheControl, deckAssetContentType, injectPlayerChromeHide } from "./player-chrome.js";
 
 describe("injectPlayerChromeHide", () => {
   it("injects style before </head>", () => {
@@ -29,5 +29,17 @@ describe("deckAssetContentType", () => {
   it("serves jpeg as image/jpeg not octet-stream", () => {
     expect(deckAssetContentType(".jpg")).toBe("image/jpeg");
     expect(deckAssetContentType(".png")).toBe("image/png");
+  });
+});
+
+describe("deckAssetCacheControl", () => {
+  it("caches slide images and hashed assets", () => {
+    expect(deckAssetCacheControl(".jpg")).toBe("public, max-age=86400, immutable");
+    expect(deckAssetCacheControl(".js")).toBe("public, max-age=86400, immutable");
+    expect(deckAssetCacheControl(".css")).toBe("public, max-age=86400, immutable");
+  });
+
+  it("keeps html shell uncached", () => {
+    expect(deckAssetCacheControl(".html")).toBe("no-cache");
   });
 });

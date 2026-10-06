@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
-import { embedDeckUrl, embedSlideUrl, slidevNavigateMessage } from "../deck-view";
+import { embedDeckUrl, slidevNavigateMessage } from "../deck-view";
 import { APP_HISTORY_PATH } from "../decks";
 
 type Me = { id: string; email: string; name: string };
@@ -139,16 +139,7 @@ export function DeckView() {
               onClick={() => go(s.index)}
             >
               <span className="deck-thumb-n">{s.index}</span>
-              <span className="deck-thumb-frame" aria-hidden>
-                {stageReady ? (
-                  <iframe
-                    title=""
-                    tabIndex={-1}
-                    src={embedSlideUrl(embedBase, s.index)}
-                    loading="lazy"
-                  />
-                ) : null}
-              </span>
+              <span className="deck-thumb-title">{s.heading || `Слайд ${s.index}`}</span>
             </button>
           ))}
         </nav>
