@@ -58,6 +58,7 @@ describe("installDeckLayouts", () => {
       expect(src).toMatch(/#f7f3ec/);
       expect(src).toMatch(/#161616/);
       expect(src).toMatch(/opacity:\s*1/);
+      expect(src).toMatch(/object-fit:\s*cover/);
     }
   });
 });

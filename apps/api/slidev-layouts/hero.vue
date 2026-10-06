@@ -6,16 +6,11 @@ const props = defineProps<{
   image?: string
 }>()
 
-function photoStyle(image?: string) {
-  if (!image) return {}
+function photoSrc(image?: string) {
+  if (!image) return ""
   const base = import.meta.env.BASE_URL || "/"
   const path = image.startsWith("/") ? image.slice(1) : image
-  return {
-    backgroundImage: `url("${base}${path}")`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-  }
+  return `${base}${path}`
 }
 </script>
 
@@ -35,7 +30,9 @@ function photoStyle(image?: string) {
       </div>
       <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
-    <div v-if="props.image" class="pk-hero__photo" :style="photoStyle(props.image)" />
+    <div v-if="props.image" class="pk-hero__photo">
+      <img :src="photoSrc(props.image)" alt="" />
+    </div>
   </div>
 </template>
 
@@ -142,6 +139,16 @@ function photoStyle(image?: string) {
 }
 .pk-hero__photo {
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background-color: #1a1a1a;
+}
+.pk-hero__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

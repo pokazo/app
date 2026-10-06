@@ -4,22 +4,19 @@ const props = defineProps<{
   kicker?: string
 }>()
 
-function photoStyle(image?: string) {
-  if (!image) return {}
+function photoSrc(image?: string) {
+  if (!image) return ""
   const base = import.meta.env.BASE_URL || "/"
   const path = image.startsWith("/") ? image.slice(1) : image
-  return {
-    backgroundImage: `url("${base}${path}")`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-  }
+  return `${base}${path}`
 }
 </script>
 
 <template>
   <div class="pk-split">
-    <div class="pk-split__photo" :style="photoStyle(props.image)" />
+    <div class="pk-split__photo">
+      <img v-if="props.image" :src="photoSrc(props.image)" alt="" />
+    </div>
     <div class="pk-split__pane">
       <div class="pk-kicker" v-if="kicker">
         <span class="pk-kicker__line" />
@@ -36,8 +33,12 @@ function photoStyle(image?: string) {
 .pk-split {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
   background: #111111;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
@@ -95,6 +96,16 @@ function photoStyle(image?: string) {
 }
 .pk-split__photo {
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background-color: #1a1a1a;
+}
+.pk-split__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>
