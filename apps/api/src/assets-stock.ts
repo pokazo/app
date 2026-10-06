@@ -32,11 +32,24 @@ export function safePublicPath(workDir: string, filename: string): string {
   return target;
 }
 
+export function rewriteUnsplashImageUrl(url: string, imagesBase?: string): string {
+  const base = (imagesBase ?? "").replace(/\/$/, "");
+  if (!base) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "images.unsplash.com") return url;
+    return `${base}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
 export async function searchUnsplash(opts: {
   accessKey: string;
   query: string;
   orientation?: "landscape" | "portrait" | "squarish";
   count?: number;
+  apiBase?: string;
   fetchImpl?: typeof fetch;
 }): Promise<StockHit[]> {
   const fetchImpl = opts.fetchImpl ?? fetch;
@@ -46,7 +59,8 @@ export async function searchUnsplash(opts: {
     per_page: String(count),
     orientation: opts.orientation ?? "landscape",
   });
-  const res = await fetchImpl(`https://api.unsplash.com/search/photos?${params}`, {
+  const apiBase = (opts.apiBase || "https://api.unsplash.com").replace(/\/$/, "");
+  const res = await fetchImpl(`${apiBase}/search/photos?${params}`, {
     headers: {
       Authorization: `Client-ID ${opts.accessKey}`,
       "Accept-Version": "v1",
@@ -84,12 +98,13 @@ export async function downloadStockToPublic(opts: {
   url: string;
   filename: string;
   attribution: StockAttribution;
+  imagesBase?: string;
   fetchImpl?: typeof fetch;
 }): Promise<{ path: string; attribution: StockAttribution; file: string }> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const file = safePublicPath(opts.workDir, opts.filename);
   await mkdir(join(opts.workDir, "public"), { recursive: true });
-  const res = await fetchImpl(opts.url);
+  const res = await fetchImpl(rewriteUnsplashImageUrl(opts.url, opts.imagesBase));
   if (!res.ok) {
     throw new Error(`unsplash download ${res.status}`);
   }

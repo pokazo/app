@@ -40,7 +40,20 @@ describe("searchUnsplash", () => {
     expect(hits).toHaveLength(1);
     expect(hits[0]?.id).toBe("abc");
     expect(hits[0]?.photographer).toBe("Ada");
-    expect(fetchMock).toHaveBeenCalled();
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain("https://api.unsplash.com/search/photos");
+    expect(url).toContain("query=office+atrium");
+  });
+
+  it("uses apiBase for search URL", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ results: [] }));
+    await searchUnsplash({
+      accessKey: "key",
+      query: "desk",
+      apiBase: "http://egress:8788",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toMatch(/^http:\/\/egress:8788\/search\/photos\?/);
   });
 });
 
@@ -58,5 +71,19 @@ describe("downloadStockToPublic", () => {
     expect(result.path).toBe("/slide-2.jpg");
     const bytes = await readFile(join(workDir, "public", "slide-2.jpg"));
     expect([...bytes]).toEqual([1, 2, 3, 4]);
+  });
+
+  it("rewrites images.unsplash.com through imagesBase", async () => {
+    const workDir = mkdtempSync(join(tmpdir(), "pokazo-stock-"));
+    const fetchMock = vi.fn(async () => new Response(new Uint8Array([1]), { status: 200 }));
+    await downloadStockToPublic({
+      workDir,
+      url: "https://images.unsplash.com/photo-1?w=1600",
+      filename: "a.jpg",
+      attribution: { photographer: "Ada", attributionUrl: "https://unsplash.com/@ada" },
+      imagesBase: "http://egress:8789",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("http://egress:8789/photo-1?w=1600");
   });
 });

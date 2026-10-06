@@ -24,4 +24,6 @@ export const config = {
   llmTitle: env("LLM_APP_TITLE", "Pokazo"),
   deckDataDir: env("DECK_DATA_DIR", "./data/decks"),
   unsplashAccessKey: env("UNSPLASH_ACCESS_KEY"),
+  unsplashApiBase: env("UNSPLASH_API_BASE", "https://api.unsplash.com"),
+  unsplashImagesBase: env("UNSPLASH_IMAGES_BASE"),
 };

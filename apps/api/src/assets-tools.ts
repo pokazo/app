@@ -27,20 +27,25 @@ export function createStockTools(
   workDir: string,
   opts: {
     accessKey: string;
+    apiBase?: string;
+    imagesBase?: string;
     search?: SearchFn;
     download?: DownloadFn;
     onAttribution?: (entry: StockToolAttribution) => void;
   },
 ): Record<string, unknown> {
   const configured = Boolean(opts.accessKey);
-  const search = opts.search ?? ((args) => searchUnsplash({ ...args, accessKey: opts.accessKey }));
-  const download = opts.download ?? ((args) => downloadStockToPublic(args));
+  const search =
+    opts.search ??
+    ((args) => searchUnsplash({ ...args, accessKey: opts.accessKey, apiBase: opts.apiBase }));
+  const download =
+    opts.download ?? ((args) => downloadStockToPublic({ ...args, imagesBase: opts.imagesBase }));
   const cache = new Map<string, StockHit>();
 
   return {
     "stock-search": tool({
       description:
-        "Search Unsplash stock photos. Prefer landscape for image-right/left slides. Returns ids and urls; then call stock-download. If error, fall back to a non-image layout.",
+        "Search Unsplash stock photos. Prefer landscape. Returns ids; you MUST then call stock-download with that id. Empty/error: retry once with a simpler English query. Do not skip photos for the rest of the deck.",
       parameters: z.object({
         query: z.string().describe("English search query, e.g. modern glass office atrium"),
         orientation: z.enum(["landscape", "portrait", "squarish"]).optional(),
@@ -69,7 +74,7 @@ export function createStockTools(
     }),
     "stock-download": tool({
       description:
-        "Download a stock photo into the deck public/ folder. Pass id from stock-search (preferred) or a direct url. filename must be a simple basename like slide-2.jpg. Returns path for Slidev frontmatter image: field (e.g. /slide-2.jpg).",
+        "Download a Unsplash photo into the deck public/ folder. Pass id from stock-search (preferred). filename must be a simple basename like slide-2.jpg. Returns path for Slidev frontmatter image: (e.g. /slide-2.jpg). Call this after a successful stock-search before inserting the slide.",
       parameters: z.object({
         id: z.string().optional(),
         url: z.string().url().optional(),

@@ -8,7 +8,7 @@ import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp, type McpCallLog } from "./slidev-mcp.js";
 import { slidevThemeId } from "./themes.js";
 import { Outline } from "./outline.js";
-import { composeSkill } from "./compose-skill.js";
+import { composeSkill, composeUserPrompt, outlineUserPrompt } from "./compose-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { composeMaxSteps, mergeComposeTools } from "./generate-helpers.js";
 
@@ -94,19 +94,12 @@ export async function generateDeck(opts: {
   const outline = await generateObject({
     model: model(config.outlineModel),
     schema: Outline,
-    prompt: `Тема: ${opts.topic}
-Язык: ${opts.locale}
-Аудитория: ${opts.audience}
-Число слайдов: ${opts.slideCount}
-Составь оглавление презентации.
-
-Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero), imageQuery, iconHint, kicker, source, steps, stats, skills.
-steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
-stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].
-skills — массив {name,level,pct} только для visual=skills, иначе [].
-kicker/source — короткие подписи или "".
-Правила: cover/hero в начале; хотя бы один timeline или stats если тема про путь/цифры/резюме; минимум треть слайдов с visual из image-right, image-left, icon, two-cols, quote, fact, timeline, stats, skills.
-Не пиши markdown — только JSON-структуру.`,
+    prompt: outlineUserPrompt({
+      topic: opts.topic,
+      locale: opts.locale,
+      audience: opts.audience,
+      slideCount: opts.slideCount,
+    }),
   });
   console.info(
     `[generate] outline title="${outline.object.title}" slides=${outline.object.slides.length} ` +
@@ -121,6 +114,8 @@ kicker/source — короткие подписи или "".
   const maxSteps = composeMaxSteps(outline.object.slides.length);
   const stockTools = createStockTools(opts.workDir, {
     accessKey: config.unsplashAccessKey,
+    apiBase: config.unsplashApiBase,
+    imagesBase: config.unsplashImagesBase,
     onAttribution: (entry) => attributions.push(entry),
   });
 
@@ -133,7 +128,7 @@ kicker/source — короткие подписи или "".
         system: skill,
         tools: tools as never,
         maxSteps,
-        prompt: `Собери колоду по outline через tools (update slide 1, then sequential inserts; stock-search/download for image visuals).\noutline:\n${JSON.stringify(outline.object)}\nlocale=${opts.locale}`,
+        prompt: composeUserPrompt(outline.object, opts.locale),
         onStepFinish: async (step) => {
           const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
           console.info(`[llm] compose step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
