@@ -66,6 +66,31 @@ describe("md-guard", () => {
     expect(out).toMatch(/<carbon-logo-java\s*\/>/);
     expect(out).not.toMatch(/EvilWidget/);
   });
+
+  it("keeps timeline and stats layouts", () => {
+    expect(guardMarkdown(`---\nlayout: timeline\n---\n\n# T`)).toMatch(/layout: timeline/);
+    expect(guardMarkdown(`---\nlayout: stats\n---\n\n# S`)).toMatch(/layout: stats/);
+    expect(guardMarkdown(`---\nlayout: skills\n---\n\n# K`)).toMatch(/layout: skills/);
+    expect(guardMarkdown(`---\nlayout: hero\n---\n\n# H`)).toMatch(/layout: hero/);
+  });
+
+  it("keeps timeline steps YAML", () => {
+    const out = guardMarkdown(`---
+layout: timeline
+kicker: PATH
+steps:
+  - phase: "2012"
+    title: Start
+    body: first job
+    state: done
+---
+
+# Path
+`);
+    expect(out).toMatch(/layout: timeline/);
+    expect(out).toMatch(/kicker: PATH/);
+    expect(out).toMatch(/state: done/);
+  });
 });
 
 describe("next path", () => {

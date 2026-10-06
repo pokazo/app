@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { Outline } from "./outline.js";
 
+const emptyVisual = {
+  imageQuery: "",
+  iconHint: "",
+  kicker: "",
+  source: "",
+  steps: [] as const,
+  stats: [] as const,
+  skills: [] as const,
+};
+
 describe("Outline schema", () => {
   it("accepts rich slides with visual and intent", () => {
     const parsed = Outline.parse({
@@ -11,23 +21,22 @@ describe("Outline schema", () => {
           points: [],
           intent: "Open the deck",
           visual: "cover",
-          imageQuery: "",
-          iconHint: "",
+          ...emptyVisual,
         },
         {
           heading: "Dominant force",
           points: ["Enterprise backbone", "TIOBE #4"],
           intent: "Show scale with photo",
           visual: "image-right",
+          ...emptyVisual,
           imageQuery: "modern glass office atrium",
-          iconHint: "",
         },
         {
           heading: "Why teams stay",
           points: ["Stability"],
           intent: "Support with icon row",
           visual: "icon",
-          imageQuery: "",
+          ...emptyVisual,
           iconHint: "java",
         },
         {
@@ -35,8 +44,7 @@ describe("Outline schema", () => {
           points: [],
           intent: "Close",
           visual: "end",
-          imageQuery: "",
-          iconHint: "",
+          ...emptyVisual,
         },
       ],
     });
@@ -44,43 +52,61 @@ describe("Outline schema", () => {
     expect(parsed.slides[1]?.imageQuery).toContain("atrium");
   });
 
+  it("accepts timeline and stats payloads", () => {
+    const parsed = Outline.parse({
+      title: "Anton",
+      slides: [
+        {
+          heading: "Cover",
+          points: [],
+          intent: "open",
+          visual: "cover",
+          ...emptyVisual,
+        },
+        {
+          heading: "Цифры",
+          points: [],
+          intent: "kpi",
+          visual: "stats",
+          ...emptyVisual,
+          kicker: "KEY METRICS",
+          stats: [{ value: "12+", label: "лет в IT", note: "с 2012" }],
+        },
+        {
+          heading: "Путь",
+          points: [],
+          intent: "path",
+          visual: "timeline",
+          ...emptyVisual,
+          kicker: "TIMELINE",
+          steps: [
+            { phase: "2012", title: "Start", body: "first job", state: "done" },
+            { phase: "2024", title: "Now", body: "staff+", state: "current" },
+            { phase: "next", title: "Next", body: "scale", state: "todo" },
+          ],
+        },
+        {
+          heading: "End",
+          points: [],
+          intent: "close",
+          visual: "end",
+          ...emptyVisual,
+        },
+      ],
+    });
+    expect(parsed.slides[1]?.stats[0]?.value).toBe("12+");
+    expect(parsed.slides[2]?.steps).toHaveLength(3);
+  });
+
   it("rejects more than 5 points", () => {
     expect(() =>
       Outline.parse({
         title: "X",
         slides: [
-          {
-            heading: "A",
-            points: ["1", "2", "3", "4", "5", "6"],
-            intent: "too many",
-            visual: "none",
-            imageQuery: "",
-            iconHint: "",
-          },
-          {
-            heading: "B",
-            points: [],
-            intent: "b",
-            visual: "none",
-            imageQuery: "",
-            iconHint: "",
-          },
-          {
-            heading: "C",
-            points: [],
-            intent: "c",
-            visual: "none",
-            imageQuery: "",
-            iconHint: "",
-          },
-          {
-            heading: "D",
-            points: [],
-            intent: "d",
-            visual: "none",
-            imageQuery: "",
-            iconHint: "",
-          },
+          { heading: "A", points: ["1", "2", "3", "4", "5", "6"], intent: "too many", visual: "none", ...emptyVisual },
+          { heading: "B", points: [], intent: "b", visual: "none", ...emptyVisual },
+          { heading: "C", points: [], intent: "c", visual: "none", ...emptyVisual },
+          { heading: "D", points: [], intent: "d", visual: "none", ...emptyVisual },
         ],
       }),
     ).toThrow();

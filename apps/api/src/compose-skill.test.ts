@@ -10,7 +10,10 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/sequential/i);
     expect(skill).toMatch(/image-right/);
     expect(skill).toMatch(/Russian/);
-    expect(skill).toMatch(/seriph/);
+    expect(skill).toMatch(/layout: timeline/);
+    expect(skill).toMatch(/layout: stats/);
+    expect(skill).toMatch(/layout: skills/);
+    expect(skill).toMatch(/layout: hero/);
     expect(skill).toMatch(/Never dump|ONLY through (MCP|tools)/i);
   });
 });

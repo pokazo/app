@@ -1,10 +1,11 @@
-import { lstatSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertSlidevDist,
   ensureDeckNodeModules,
+  installDeckLayouts,
   scaffoldMarkdown,
   slidevMcpSpawnSpec,
   slidevSpawnSpec,
@@ -34,6 +35,17 @@ describe("scaffoldMarkdown", () => {
     expect(md).toContain('title: "Demo Deck"');
     expect(md).toContain("# Demo Deck");
     expect(md.split(/^---$/m).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("installDeckLayouts", () => {
+  it("copies timeline and stats vue layouts into the deck", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pokazo-layouts-"));
+    installDeckLayouts(dir);
+    expect(existsSync(join(dir, "layouts", "timeline.vue"))).toBe(true);
+    expect(existsSync(join(dir, "layouts", "stats.vue"))).toBe(true);
+    expect(existsSync(join(dir, "layouts", "skills.vue"))).toBe(true);
+    expect(existsSync(join(dir, "layouts", "hero.vue"))).toBe(true);
   });
 });
 

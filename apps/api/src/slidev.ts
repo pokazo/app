@@ -1,4 +1,4 @@
-import { existsSync, symlinkSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, symlinkSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -20,10 +20,13 @@ export function slidevBin(): string {
   return join(apiDir(), "node_modules/.bin/slidev");
 }
 
-export function ensureDeckNodeModules(workDir: string): void {
-  const dest = join(workDir, "node_modules");
-  if (existsSync(dest)) return;
-  symlinkSync(join(apiDir(), "node_modules"), dest);
+export function installDeckLayouts(workDir: string): void {
+  const dest = join(workDir, "layouts");
+  mkdirSync(dest, { recursive: true });
+  const src = join(apiDir(), "slidev-layouts");
+  for (const name of ["timeline.vue", "stats.vue", "skills.vue", "hero.vue"]) {
+    copyFileSync(join(src, name), join(dest, name));
+  }
 }
 
 export function slidevSpawnSpec(workDir: string, base: string): SlidevSpawnSpec {
@@ -57,6 +60,12 @@ title: ${JSON.stringify(title)}
   );
 }
 
+export function ensureDeckNodeModules(workDir: string): void {
+  const dest = join(workDir, "node_modules");
+  if (existsSync(dest)) return;
+  symlinkSync(join(apiDir(), "node_modules"), dest);
+}
+
 export function assertSlidevDist(workDir: string): void {
   const index = join(workDir, "dist", "index.html");
   if (!existsSync(index)) {
@@ -73,6 +82,7 @@ export async function writeSlides(workDir: string, markdown: string, theme = "de
 
 export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
   ensureDeckNodeModules(workDir);
+  installDeckLayouts(workDir);
   const spec = slidevSpawnSpec(workDir, base);
   return new Promise((resolve, reject) => {
     const child = spawn(spec.bin, spec.args, {

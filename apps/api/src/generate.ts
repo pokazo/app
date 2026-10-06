@@ -3,7 +3,7 @@ import { generateObject, generateText } from "ai";
 import { join } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { config } from "./env.js";
-import { buildSlidev, scaffoldMarkdown, writeSlides } from "./slidev.js";
+import { buildSlidev, installDeckLayouts, scaffoldMarkdown, writeSlides } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp, type McpCallLog } from "./slidev-mcp.js";
 import { slidevThemeId } from "./themes.js";
@@ -88,6 +88,7 @@ export async function generateDeck(opts: {
   const llm: unknown[] = [];
 
   await mkdir(join(opts.workDir, "public"), { recursive: true });
+  installDeckLayouts(opts.workDir);
 
   console.info(`[generate] outline model=${config.outlineModel} compose=${config.composeModel} topic=${opts.topic}`);
   const outline = await generateObject({
@@ -99,8 +100,12 @@ export async function generateDeck(opts: {
 Число слайдов: ${opts.slideCount}
 Составь оглавление презентации.
 
-Для каждого слайда укажи: heading, points (0–5 опорных фактов), intent (зачем слайд), visual (cover|end|image-right|image-left|icon|two-cols|quote|fact|section|default|none|…), imageQuery (английский запрос Unsplash или ""), iconHint (для icon или "").
-Правила: один cover в начале, end в конце опционально; минимум треть слайдов с visual из image-right, image-left, icon, two-cols, quote, fact; для image-* заполни imageQuery; для icon — iconHint; иначе пустые строки.
+Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero), imageQuery, iconHint, kicker, source, steps, stats, skills.
+steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
+stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].
+skills — массив {name,level,pct} только для visual=skills, иначе [].
+kicker/source — короткие подписи или "".
+Правила: cover/hero в начале; хотя бы один timeline или stats если тема про путь/цифры/резюме; минимум треть слайдов с visual из image-right, image-left, icon, two-cols, quote, fact, timeline, stats, skills.
 Не пиши markdown — только JSON-структуру.`,
   });
   console.info(
@@ -172,7 +177,9 @@ export async function generateDeck(opts: {
 
   await writeFile(join(opts.workDir, "assets.json"), JSON.stringify({ attributions }, null, 2));
   const visualSlides = outline.object.slides.filter((s) =>
-    ["image-right", "image-left", "icon", "two-cols", "quote", "fact"].includes(s.visual),
+    ["image-right", "image-left", "icon", "two-cols", "quote", "fact", "timeline", "stats", "skills", "hero"].includes(
+      s.visual,
+    ),
   ).length;
   const trace = {
     outlineModel: config.outlineModel,
