@@ -40,7 +40,7 @@ describe("searchUnsplash", () => {
     expect(hits).toHaveLength(1);
     expect(hits[0]?.id).toBe("abc");
     expect(hits[0]?.photographer).toBe("Ada");
-    const url = String(fetchMock.mock.calls[0]?.[0]);
+    const url = String(fetchMock.mock.calls.at(0)?.[0] ?? "");
     expect(url).toContain("https://api.unsplash.com/search/photos");
     expect(url).toContain("query=office+atrium");
   });
@@ -53,7 +53,7 @@ describe("searchUnsplash", () => {
       apiBase: "http://egress:8788",
       fetchImpl: fetchMock as unknown as typeof fetch,
     });
-    expect(String(fetchMock.mock.calls[0]?.[0])).toMatch(/^http:\/\/egress:8788\/search\/photos\?/);
+    expect(String(fetchMock.mock.calls.at(0)?.[0] ?? "")).toMatch(/^http:\/\/egress:8788\/search\/photos\?/);
   });
 });
 
@@ -84,6 +84,6 @@ describe("downloadStockToPublic", () => {
       imagesBase: "http://egress:8789",
       fetchImpl: fetchMock as unknown as typeof fetch,
     });
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("http://egress:8789/photo-1?w=1600");
+    expect(String(fetchMock.mock.calls.at(0)?.[0] ?? "")).toBe("http://egress:8789/photo-1?w=1600");
   });
 });
