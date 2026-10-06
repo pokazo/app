@@ -6,6 +6,9 @@ describe("injectPlayerChromeHide", () => {
     const out = injectPlayerChromeHide("<html><head><title>x</title></head><body></body></html>");
     expect(out).toContain('id="pk-hide-slidev-chrome"');
     expect(out).toContain("#slidev-goto-dialog");
+    expect(out).toContain("html, body");
+    expect(out).toMatch(/background:\s*#fff/);
+    expect(out).toContain("slidev-slide-loading");
     expect(out).toMatch(/<\/style>\s*<\/head>/i);
   });
 

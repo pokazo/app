@@ -1,5 +1,14 @@
 /** Hide Slidev chrome that fights our /view filmstrip (goto TOC sticks out via -top-20). */
 export const PLAYER_CHROME_HIDE_CSS = `
+html, body, #app, #slide-container,
+.slidev-page,
+.slidev-slide-loading {
+  background: #fff !important;
+  color: #161616 !important;
+}
+.slidev-slide-loading {
+  color: #5c5c5c !important;
+}
 #slidev-goto-dialog,
 .fixed.top-4.right-4.z-modal,
 #slide-container > nav {

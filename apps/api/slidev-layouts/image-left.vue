@@ -37,7 +37,7 @@ function photoSrc(image?: string) {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: minmax(0, 1fr);
   align-items: stretch;
-  background: #111111;
+  background: #f7f3ec;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 .pk-split__pane {
