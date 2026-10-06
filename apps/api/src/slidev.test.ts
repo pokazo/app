@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -46,6 +46,19 @@ describe("installDeckLayouts", () => {
     expect(existsSync(join(dir, "layouts", "stats.vue"))).toBe(true);
     expect(existsSync(join(dir, "layouts", "skills.vue"))).toBe(true);
     expect(existsSync(join(dir, "layouts", "hero.vue"))).toBe(true);
+  });
+
+  it("copies photo splits that pin cream pane and dark ink", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pokazo-layouts-"));
+    installDeckLayouts(dir);
+    for (const name of ["image-right.vue", "image-left.vue", "hero.vue"]) {
+      const file = join(dir, "layouts", name);
+      expect(existsSync(file)).toBe(true);
+      const src = readFileSync(file, "utf8");
+      expect(src).toMatch(/#f7f3ec/);
+      expect(src).toMatch(/#161616/);
+      expect(src).toMatch(/opacity:\s*1/);
+    }
   });
 });
 

@@ -1,16 +1,27 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   kicker?: string
   source?: string
   brand?: string
+  image?: string
 }>()
+
+function photoStyle(image?: string) {
+  if (!image) return {}
+  const base = import.meta.env.BASE_URL || "/"
+  const path = image.startsWith("/") ? image.slice(1) : image
+  return {
+    backgroundImage: `url("${base}${path}")`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+  }
+}
 </script>
 
 <template>
-  <div class="pk-brick pk-hero">
-    <div class="pk-brick__grid" />
-    <div class="pk-brick__frame" />
-    <div class="pk-brick__inner">
+  <div class="pk-brick pk-hero" :class="{ 'pk-hero--photo': Boolean(props.image) }">
+    <div class="pk-brick__pane">
       <div class="pk-brand" v-if="brand">
         <span class="pk-brand__mark" />
         <span class="pk-brand__text">{{ brand }}</span>
@@ -24,16 +35,17 @@ defineProps<{
       </div>
       <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
+    <div v-if="props.image" class="pk-hero__photo" :style="photoStyle(props.image)" />
   </div>
 </template>
 
 <style scoped>
 .pk-brick {
-  --pk-paper: #ffffff;
+  --pk-paper: #f7f3ec;
   --pk-ink: #161616;
-  --pk-sub: #5c5c5c;
-  --pk-accent: #e10600;
-  --pk-faint: #9a9a9a;
+  --pk-sub: #3d3d3d;
+  --pk-accent: #c45c26;
+  --pk-faint: #6b6b6b;
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -41,19 +53,19 @@ defineProps<{
   color: var(--pk-ink);
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
-.pk-brick__grid {
-  display: none;
+.pk-hero--photo {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
 }
-.pk-brick__frame {
-  display: none;
-}
-.pk-brick__inner {
+.pk-brick__pane {
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 48px 72px 48px;
+  padding: 48px 56px;
   display: flex;
   flex-direction: column;
+  background: var(--pk-paper);
+  color: var(--pk-ink);
 }
 .pk-brand {
   display: flex;
@@ -98,10 +110,16 @@ defineProps<{
   margin-top: auto;
   margin-bottom: auto;
 }
+.pk-hero__body :deep(h1),
+.pk-hero__body :deep(p),
+.pk-hero__body :deep(li) {
+  color: var(--pk-ink);
+  opacity: 1;
+}
 .pk-hero__body :deep(h1) {
   margin: 0 0 24px;
-  font-size: 56px;
-  line-height: 1.05;
+  font-size: 48px;
+  line-height: 1.08;
   font-weight: 800;
   letter-spacing: -0.03em;
   max-width: 16ch;
@@ -121,5 +139,9 @@ defineProps<{
   font-size: 13px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;
+}
+.pk-hero__photo {
+  min-height: 0;
+  background-color: #1a1a1a;
 }
 </style>
