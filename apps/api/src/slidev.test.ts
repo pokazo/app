@@ -2,13 +2,38 @@ import { lstatSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { assertSlidevDist, ensureDeckNodeModules, slidevSpawnSpec } from "./slidev.js";
+import {
+  assertSlidevDist,
+  ensureDeckNodeModules,
+  scaffoldMarkdown,
+  slidevMcpSpawnSpec,
+  slidevSpawnSpec,
+} from "./slidev.js";
 
 describe("slidevSpawnSpec", () => {
   it("builds inside the deck directory", () => {
     const spec = slidevSpawnSpec("/tmp/deck-id", "/p/deck-id/");
     expect(spec.cwd).toBe("/tmp/deck-id");
     expect(spec.args).toEqual(["build", "slides.md", "--out", "dist", "--base", "/p/deck-id/"]);
+  });
+});
+
+describe("slidevMcpSpawnSpec", () => {
+  it("starts stdio MCP on slides.md in the deck directory", () => {
+    const spec = slidevMcpSpawnSpec("/tmp/deck-id");
+    expect(spec.cwd).toBe("/tmp/deck-id");
+    expect(spec.args).toEqual(["mcp", "slides.md"]);
+    expect(spec.bin).toMatch(/slidev$/);
+  });
+});
+
+describe("scaffoldMarkdown", () => {
+  it("writes headmatter and a single placeholder slide", () => {
+    const md = scaffoldMarkdown("Demo Deck", "seriph");
+    expect(md).toContain("theme: seriph");
+    expect(md).toContain('title: "Demo Deck"');
+    expect(md).toContain("# Demo Deck");
+    expect(md.split(/^---$/m).length).toBeGreaterThanOrEqual(2);
   });
 });
 

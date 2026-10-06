@@ -7,6 +7,8 @@ const ALLOWED_LAYOUTS = new Set([
   "intro",
   "two-cols",
   "image-right",
+  "image-left",
+  "image",
   "quote",
   "section",
   "end",
@@ -46,14 +48,39 @@ function pinTheme(md: string, theme: string): string {
   return out;
 }
 
+/** Keep only local public paths like /hero.jpg; drop remote or traversal. */
+function sanitizeImageFrontmatter(md: string): string {
+  return md.replace(/^image:\s*(.+)$/gim, (_m, raw: string) => {
+    const val = raw.trim().replace(/^["']|["']$/g, "");
+    if (/^https?:\/\//i.test(val) || val.includes("..") || !val.startsWith("/")) {
+      return "image: ";
+    }
+    if (!/^\/[a-zA-Z0-9._/-]+$/.test(val)) {
+      return "image: ";
+    }
+    return `image: ${val}`;
+  });
+}
+
 export function guardMarkdown(md: string, theme = "default"): string {
   const pinned = slidevThemeId(theme);
   let out = md.replace(/<script[\s\S]*?<\/script>/gi, "");
   out = out.replace(/<[^>]*\.vue[^>]*>/gi, "");
+  // Allow carbon-* / mdi-* icon components; strip other unknown custom tags
+  out = out.replace(/<\/?([A-Za-z][\w-]*)(\s[^>]*)?\/?>/gi, (full, name: string) => {
+    const n = name.toLowerCase();
+    if (n === "br" || n === "hr" || n === "img" || n === "a" || n === "span" || n === "div" || n === "p") {
+      return full;
+    }
+    if (n.startsWith("carbon-") || n.startsWith("mdi-")) return full;
+    if (n.includes("-") || /^[A-Z]/.test(name)) return "";
+    return full;
+  });
   out = out.replace(/^layout:\s*([^\n]+)$/gim, (_m, layout: string) => {
     const id = layout.trim().replace(/['"]/g, "");
     return ALLOWED_LAYOUTS.has(id) ? `layout: ${id}` : "layout: default";
   });
+  out = sanitizeImageFrontmatter(out);
   return quoteFrontmatterTitle(pinTheme(out, pinned));
 }
 

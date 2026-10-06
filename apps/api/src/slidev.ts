@@ -1,5 +1,5 @@
 import { existsSync, symlinkSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,10 @@ function apiDir(): string {
   return join(root, "apps/api");
 }
 
+export function slidevBin(): string {
+  return join(apiDir(), "node_modules/.bin/slidev");
+}
+
 export function ensureDeckNodeModules(workDir: string): void {
   const dest = join(workDir, "node_modules");
   if (existsSync(dest)) return;
@@ -24,10 +28,33 @@ export function ensureDeckNodeModules(workDir: string): void {
 
 export function slidevSpawnSpec(workDir: string, base: string): SlidevSpawnSpec {
   return {
-    bin: join(apiDir(), "node_modules/.bin/slidev"),
+    bin: slidevBin(),
     args: ["build", "slides.md", "--out", "dist", "--base", base],
     cwd: workDir,
   };
+}
+
+/** Stdio MCP server for the deck entry (no live goto tool). */
+export function slidevMcpSpawnSpec(workDir: string): SlidevSpawnSpec {
+  return {
+    bin: slidevBin(),
+    args: ["mcp", "slides.md"],
+    cwd: workDir,
+  };
+}
+
+export function scaffoldMarkdown(title: string, theme: string): string {
+  return guardMarkdown(
+    `---
+theme: ${theme}
+title: ${JSON.stringify(title)}
+---
+
+# ${title}
+
+`,
+    theme,
+  );
 }
 
 export function assertSlidevDist(workDir: string): void {

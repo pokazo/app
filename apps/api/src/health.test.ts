@@ -41,6 +41,31 @@ describe("md-guard", () => {
     const out = guardMarkdown(`---\ntheme: default\ntitle: Веб дизайн: Введение\n---\n\n# Hi`);
     expect(out).toMatch(/^title: "Веб дизайн: Введение"$/m);
   });
+
+  it("keeps image-left layout and local image path", () => {
+    const out = guardMarkdown(
+      `---\nlayout: image-left\nimage: /hero.jpg\n---\n\n# Hi`,
+      "seriph",
+    );
+    expect(out).toMatch(/layout: image-left/);
+    expect(out).toMatch(/^image: \/hero\.jpg$/m);
+  });
+
+  it("strips remote image URLs from frontmatter", () => {
+    const out = guardMarkdown(
+      `---\nlayout: image-right\nimage: https://evil.example/x.jpg\n---\n\n# Hi`,
+    );
+    expect(out).not.toMatch(/https:\/\//);
+    expect(out).not.toMatch(/^image:\s*https/m);
+  });
+
+  it("keeps carbon icon tags and strips unknown custom components", () => {
+    const out = guardMarkdown(
+      `---\nlayout: default\n---\n\n# Hi\n\n<carbon-logo-java />\n<EvilWidget foo="1" />\n`,
+    );
+    expect(out).toMatch(/<carbon-logo-java\s*\/>/);
+    expect(out).not.toMatch(/EvilWidget/);
+  });
 });
 
 describe("next path", () => {

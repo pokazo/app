@@ -23,4 +23,5 @@ export const config = {
   llmReferer: env("LLM_HTTP_REFERER", "https://pokazo.ru"),
   llmTitle: env("LLM_APP_TITLE", "Pokazo"),
   deckDataDir: env("DECK_DATA_DIR", "./data/decks"),
+  unsplashAccessKey: env("UNSPLASH_ACCESS_KEY"),
 };
