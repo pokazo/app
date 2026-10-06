@@ -52,6 +52,22 @@ export const PLAYER_NAV_SCRIPT = `
 })();
 `.trim();
 
+export function deckAssetContentType(ext: string): string {
+  const types: Record<string, string> = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".svg": "image/svg+xml",
+    ".json": "application/json",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+  };
+  return types[ext] ?? "application/octet-stream";
+}
+
 export function injectPlayerChromeHide(html: string): string {
   let out = html;
   if (!out.includes('id="pk-hide-slidev-chrome"')) {

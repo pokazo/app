@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { injectPlayerChromeHide } from "./player-chrome.js";
+import { deckAssetContentType, injectPlayerChromeHide } from "./player-chrome.js";
 
 describe("injectPlayerChromeHide", () => {
   it("injects style before </head>", () => {
@@ -19,5 +19,12 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toContain('id="pk-slidev-nav"');
     expect(out).toContain('target !== "slidev"');
     expect(out).toMatch(/<\/script>\s*<\/body>/i);
+  });
+});
+
+describe("deckAssetContentType", () => {
+  it("serves jpeg as image/jpeg not octet-stream", () => {
+    expect(deckAssetContentType(".jpg")).toBe("image/jpeg");
+    expect(deckAssetContentType(".png")).toBe("image/png");
   });
 });

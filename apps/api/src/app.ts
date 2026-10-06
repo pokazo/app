@@ -11,7 +11,7 @@ import { enqueueDeck } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesFromOutline } from "./view-meta.js";
-import { injectPlayerChromeHide } from "./player-chrome.js";
+import { injectPlayerChromeHide, deckAssetContentType } from "./player-chrome.js";
 import { sanitizePickerTheme } from "./themes.js";
 
 export function createApp() {
@@ -142,17 +142,10 @@ export function createApp() {
     if (!file.startsWith(normalize(base))) return c.text("no", 403);
     const target = existsSync(file) ? file : join(base, "index.html");
     if (!existsSync(target)) return c.text("not ready", 404);
-    const types: Record<string, string> = {
-      ".html": "text/html; charset=utf-8",
-      ".js": "text/javascript",
-      ".css": "text/css",
-      ".svg": "image/svg+xml",
-      ".json": "application/json",
-    };
     const ext = extname(target);
     const raw = await readFile(target);
     const body = ext === ".html" ? injectPlayerChromeHide(raw.toString("utf8")) : new Uint8Array(raw);
-    return c.body(body, 200, { "content-type": types[ext] ?? "application/octet-stream" });
+    return c.body(body, 200, { "content-type": deckAssetContentType(ext) });
   });
 
   app.get("/p/:id", (c) => c.redirect(`/p/${c.req.param("id")}/`));
