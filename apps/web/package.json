@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/seo-build.mjs",
+    "seo:build": "node scripts/seo-build.mjs",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run && node scripts/seo-build.test.mjs"
   },
   "dependencies": {
     "@fontsource/golos-text": "^5.2.5",

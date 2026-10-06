@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# App shell — thin for search; keep crawlable but low priority
+Disallow: /app
+Disallow: /login
+Disallow: /copy-code
+
+Clean-param: topic&theme&next&utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid&_openstat
+
+Sitemap: https://pokazo.ru/sitemap.xml

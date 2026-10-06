@@ -160,15 +160,19 @@ export function Landing() {
           <div className="faq">
             <details open>
               <summary>Нужен ли VPN?</summary>
-              <p>Нет.</p>
+              <p>Нет. Показо работает в России на русском языке, без VPN и зарубежных аккаунтов.</p>
             </details>
             <details>
               <summary>Можно без PowerPoint?</summary>
-              <p>Да, показ в браузере.</p>
+              <p>Да. Презентация открывается в браузере по ссылке — коллегам и ученикам файл не нужен.</p>
             </details>
             <details>
               <summary>Когда файл PPTX?</summary>
-              <p>Позже, в MVP не обещаем.</p>
+              <p>Экспорт в PPTX пока не обещаем в MVP. Сейчас фокус на онлайн-показе по ссылке.</p>
+            </details>
+            <details>
+              <summary>На каком языке слайды?</summary>
+              <p>На русском: тема, структура и тексты слайдов под российскую школу, вуз и работу.</p>
             </details>
           </div>
         </section>
