@@ -6,7 +6,7 @@ import { embedDeckUrl, slidevNavigateMessage } from "../deck-view";
 import { APP_HISTORY_PATH } from "../decks";
 
 type Me = { id: string; email: string; name: string };
-type Slide = { index: number; heading: string };
+type Slide = { index: number; heading: string; image?: string | null };
 type ViewMeta = {
   topic: string;
   slides: Slide[];
@@ -139,7 +139,18 @@ export function DeckView() {
               onClick={() => go(s.index)}
             >
               <span className="deck-thumb-n">{s.index}</span>
-              <span className="deck-thumb-title">{s.heading || `Слайд ${s.index}`}</span>
+              <span className="deck-thumb-frame" aria-hidden>
+                {s.image ? (
+                  <img
+                    src={apiUrl(`/p/${id}${s.image}`)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <span className="deck-thumb-fallback">{s.heading || `Слайд ${s.index}`}</span>
+                )}
+              </span>
             </button>
           ))}
         </nav>

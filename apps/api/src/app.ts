@@ -10,7 +10,7 @@ import { createAuth } from "./auth.js";
 import { enqueueDeck } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
-import { outlineTitle, slidesFromOutline } from "./view-meta.js";
+import { outlineTitle, parseSlideImages, slidesFromOutline, withSlideImages } from "./view-meta.js";
 import { injectPlayerChromeHide, deckAssetCacheControl, deckAssetContentType } from "./player-chrome.js";
 import { sanitizePickerTheme } from "./themes.js";
 
@@ -122,8 +122,14 @@ export function createApp() {
     } catch {
       input = {};
     }
-    const slides = slidesFromOutline(outline, Number(input.slideCount ?? 0));
+    let slides = slidesFromOutline(outline, Number(input.slideCount ?? 0));
     if (!slides.length) return c.json({ error: "not ready" }, 404);
+    try {
+      const md = await readFile(join(dir, "slides.md"), "utf8");
+      slides = withSlideImages(slides, parseSlideImages(md));
+    } catch {
+      /* outline headings only */
+    }
     return c.json({
       deckId: id,
       topic: outlineTitle(outline, input.topic ?? ""),
