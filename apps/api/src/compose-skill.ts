@@ -10,8 +10,16 @@ Visual rules:
 - Follow outline: same slide count and order; honor each slide intent and visual hint.
 - You MAY refine headings/copy and pick exact layout; do NOT invent extra slides.
 - Prefer variety: cover, image-right, image-left, two-cols (::right::), quote, fact, timeline, stats, section, end — avoid every slide being default bullets.
+- For visual two-cols: layout: two-cols. Structure MUST be: H1 title ABOVE ::left::, then ::left:: column, then ::right:: column. Never put the H1 inside ::left::. Short columns (≤4 bullets each). No emoji in headings or bullets. Example body:
+  # Title here
+  ::left::
+  - point A
+  - point B
+  ::right::
+  - point C
+  - point D
 - For visual timeline: layout: timeline. Put kicker, source, and steps (3–5 objects: phase, title, body, state done|current|todo) in frontmatter. Body of the slide is only the H1 title.
-- For visual stats: layout: stats. Put kicker, source, and items (2–4 objects: value, label, note) in frontmatter. Body is only the H1.
+- For visual stats: layout: stats. Put kicker, source, and frontmatter items (not stats) — 2–4 objects: value, label, note. Body is only the H1. Key name is items: (YAML list). Never use stats: as the frontmatter key.
 - For visual skills: layout: skills. Put kicker and items (name, level, pct 0–100) in frontmatter. Body is only the H1.
 - Cover/intro: layout: hero with kicker (uppercase short label). Body: H1 + 1–2 sentences, no bullet list. hero and cover also get a photo (background or image-right) via stock-download.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
@@ -55,6 +63,8 @@ imageQuery — английский Unsplash-запрос (конкретная 
 export function composeUserPrompt(outline: unknown, locale: string): string {
   return `Собери колоду по outline через tools.
 Для каждого слайда с visual image-right, image-left, hero, cover или непустым imageQuery: stock-search then stock-download BEFORE insert/update. Put image: /slide-N.jpg in frontmatter.
+For visual=stats: map outline.stats → frontmatter items: (never stats:). Body = H1 only.
+For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji.
 Do not finish with zero local images. At least 3 downloads.
 Do not skip remaining photos after one stock error — retry once with a simpler English query, then continue.
 outline:

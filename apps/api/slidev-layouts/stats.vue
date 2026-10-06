@@ -9,9 +9,11 @@ const props = defineProps<{
   kicker?: string
   source?: string
   items?: StatItem[]
+  /** Alias — models often emit `stats:` instead of `items:` */
+  stats?: StatItem[]
 }>()
 
-const items = (props.items ?? []).slice(0, 4)
+const items = (props.items ?? props.stats ?? []).slice(0, 4)
 </script>
 
 <template>

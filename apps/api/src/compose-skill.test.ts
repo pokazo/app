@@ -28,6 +28,15 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/hero and cover also get a photo/i);
     expect(skill).toMatch(/at least 3 slides must have image:/i);
   });
+
+  it("teaches two-cols H1-before-columns and stats items frontmatter", () => {
+    const skill = composeSkill("bricks", "ru");
+    expect(skill).toMatch(/two-cols/);
+    expect(skill).toMatch(/H1 title ABOVE ::left::/i);
+    expect(skill).toMatch(/::right::/);
+    expect(skill).toMatch(/no emoji/i);
+    expect(skill).toMatch(/frontmatter items \(not stats\)/i);
+  });
 });
 
 describe("outlineUserPrompt", () => {

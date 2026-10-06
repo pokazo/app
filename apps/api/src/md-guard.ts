@@ -1,4 +1,5 @@
 import { slidevThemeId } from "./themes.js";
+import { normalizeStatsFrontmatter } from "./stats-frontmatter.js";
 
 const ALLOWED_LAYOUTS = new Set([
   "default",
@@ -85,6 +86,7 @@ export function guardMarkdown(md: string, theme = "default"): string {
     return ALLOWED_LAYOUTS.has(id) ? `layout: ${id}` : "layout: default";
   });
   out = sanitizeImageFrontmatter(out);
+  out = normalizeStatsFrontmatter(out);
   return quoteFrontmatterTitle(pinTheme(out, pinned));
 }
 
