@@ -19,6 +19,10 @@ import {
   ensureDeckExport,
   isExportFormat,
 } from "./deck-export.js";
+import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
+
+const DECK_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function createApp() {
   const app = new Hono();
@@ -145,10 +149,93 @@ export function createApp() {
     });
   });
 
+  app.get("/api/decks/:id/speech", async (c) => {
+    const id = c.req.param("id");
+    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "slides.md"))) return c.json({ error: "not found" }, 404);
+    return c.json(await readSpeechResponse(dir));
+  });
+
+  app.put("/api/decks/:id/speech", async (c) => {
+    const id = c.req.param("id");
+    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "slides.md"))) return c.json({ error: "not found" }, 404);
+    try {
+      const body = await c.req.json();
+      const doc = await writeSpeechDoc(dir, body);
+      return c.json(doc);
+    } catch {
+      return c.json({ error: "bad speech" }, 400);
+    }
+  });
+
+  app.post("/api/decks/:id/speech/regenerate", async (c) => {
+    const id = c.req.param("id");
+    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "outline.json")) || !existsSync(join(dir, "slides.md"))) {
+      return c.json({ error: "not found" }, 404);
+    }
+    try {
+      const outline = JSON.parse(await readFile(join(dir, "outline.json"), "utf8")) as {
+        title: string;
+        slides: Array<{ heading: string }>;
+      };
+      const slidesMd = await readFile(join(dir, "slides.md"), "utf8");
+      let locale = "ru";
+      try {
+        const input = JSON.parse(await readFile(join(dir, "input.json"), "utf8")) as {
+          locale?: string;
+        };
+        if (input.locale) locale = input.locale;
+      } catch {
+        /* default ru */
+      }
+      const { generateSpeechForDeck } = await import("./speech-agent.js");
+      const doc = await generateSpeechForDeck({ workDir: dir, outline, locale, slidesMd });
+      return c.json(doc);
+    } catch (err) {
+      console.error(`[speech] regenerate ${id}`, err);
+      return c.json({ error: "speech failed" }, 500);
+    }
+  });
+
+  app.get("/api/decks/:id/export/speech-pdf", async (c) => {
+    const id = c.req.param("id");
+    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "slides.md"))) return c.json({ error: "not found" }, 404);
+    const speech = await readSpeechResponse(dir);
+    if (isSpeechMissingResult(speech)) return c.json({ error: "speech missing" }, 404);
+    let topic = "presentation";
+    try {
+      const outline = JSON.parse(await readFile(join(dir, "outline.json"), "utf8"));
+      const input = JSON.parse(await readFile(join(dir, "input.json"), "utf8")) as { topic?: string };
+      topic = outlineTitle(outline, input.topic ?? topic) || topic;
+    } catch {
+      /* keep default */
+    }
+    try {
+      const { ensureSpeechPdf, speechDownloadBasename } = await import("./speech-pdf.js");
+      const file = await ensureSpeechPdf(dir, topic);
+      const bytes = await readFile(file);
+      return c.body(new Uint8Array(bytes), 200, {
+        "content-type": "application/pdf",
+        "content-disposition": contentDisposition(speechDownloadBasename(topic)),
+        "cache-control": "private, max-age=3600",
+      });
+    } catch (err) {
+      console.error(`[export] ${id} speech-pdf`, err);
+      return c.json({ error: "export failed" }, 500);
+    }
+  });
+
   app.get("/api/decks/:id/export/:format", async (c) => {
     const id = c.req.param("id");
     const format = c.req.param("format");
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    if (!DECK_UUID.test(id)) {
       return c.json({ error: "not found" }, 404);
     }
     if (!isExportFormat(format)) return c.json({ error: "bad format" }, 400);

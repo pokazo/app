@@ -39,6 +39,18 @@ describe("health", () => {
     const res = await app.request("/api/decks/11111111-1111-1111-1111-111111111111/export/gif");
     expect(res.status).toBe(400);
   });
+
+  it("speech rejects a non-uuid", async () => {
+    const app = createApp();
+    const res = await app.request("/api/decks/not-an-id/speech");
+    expect(res.status).toBe(404);
+  });
+
+  it("speech-pdf rejects a non-uuid", async () => {
+    const app = createApp();
+    const res = await app.request("/api/decks/not-an-id/export/speech-pdf");
+    expect(res.status).toBe(404);
+  });
 });
 
 describe("md-guard", () => {

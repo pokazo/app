@@ -232,6 +232,19 @@ export async function generateDeck(opts: {
     await buildSlidev(opts.workDir, base);
   }
 
+  try {
+    const { generateSpeechForDeck } = await import("./speech-agent.js");
+    await generateSpeechForDeck({
+      workDir: opts.workDir,
+      outline: outline.object,
+      locale: opts.locale,
+      slidesMd: md,
+    });
+    console.info(`[generate] speech.json ok slides=${outline.object.slides.length}`);
+  } catch (err) {
+    console.error(`[generate] speech agent failed (deck still ready): ${String(err).slice(0, 400)}`);
+  }
+
   await writeFile(join(opts.workDir, "assets.json"), JSON.stringify({ attributions }, null, 2));
   const visualSlides = outline.object.slides.filter((s) =>
     ["image-right", "image-left", "icon", "two-cols", "quote", "fact", "timeline", "stats", "skills", "hero"].includes(

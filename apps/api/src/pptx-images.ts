@@ -1,0 +1,238 @@
+import { crc32 } from "node:zlib";
+
+/** Minimal ZIP (store-only) writer for OpenXML PPTX packages. */
+function zipStore(files: Array<{ name: string; data: Buffer }>): Buffer {
+  const parts: Buffer[] = [];
+  const central: Buffer[] = [];
+  let offset = 0;
+
+  for (const file of files) {
+    const nameBuf = Buffer.from(file.name, "utf8");
+    const data = file.data;
+    const crc = crc32(data) >>> 0;
+    const local = Buffer.alloc(30 + nameBuf.length);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4); // version needed
+    local.writeUInt16LE(0, 6); // flags
+    local.writeUInt16LE(0, 8); // store
+    local.writeUInt16LE(0, 10); // time
+    local.writeUInt16LE(0, 12); // date
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(nameBuf.length, 26);
+    local.writeUInt16LE(0, 28);
+    nameBuf.copy(local, 30);
+    parts.push(local, data);
+
+    const cen = Buffer.alloc(46 + nameBuf.length);
+    cen.writeUInt32LE(0x02014b50, 0);
+    cen.writeUInt16LE(20, 4);
+    cen.writeUInt16LE(20, 6);
+    cen.writeUInt16LE(0, 8);
+    cen.writeUInt16LE(0, 10);
+    cen.writeUInt16LE(0, 12);
+    cen.writeUInt16LE(0, 14);
+    cen.writeUInt32LE(crc, 16);
+    cen.writeUInt32LE(data.length, 20);
+    cen.writeUInt32LE(data.length, 24);
+    cen.writeUInt16LE(nameBuf.length, 28);
+    cen.writeUInt16LE(0, 30);
+    cen.writeUInt16LE(0, 32);
+    cen.writeUInt16LE(0, 34);
+    cen.writeUInt16LE(0, 36);
+    cen.writeUInt32LE(0, 38);
+    cen.writeUInt32LE(offset, 42);
+    nameBuf.copy(cen, 46);
+    central.push(cen);
+    offset += local.length + data.length;
+  }
+
+  const centralSize = central.reduce((n, b) => n + b.length, 0);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(centralSize, 12);
+  end.writeUInt32LE(offset, 16);
+  end.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...parts, ...central, end]);
+}
+
+function xml(s: string): Buffer {
+  return Buffer.from(s, "utf8");
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function notesBodyParagraphs(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  return lines
+    .map((line) => {
+      if (!line) return `<a:p><a:endParaRPr lang="ru-RU"/></a:p>`;
+      return `<a:p><a:r><a:rPr lang="ru-RU" dirty="0"/><a:t>${escapeXml(line)}</a:t></a:r></a:p>`;
+    })
+    .join("");
+}
+
+/**
+ * Build a PPTX where each slide is a full-bleed PNG (16:9 EMUs).
+ * EMU: 914400 per inch; 13.333"×7.5" = 12192000×6858000.
+ * Optional `notes[i]` becomes speaker notes for slide i+1.
+ */
+export function pptxFromPngs(
+  pngs: Buffer[],
+  title = "presentation",
+  notes?: Array<string | null | undefined>,
+): Buffer {
+  const cx = 12192000;
+  const cy = 6858000;
+  const files: Array<{ name: string; data: Buffer }> = [];
+  const hasNotes = (i: number) => Boolean(notes?.[i]?.trim());
+
+  const slideOverrides = pngs
+    .map(
+      (_, i) =>
+        `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`,
+    )
+    .join("\n  ");
+  const notesOverrides = pngs
+    .map((_, i) =>
+      hasNotes(i)
+        ? `<Override PartName="/ppt/notesSlides/notesSlide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>`
+        : "",
+    )
+    .filter(Boolean)
+    .join("\n  ");
+
+  files.push({
+    name: "[Content_Types].xml",
+    data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  ${slideOverrides}
+  ${notesOverrides}
+</Types>`),
+  });
+
+  files.push({
+    name: "_rels/.rels",
+    data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`),
+  });
+
+  const slideIds = pngs
+    .map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 1}"/>`)
+    .join("");
+  files.push({
+    name: "ppt/presentation.xml",
+    data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:sldIdLst>${slideIds}</p:sldIdLst>
+  <p:sldSz cx="${cx}" cy="${cy}"/>
+  <p:notesSz cx="${cx}" cy="${cy}"/>
+</p:presentation>`),
+  });
+
+  const presRels = pngs
+    .map(
+      (_, i) =>
+        `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`,
+    )
+    .join("\n  ");
+  files.push({
+    name: "ppt/_rels/presentation.xml.rels",
+    data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${presRels}
+</Relationships>`),
+  });
+
+  // title unused in binary but kept for future core.xml
+  void title;
+
+  pngs.forEach((png, i) => {
+    const n = i + 1;
+    const note = notes?.[i]?.trim() ?? "";
+    files.push({
+      name: `ppt/media/image${n}.png`,
+      data: png,
+    });
+
+    const slideRels = [
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${n}.png"/>`,
+    ];
+    if (note) {
+      slideRels.push(
+        `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide${n}.xml"/>`,
+      );
+    }
+    files.push({
+      name: `ppt/slides/_rels/slide${n}.xml.rels`,
+      data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${slideRels.join("\n  ")}
+</Relationships>`),
+    });
+    files.push({
+      name: `ppt/slides/slide${n}.xml`,
+      data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+      <p:pic>
+        <p:nvPicPr><p:cNvPr id="2" name="Slide ${n}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+        <p:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+        <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+      </p:pic>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sld>`),
+    });
+
+    if (note) {
+      files.push({
+        name: `ppt/notesSlides/_rels/notesSlide${n}.xml.rels`,
+        data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide${n}.xml"/>
+</Relationships>`),
+      });
+      files.push({
+        name: `ppt/notesSlides/notesSlide${n}.xml`,
+        data: xml(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Notes"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+        <p:txBody>
+          <a:bodyPr wrap="square"/><a:lstStyle/>
+          ${notesBodyParagraphs(note)}
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:notes>`),
+      });
+    }
+  });
+
+  return zipStore(files);
+}

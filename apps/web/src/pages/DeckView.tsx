@@ -5,6 +5,7 @@ import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage } from "../deck-view";
 import { APP_HISTORY_PATH } from "../decks";
 import { DeckThumbPreview } from "./DeckThumbPreview";
+import { SpeechModal } from "./SpeechModal";
 
 type Me = { id: string; email: string; name: string };
 type Slide = { index: number; heading: string; image?: string | null };
@@ -25,6 +26,7 @@ export function DeckView() {
   const [stageReady, setStageReady] = useState(false);
   const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
   const [exportErr, setExportErr] = useState("");
+  const [speechOpen, setSpeechOpen] = useState(false);
 
   const embedBase = apiUrl(`/p/${id}/`);
 
@@ -152,6 +154,9 @@ export function DeckView() {
           </button>
           {meta ? (
             <>
+              <button type="button" className="pk ghost" onClick={() => setSpeechOpen(true)}>
+                Спич
+              </button>
               <button
                 type="button"
                 className="pk ghost"
@@ -179,6 +184,13 @@ export function DeckView() {
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
+      {speechOpen && id ? (
+        <SpeechModal
+          deckId={id}
+          topic={meta?.topic ?? "Презентация"}
+          onClose={() => setSpeechOpen(false)}
+        />
+      ) : null}
       <div className="deck-layout">
         <nav className="deck-thumbs" aria-label="Страницы">
           {slides.map((s) => (
