@@ -114,8 +114,9 @@ jobs:
           HOST: ${{ secrets.LANDING_HOST }}
         run: |
           printf '%s\n' "$SSH_KEY" > key && chmod 600 key
+          SSH=(ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=20 -o ServerAliveCountMax=180 -i key)
           scp -o StrictHostKeyChecking=no -i key deploy/switch.sh "deploy@${HOST}:/tmp/switch.sh"
-          ssh -o StrictHostKeyChecking=no -i key "deploy@${HOST}" \
+          "${SSH[@]}" "deploy@${HOST}" \
             "echo '${{ secrets.GITHUB_TOKEN }}' | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin; sudo bash /tmp/switch.sh web ghcr.io/pokazo/web:${{ github.sha }}"
 
   deploy-api:
@@ -131,6 +132,8 @@ jobs:
           HOST: ${{ secrets.API_HOST }}
         run: |
           printf '%s\n' "$SSH_KEY" > key && chmod 600 key
+          # Keepalive: API image (Playwright/Chromium) pull can take >5m; idle SSH drops otherwise.
+          SSH=(ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=20 -o ServerAliveCountMax=180 -i key)
           scp -o StrictHostKeyChecking=no -i key deploy/switch.sh "deploy@${HOST}:/tmp/switch.sh"
-          ssh -o StrictHostKeyChecking=no -i key "deploy@${HOST}" \
+          "${SSH[@]}" "deploy@${HOST}" \
             "echo '${{ secrets.GITHUB_TOKEN }}' | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin; sudo bash /tmp/switch.sh api ghcr.io/pokazo/api:${{ github.sha }}"
