@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { composeSkill, composeUserPrompt, outlineUserPrompt } from "./compose-skill.js";
+import {
+  composeSkill,
+  composeUserPrompt,
+  outlineRevisePrompt,
+  outlineUserPrompt,
+} from "./compose-skill.js";
 
 describe("composeSkill", () => {
   it("requires MCP + stock tools and sequential inserts", () => {
@@ -50,8 +55,26 @@ describe("outlineUserPrompt", () => {
     expect(prompt).toMatch(/image-right/);
     expect(prompt).toMatch(/image-left/);
     expect(prompt).toMatch(/imageQuery/);
-    expect(prompt).toMatch(/минимум 3 слайда с visual image-right или image-left/i);
-    expect(prompt).toMatch(/hero\/cover тоже с imageQuery/i);
+    expect(prompt).toMatch(/минимум 3 слайда image-right или image-left/i);
+    expect(prompt).toMatch(/запрещены visual none\|default/i);
+    expect(prompt).toMatch(/пустого слайда/i);
+  });
+});
+
+describe("outlineRevisePrompt", () => {
+  it("includes failing test reasons and previous plan for model revision", () => {
+    const prompt = outlineRevisePrompt({
+      topic: "Ростов",
+      locale: "ru",
+      audience: "school",
+      slideCount: 8,
+      previous: { title: "X", slides: [] },
+      issues: "1. [text_only] Слайд 2 только текст",
+    });
+    expect(prompt).toMatch(/не прошёл проверки/i);
+    expect(prompt).toContain("1. [text_only] Слайд 2 только текст");
+    expect(prompt).toContain('"title":"X"');
+    expect(prompt).toMatch(/Исправь/i);
   });
 });
 

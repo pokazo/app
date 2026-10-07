@@ -47,7 +47,7 @@ export function outlineUserPrompt(opts: {
   return `Тема: ${opts.topic}
 Язык: ${opts.locale}
 Аудитория: ${opts.audience}
-Число слайдов: ${opts.slideCount}
+Число слайдов: ровно ${opts.slideCount}
 Составь оглавление презентации.
 
 Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero), imageQuery, iconHint, kicker, source, steps, stats, skills.
@@ -56,8 +56,44 @@ stats — массив {value,label,note} только для visual=stats (2–
 skills — массив {name,level,pct} только для visual=skills, иначе [].
 kicker/source — короткие подписи или "".
 imageQuery — английский Unsplash-запрос (конкретная сцена без имён людей, 4–8 слов) для каждого фото-слайда; иначе "".
-Правила: cover/hero в начале; hero/cover тоже с imageQuery; минимум 3 слайда с visual image-right или image-left; хотя бы один timeline или stats если тема про путь/цифры/резюме; минимум треть слайдов с visual из image-right, image-left, icon, two-cols, quote, fact, timeline, stats, skills.
+
+Жёсткие правила плана (проверка тестами; провал = доработка):
+- Ни одного пустого слайда: у каждого непустой heading и заполненный payload под visual.
+- Ни одного слайда «только текст»: запрещены visual none|default|center|section|intro|end.
+- Каждый слайд — один из: cover|hero|image-right|image-left|icon|timeline|stats|skills|two-cols|quote|fact — с обязательным payload (imageQuery / iconHint / steps≥3 / stats≥2 / skills≥2 / points).
+- cover/hero в начале с imageQuery и текстом (points или kicker).
+- Минимум 3 слайда image-right или image-left с imageQuery.
+- Хотя бы один timeline или stats или skills с полным payload.
 Не пиши markdown — только JSON-структуру.`;
+}
+
+export function outlineRevisePrompt(opts: {
+  topic: string;
+  locale: string;
+  audience: string;
+  slideCount: number;
+  previous: unknown;
+  issues: string;
+}): string {
+  return `План презентации не прошёл проверки. Исправь ВЕСЬ outline JSON и верни полную структуру заново.
+
+Тема: ${opts.topic}
+Язык: ${opts.locale}
+Аудитория: ${opts.audience}
+Число слайдов: ровно ${opts.slideCount}
+
+Ошибки тестов плана:
+${opts.issues}
+
+Правила (обязательно устранить все ошибки):
+- Не оставляй пустых слайдов (heading + payload).
+- Не оставляй слайдов только с текстом: нельзя none|default|center|section|intro|end.
+- Для image/hero/cover нужен imageQuery; для icon — iconHint; timeline — ≥3 steps; stats — ≥2; skills — ≥2.
+
+Предыдущий план (исправь его, не упрощай):
+${JSON.stringify(opts.previous)}
+
+Не пиши markdown — только исправленный JSON outline.`;
 }
 
 export function composeUserPrompt(outline: unknown, locale: string): string {

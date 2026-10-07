@@ -27,6 +27,18 @@ describe("health", () => {
     const res = await app.request("/api/view/not-an-id");
     expect(res.status).toBe(404);
   });
+
+  it("export rejects a non-uuid", async () => {
+    const app = createApp();
+    const res = await app.request("/api/decks/not-an-id/export/pdf");
+    expect(res.status).toBe(404);
+  });
+
+  it("export rejects unknown format", async () => {
+    const app = createApp();
+    const res = await app.request("/api/decks/11111111-1111-1111-1111-111111111111/export/gif");
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("md-guard", () => {

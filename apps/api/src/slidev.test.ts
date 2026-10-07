@@ -7,6 +7,7 @@ import {
   ensureDeckNodeModules,
   installDeckLayouts,
   scaffoldMarkdown,
+  slidevExportSpawnSpec,
   slidevMcpSpawnSpec,
   slidevSpawnSpec,
 } from "./slidev.js";
@@ -25,6 +26,31 @@ describe("slidevMcpSpawnSpec", () => {
     expect(spec.cwd).toBe("/tmp/deck-id");
     expect(spec.args).toEqual(["mcp", "slides.md"]);
     expect(spec.bin).toMatch(/slidev$/);
+  });
+});
+
+describe("slidevExportSpawnSpec", () => {
+  it("exports pdf with clicks disabled", () => {
+    const spec = slidevExportSpawnSpec("/tmp/deck-id", "pdf", "export.pdf");
+    expect(spec.cwd).toBe("/tmp/deck-id");
+    expect(spec.args).toEqual([
+      "export",
+      "slides.md",
+      "--format",
+      "pdf",
+      "--output",
+      "export.pdf",
+      "--timeout",
+      "60000",
+      "--with-clicks",
+      "false",
+    ]);
+  });
+
+  it("exports pptx (image slides)", () => {
+    const spec = slidevExportSpawnSpec("/tmp/deck-id", "pptx", "export.pptx");
+    expect(spec.args).toContain("pptx");
+    expect(spec.args).toContain("export.pptx");
   });
 });
 

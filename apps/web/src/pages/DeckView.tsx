@@ -23,6 +23,8 @@ export function DeckView() {
   const [current, setCurrent] = useState(1);
   const [copied, setCopied] = useState(false);
   const [stageReady, setStageReady] = useState(false);
+  const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
+  const [exportErr, setExportErr] = useState("");
 
   const embedBase = apiUrl(`/p/${id}/`);
 
@@ -103,6 +105,35 @@ export function DeckView() {
     setTimeout(() => setCopied(false), 1600);
   }
 
+  async function downloadExport(format: "pdf" | "pptx") {
+    if (!id || exporting) return;
+    setExporting(format);
+    setExportErr("");
+    try {
+      const res = await fetch(apiUrl(`/api/decks/${id}/export/${format}`), {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const cd = res.headers.get("content-disposition") ?? "";
+      const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+      const plain = /filename="([^"]+)"/i.exec(cd);
+      const name = star
+        ? decodeURIComponent(star[1])
+        : plain?.[1] || `${meta?.topic || "presentation"}.${format}`;
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(href);
+    } catch {
+      setExportErr("Не удалось сохранить файл. Попробуйте ещё раз.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
   const slides = meta?.slides ?? [];
 
   return (
@@ -119,6 +150,26 @@ export function DeckView() {
           <button type="button" className="pk ghost" onClick={() => void copyLink()}>
             {copied ? "Скопировано" : "Скопировать ссылку"}
           </button>
+          {meta ? (
+            <>
+              <button
+                type="button"
+                className="pk ghost"
+                disabled={!!exporting}
+                onClick={() => void downloadExport("pdf")}
+              >
+                {exporting === "pdf" ? "Сохраняем PDF…" : "Скачать PDF"}
+              </button>
+              <button
+                type="button"
+                className="pk ghost"
+                disabled={!!exporting}
+                onClick={() => void downloadExport("pptx")}
+              >
+                {exporting === "pptx" ? "Сохраняем PPTX…" : "Скачать PPTX"}
+              </button>
+            </>
+          ) : null}
           {me ? (
             <Link className="pk-btn ghost" to={APP_HISTORY_PATH}>
               К списку
@@ -127,6 +178,7 @@ export function DeckView() {
         </div>
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
+      {exportErr ? <p className="err app-note">{exportErr}</p> : null}
       <div className="deck-layout">
         <nav className="deck-thumbs" aria-label="Страницы">
           {slides.map((s) => (

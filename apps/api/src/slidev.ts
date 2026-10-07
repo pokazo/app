@@ -37,6 +37,32 @@ export function slidevSpawnSpec(workDir: string, base: string): SlidevSpawnSpec 
   };
 }
 
+export type SlidevExportFormat = "pdf" | "pptx";
+
+/** Playwright export: PDF pages or PPTX (one image per slide). */
+export function slidevExportSpawnSpec(
+  workDir: string,
+  format: SlidevExportFormat,
+  output: string,
+): SlidevSpawnSpec {
+  return {
+    bin: slidevBin(),
+    args: [
+      "export",
+      "slides.md",
+      "--format",
+      format,
+      "--output",
+      output,
+      "--timeout",
+      "60000",
+      "--with-clicks",
+      "false",
+    ],
+    cwd: workDir,
+  };
+}
+
 /** Stdio MCP server for the deck entry (no live goto tool). */
 export function slidevMcpSpawnSpec(workDir: string): SlidevSpawnSpec {
   return {
@@ -80,10 +106,7 @@ export async function writeSlides(workDir: string, markdown: string, theme = "de
   return file;
 }
 
-export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
-  ensureDeckNodeModules(workDir);
-  installDeckLayouts(workDir);
-  const spec = slidevSpawnSpec(workDir, base);
+function runSlidev(spec: SlidevSpawnSpec, timeoutMs: number, label: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(spec.bin, spec.args, {
       cwd: spec.cwd,
@@ -94,12 +117,16 @@ export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): 
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stderr = "";
+    let stdout = "";
     child.stderr.on("data", (d) => {
       stderr += String(d);
     });
+    child.stdout.on("data", (d) => {
+      stdout += String(d);
+    });
     const t = setTimeout(() => {
       child.kill("SIGKILL");
-      reject(new Error("slidev build timeout"));
+      reject(new Error(`${label} timeout`));
     }, timeoutMs);
     child.on("error", (err) => {
       clearTimeout(t);
@@ -108,15 +135,42 @@ export function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): 
     child.on("exit", (code) => {
       clearTimeout(t);
       if (code !== 0) {
-        reject(new Error(stderr || `slidev exit ${code}`));
+        reject(new Error(stderr || stdout || `${label} exit ${code}`));
         return;
       }
-      try {
-        assertSlidevDist(workDir);
-        resolve();
-      } catch (err) {
-        reject(new Error([String(err), stderr].filter(Boolean).join("\n")));
-      }
+      resolve(stderr || stdout);
     });
   });
+}
+
+export async function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
+  ensureDeckNodeModules(workDir);
+  installDeckLayouts(workDir);
+  const spec = slidevSpawnSpec(workDir, base);
+  const log = await runSlidev(spec, timeoutMs, "slidev build");
+  try {
+    assertSlidevDist(workDir);
+  } catch (err) {
+    throw new Error([String(err), log].filter(Boolean).join("\n"));
+  }
+}
+
+export async function exportSlidev(
+  workDir: string,
+  format: SlidevExportFormat,
+  outputBasename: string,
+  timeoutMs = 180_000,
+): Promise<string> {
+  ensureDeckNodeModules(workDir);
+  installDeckLayouts(workDir);
+  const outRel = outputBasename.endsWith(`.${format}`)
+    ? outputBasename
+    : `${outputBasename}.${format}`;
+  const outAbs = join(workDir, outRel);
+  const spec = slidevExportSpawnSpec(workDir, format, outRel);
+  await runSlidev(spec, timeoutMs, `slidev export ${format}`);
+  if (!existsSync(outAbs)) {
+    throw new Error(`slidev export produced no ${outAbs}`);
+  }
+  return outAbs;
 }

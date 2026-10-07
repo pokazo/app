@@ -5,7 +5,8 @@ RUN corepack enable && apt-get update && apt-get install -y --no-install-recomme
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile \
+  && pnpm --filter @pokazo/api exec playwright install --with-deps chromium
 COPY apps/api apps/api
 RUN pnpm --filter @pokazo/api build
 ENV PORT=3000

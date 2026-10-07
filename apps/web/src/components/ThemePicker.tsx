@@ -4,7 +4,7 @@ export function ThemePicker(props: { value: string; onChange: (id: string) => vo
   return (
     <fieldset className="theme-picker" disabled={props.disabled}>
       <legend className="theme-picker-title">Оформление</legend>
-      <p className="theme-picker-lead">Цвета и стиль слайдов. Авто — нейросеть возьмёт стандарт.</p>
+      <p className="theme-picker-lead">Цвета и стиль слайдов. Выберите тему или оставьте Авто.</p>
       <div className="theme-grid" role="radiogroup" aria-label="Тема презентации">
         {DECK_THEMES.map((t) => {
           const on = t.id === props.value;

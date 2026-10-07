@@ -61,3 +61,4 @@ export const Outline = z.object({
 });
 
 export type OutlineT = z.infer<typeof Outline>;
+export type OutlineSlide = z.infer<typeof OutlineSlide>;

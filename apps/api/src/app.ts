@@ -13,6 +13,12 @@ import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, parseSlideImages, slidesFromOutline, withSlideImages } from "./view-meta.js";
 import { injectPlayerChromeHide, deckAssetCacheControl, deckAssetContentType } from "./player-chrome.js";
 import { sanitizePickerTheme } from "./themes.js";
+import {
+  contentDisposition,
+  downloadBasename,
+  ensureDeckExport,
+  isExportFormat,
+} from "./deck-export.js";
 
 export function createApp() {
   const app = new Hono();
@@ -137,6 +143,43 @@ export function createApp() {
       slides,
       embedBase: `${config.apiOrigin}/p/${id}/`,
     });
+  });
+
+  app.get("/api/decks/:id/export/:format", async (c) => {
+    const id = c.req.param("id");
+    const format = c.req.param("format");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return c.json({ error: "not found" }, 404);
+    }
+    if (!isExportFormat(format)) return c.json({ error: "bad format" }, 400);
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "slides.md")) || !existsSync(join(dir, "dist", "index.html"))) {
+      return c.json({ error: "not ready" }, 404);
+    }
+    let topic = "presentation";
+    try {
+      const outline = JSON.parse(await readFile(join(dir, "outline.json"), "utf8"));
+      const input = JSON.parse(await readFile(join(dir, "input.json"), "utf8")) as { topic?: string };
+      topic = outlineTitle(outline, input.topic ?? topic) || topic;
+    } catch {
+      /* keep default */
+    }
+    try {
+      const file = await ensureDeckExport(dir, format);
+      const bytes = await readFile(file);
+      const name = downloadBasename(topic, format);
+      return c.body(new Uint8Array(bytes), 200, {
+        "content-type":
+          format === "pdf"
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "content-disposition": contentDisposition(name),
+        "cache-control": "private, max-age=3600",
+      });
+    } catch (err) {
+      console.error(`[export] ${id} ${format}`, err);
+      return c.json({ error: "export failed" }, 500);
+    }
   });
 
   app.get("/p/:id/*", async (c) => {
