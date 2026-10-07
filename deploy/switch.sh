@@ -84,6 +84,10 @@ rollback_nginx() {
 
 echo "active=$ACTIVE idle=$IDLE new=:$PORT_NEW old=:$PORT_OLD image=$IMAGE"
 
+# API image includes Playwright Chromium — disk fills with old tags; prune before pull.
+docker image prune -af >/dev/null 2>&1 || true
+docker builder prune -af >/dev/null 2>&1 || true
+
 docker pull "$IMAGE"
 docker stop "$NAME-$IDLE" 2>/dev/null || true
 docker rm "$NAME-$IDLE" 2>/dev/null || true
