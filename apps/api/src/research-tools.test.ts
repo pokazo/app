@@ -38,12 +38,18 @@ describe("createResearchTools", () => {
         results: Array<{ title: string; url: string }>;
       }>;
     };
-    const result = await webSearch.execute({ query: "УАЗ", maxResults: 5 }, {
-      toolCallId: "1",
-      messages: [],
-    });
+    const result = await webSearch.execute(
+      { query: "УАЗ", maxResults: 5, region: 225 },
+      { toolCallId: "1", messages: [] },
+    );
     expect(search).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: "k", folderId: "f", query: "УАЗ", maxResults: 5 }),
+      expect.objectContaining({
+        apiKey: "k",
+        folderId: "f",
+        query: "УАЗ",
+        maxResults: 5,
+        region: 225,
+      }),
     );
     expect(onSearch).toHaveBeenCalledOnce();
     expect(result.totalResults).toBe(1);

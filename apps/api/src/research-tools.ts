@@ -32,10 +32,19 @@ export function createResearchTools(opts: {
     "web-search": tool({
       description:
         "Search the web via Yandex Search API. Prefer Russian queries for RU topics. Returns title, url, domain, snippet/passages. Call 3–6 times with different angles before writing the research brief.",
+      // OpenAI/Azure strict tools require every property in `required` (no .optional()).
       parameters: z.object({
         query: z.string().describe("Search query (RU or EN)"),
-        maxResults: z.number().int().min(1).max(10).optional(),
-        region: z.number().int().optional().describe("Region id, e.g. 213 for Moscow"),
+        maxResults: z
+          .number()
+          .int()
+          .min(1)
+          .max(10)
+          .describe("Number of results to return; prefer 8"),
+        region: z
+          .number()
+          .int()
+          .describe("Yandex region id: 225 Russia, 213 Moscow; use 225 if unsure"),
       }),
       execute: async ({ query, maxResults, region }) => {
         if (!configured) {
@@ -47,7 +56,7 @@ export function createResearchTools(opts: {
             apiKey: opts.apiKey,
             folderId: opts.folderId,
             query,
-            maxResults: maxResults ?? 8,
+            maxResults,
             region,
           });
           return {

@@ -3,7 +3,7 @@ export function researchSystemPrompt(locale: string): string {
   return `You research a presentation topic BEFORE the outline is written.
 
 Tools:
-- web-search: Yandex web search. Use 3–6 queries with different angles (facts, numbers, history, competitors, recent news). Prefer Cyrillic queries when locale is ru.
+- web-search: Yandex web search. Use 3–6 queries with different angles (facts, numbers, history, competitors, recent news). Prefer Cyrillic queries when locale is ru. Always pass maxResults (e.g. 8) and region (225 Russia / 213 Moscow).
 
 Rules:
 - Only state facts supported by search snippets/passages. Do not invent numbers or claims.
