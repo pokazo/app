@@ -62,6 +62,20 @@ describe("outlineUserPrompt", () => {
     expect(prompt).toMatch(/пустого слайда/i);
     expect(prompt).toMatch(/конкретные факты/i);
   });
+
+  it("embeds research brief when provided", () => {
+    const prompt = outlineUserPrompt({
+      topic: "УАЗ",
+      locale: "ru",
+      audience: "school",
+      slideCount: 8,
+      researchMarkdown: "# Research: УАЗ\n\n## Факты\n| 150 л.с. | https://ex.com |",
+    });
+    expect(prompt).toMatch(/Research brief/);
+    expect(prompt).toMatch(/обязательный источник фактов/i);
+    expect(prompt).toContain("150 л.с.");
+    expect(prompt).toContain("https://ex.com");
+  });
 });
 
 describe("outlineRevisePrompt", () => {
@@ -78,6 +92,21 @@ describe("outlineRevisePrompt", () => {
     expect(prompt).toContain("1. [text_only] Слайд 2 только текст");
     expect(prompt).toContain('"title":"X"');
     expect(prompt).toMatch(/Исправь/i);
+  });
+
+  it("embeds research brief when provided", () => {
+    const prompt = outlineRevisePrompt({
+      topic: "Ростов",
+      locale: "ru",
+      audience: "school",
+      slideCount: 8,
+      previous: { title: "X", slides: [] },
+      issues: "empty",
+      researchMarkdown: "## Вердикт\n- факт A",
+    });
+    expect(prompt).toMatch(/Research brief/);
+    expect(prompt).toContain("факт A");
+    expect(prompt).toMatch(/из Research brief/i);
   });
 });
 

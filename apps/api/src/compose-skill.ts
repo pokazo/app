@@ -46,17 +46,29 @@ Structural rules:
 - Picker theme hint (do not rewrite frontmatter theme): ${theme}.`;
 }
 
+function researchBriefBlock(researchMarkdown: string | undefined): string {
+  if (!researchMarkdown?.trim()) return "";
+  return `
+Research brief (обязательный источник фактов; не выдумывай вне него):
+---
+${researchMarkdown.trim()}
+---
+В points/stats/source опирайся на brief; URL/название источника → поле source.
+`;
+}
+
 export function outlineUserPrompt(opts: {
   topic: string;
   locale: string;
   audience: string;
   slideCount: number;
+  researchMarkdown?: string;
 }): string {
   return `Тема: ${opts.topic}
 Язык: ${opts.locale}
 Аудитория: ${opts.audience}
 Число слайдов: ровно ${opts.slideCount}
-Составь оглавление презентации.
+${researchBriefBlock(opts.researchMarkdown)}Составь оглавление презентации.
 
 Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero), imageQuery, iconHint, kicker, source, steps, stats, skills.
 steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
@@ -83,6 +95,7 @@ export function outlineRevisePrompt(opts: {
   slideCount: number;
   previous: unknown;
   issues: string;
+  researchMarkdown?: string;
 }): string {
   return `План презентации не прошёл проверки. Исправь ВЕСЬ outline JSON и верни полную структуру заново.
 
@@ -90,7 +103,7 @@ export function outlineRevisePrompt(opts: {
 Язык: ${opts.locale}
 Аудитория: ${opts.audience}
 Число слайдов: ровно ${opts.slideCount}
-
+${researchBriefBlock(opts.researchMarkdown)}
 Ошибки тестов плана:
 ${opts.issues}
 
@@ -99,6 +112,7 @@ ${opts.issues}
 - Не оставляй слайдов только с текстом: нельзя none|default|center|section|intro|end.
 - Для image/hero/cover нужен imageQuery; для icon — iconHint; timeline — ≥3 steps; stats — ≥2; skills — ≥2.
 - Добавь source на слайды stats/timeline с цифрами.
+- Факты и source бери из Research brief выше, не выдумывай.
 
 Предыдущий план (исправь его, не упрощай):
 ${JSON.stringify(opts.previous)}

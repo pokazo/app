@@ -11,6 +11,8 @@ export const config = {
   redisUrl: env("REDIS_URL", "redis://localhost:6379"),
   yandexClientId: env("YANDEX_CLIENT_ID"),
   yandexClientSecret: env("YANDEX_CLIENT_SECRET"),
+  yandexSearchApiKey: env("YANDEX_SEARCH_API_KEY"),
+  yandexFolderId: env("YANDEX_FOLDER_ID"),
   smtpHost: env("SMTP_HOST"),
   smtpPort: Number(env("SMTP_PORT", "587")),
   smtpUser: env("SMTP_USER"),

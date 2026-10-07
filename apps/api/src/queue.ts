@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { config } from "./env.js";
@@ -60,9 +60,22 @@ export async function processDeck(id: string): Promise<void> {
       theme: sanitizePickerTheme(deck.theme),
       workDir,
     });
+    let researchUsed = false;
+    try {
+      const meta = JSON.parse(await readFile(join(workDir, "research-meta.json"), "utf8")) as {
+        used?: boolean;
+      };
+      researchUsed = Boolean(meta.used);
+    } catch {
+      /* research-meta optional */
+    }
     await writeFile(
       join(workDir, "meta.json"),
-      JSON.stringify({ outlineModel: config.outlineModel, composeModel: config.composeModel }),
+      JSON.stringify({
+        outlineModel: config.outlineModel,
+        composeModel: config.composeModel,
+        researchUsed,
+      }),
     );
     await pool.query(`UPDATE deck SET status='ready', updated_at=now() WHERE id=$1`, [id]);
   } catch (err) {

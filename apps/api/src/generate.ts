@@ -21,6 +21,7 @@ import {
   refineOutlineUntilValid,
   validateOutlinePlan,
 } from "./outline-plan.js";
+import { runTopicResearch } from "./research.js";
 
 function model(id: string) {
   const openai = createOpenAI({
@@ -101,6 +102,34 @@ export async function generateDeck(opts: {
   installDeckLayouts(opts.workDir);
 
   console.info(`[generate] outline model=${config.outlineModel} compose=${config.composeModel} topic=${opts.topic}`);
+
+  console.info(`[generate] research start topic=${opts.topic}`);
+  const research = await runTopicResearch({
+    topic: opts.topic,
+    locale: opts.locale,
+    audience: opts.audience,
+    apiKey: config.yandexSearchApiKey,
+    folderId: config.yandexFolderId,
+    model: model(config.outlineModel),
+  });
+  await writeFile(join(opts.workDir, "research.md"), research.markdown, "utf8");
+  await writeFile(
+    join(opts.workDir, "research-meta.json"),
+    JSON.stringify(
+      {
+        used: research.used,
+        searchCalls: research.searchCalls,
+        usage: research.usage,
+      },
+      null,
+      2,
+    ),
+  );
+  console.info(
+    `[generate] research done used=${research.used} searchCalls=${research.searchCalls} ` +
+      `chars=${research.markdown.length}`,
+  );
+
   const firstOutline = await generateObject({
     model: model(config.outlineModel),
     schema: Outline,
@@ -109,6 +138,7 @@ export async function generateDeck(opts: {
       locale: opts.locale,
       audience: opts.audience,
       slideCount: opts.slideCount,
+      researchMarkdown: research.markdown,
     }),
   });
   console.info(
@@ -133,6 +163,7 @@ export async function generateDeck(opts: {
           slideCount: opts.slideCount,
           previous: current,
           issues: reason,
+          researchMarkdown: research.markdown,
         }),
       });
       console.info(
@@ -258,6 +289,8 @@ export async function generateDeck(opts: {
     visualSlides,
     stockDownloads: attributions.length,
     repaired,
+    researchUsed: research.used,
+    researchSearchCalls: research.searchCalls,
     mcpCalls,
     attributions,
     llm,
