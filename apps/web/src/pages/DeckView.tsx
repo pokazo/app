@@ -4,6 +4,7 @@ import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage } from "../deck-view";
 import { APP_HISTORY_PATH } from "../decks";
+import { DeckThumbPreview } from "./DeckThumbPreview";
 
 type Me = { id: string; email: string; name: string };
 type Slide = { index: number; heading: string; image?: string | null };
@@ -138,19 +139,13 @@ export function DeckView() {
               aria-current={s.index === current ? "true" : undefined}
               onClick={() => go(s.index)}
             >
-              <span className="deck-thumb-n">{s.index}</span>
-              <span className="deck-thumb-frame" aria-hidden>
-                {s.image ? (
-                  <img
-                    src={apiUrl(`/p/${id}${s.image}`)}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <span className="deck-thumb-fallback">{s.heading || `Слайд ${s.index}`}</span>
-                )}
-              </span>
+              <DeckThumbPreview
+                embedBase={embedBase}
+                index={s.index}
+                heading={s.heading || `Слайд ${s.index}`}
+                imageUrl={s.image ? apiUrl(`/p/${id}${s.image}`) : null}
+                enabled={stageReady}
+              />
             </button>
           ))}
         </nav>
