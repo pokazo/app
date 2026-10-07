@@ -416,6 +416,7 @@ footer.foot {
 .deck-thumb {
   display: block;
   width: 100%;
+  flex-shrink: 0; /* filmstrip is scrollable — never squash 16:9 thumbs */
   padding: 0;
   border: 2px solid transparent;
   background: transparent;
@@ -432,22 +433,23 @@ footer.foot {
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--pk-line);
+  /* inset stroke — real border eats equal px from W/H and breaks 16:9 content box */
+  box-shadow: inset 0 0 0 1px var(--pk-line);
   background: #fff;
   pointer-events: none;
   position: relative;
-  container-type: inline-size;
+  container-type: size;
   container-name: deck-thumb;
 }
-.deck-thumb.is-current .deck-thumb-frame { border-color: transparent; }
-/* Full slide layout at 1280×720, scaled to thumb width — same composition as stage. */
+.deck-thumb.is-current .deck-thumb-frame { box-shadow: none; }
+/* Full slide at 1280×720, uniform scale into the 16:9 thumb (same ratio as stage). */
 .deck-thumb-scaler {
   position: absolute;
   top: 0;
   left: 0;
   width: 1280px;
   height: 720px;
-  transform: scale(calc(100cqi / 1280));
+  transform: scale(min(100cqi / 1280px, 100cqh / 720px));
   transform-origin: top left;
   z-index: 1;
 }
