@@ -7,7 +7,12 @@ import {
   type StockHit,
 } from "./assets-stock.js";
 
-export type StockToolAttribution = StockAttribution & { id?: string; path: string; query?: string };
+export type StockToolAttribution = StockAttribution & {
+  id?: string;
+  path: string;
+  query?: string;
+  source?: "unsplash";
+};
 
 type SearchFn = (opts: {
   accessKey: string;
@@ -45,7 +50,7 @@ export function createStockTools(
   return {
     "stock-search": tool({
       description:
-        "Search Unsplash stock photos. Prefer landscape. Returns ids; you MUST then call stock-download with that id. Empty/error: retry once with a simpler English query. Do not skip photos for the rest of the deck.",
+        "Search Unsplash stock photos. Prefer landscape. Returns ids plus description/altDescription so you can judge subject relevance. If hits are empty OR clearly the wrong subject (e.g. wrong car model), do NOT download — call image-generate instead. Otherwise stock-download with the matching id. Empty/error: retry once with a simpler English query, then generate. Do not skip photos for the rest of the deck.",
       parameters: z.object({
         query: z.string().describe("English search query, e.g. modern glass office atrium"),
         orientation: z.enum(["landscape", "portrait", "squarish"]).optional(),
@@ -53,23 +58,30 @@ export function createStockTools(
       }),
       execute: async ({ query, orientation, count }) => {
         if (!configured) {
-          return { error: "UNSPLASH_ACCESS_KEY not configured — skip photos, use icon/two-cols/quote instead" };
+          return { error: "UNSPLASH_ACCESS_KEY not configured — use image-generate or icon/two-cols/quote instead" };
         }
-        const hits = await search({
-          accessKey: opts.accessKey,
-          query,
-          orientation,
-          count,
-        });
-        for (const h of hits) cache.set(h.id, h);
-        return hits.map((h) => ({
-          id: h.id,
-          thumb: h.thumb,
-          width: h.width,
-          height: h.height,
-          photographer: h.photographer,
-          attributionUrl: h.attributionUrl,
-        }));
+        try {
+          const hits = await search({
+            accessKey: opts.accessKey,
+            query,
+            orientation,
+            count,
+          });
+          for (const h of hits) cache.set(h.id, h);
+          return hits.map((h) => ({
+            id: h.id,
+            thumb: h.thumb,
+            width: h.width,
+            height: h.height,
+            photographer: h.photographer,
+            attributionUrl: h.attributionUrl,
+            description: h.description,
+            altDescription: h.altDescription,
+          }));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { error: message, hint: "retry simpler query once, then image-generate" };
+        }
       },
     }),
     "stock-download": tool({
@@ -102,9 +114,10 @@ export function createStockTools(
           ...result.attribution,
           id,
           path: result.path,
+          source: "unsplash",
         };
         opts.onAttribution?.(entry);
-        return { path: result.path, attribution: result.attribution };
+        return { path: result.path, attribution: result.attribution, source: "unsplash" as const };
       },
     }),
   };

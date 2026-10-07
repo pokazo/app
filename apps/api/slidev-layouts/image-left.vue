@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
+  palette?: string
+
   image?: string
   kicker?: string
 }>()
@@ -10,10 +12,13 @@ function photoSrc(image?: string) {
   const path = image.startsWith("/") ? image.slice(1) : image
   return `${base}${path}`
 }
+
+const paletteClass =
+  props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
 </script>
 
 <template>
-  <div class="pk-split">
+  <div class="pk-split" :class="paletteClass">
     <div class="pk-split__photo">
       <img v-if="props.image" :src="photoSrc(props.image)" alt="" />
     </div>
@@ -37,12 +42,12 @@ function photoSrc(image?: string) {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: minmax(0, 1fr);
   align-items: stretch;
-  background: #f7f3ec;
+  background: var(--pk-paper, #f7f3ec);
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 .pk-split__pane {
-  background: #f7f3ec;
-  color: #161616;
+  background: var(--pk-paper, #f7f3ec);
+  color: var(--pk-ink, #161616);
   padding: 48px 44px;
   display: flex;
   flex-direction: column;
@@ -73,7 +78,7 @@ function photoSrc(image?: string) {
 .pk-split__body :deep(h2),
 .pk-split__body :deep(p),
 .pk-split__body :deep(li) {
-  color: #161616;
+  color: var(--pk-ink, #161616);
   opacity: 1;
 }
 .pk-split__body :deep(h1) {
@@ -105,5 +110,21 @@ function photoSrc(image?: string) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.pk-palette-cream {
+  --pk-paper: #f7f3ec;
+  --pk-ink: #161616;
+  --pk-sub: #3d3d3d;
+  --pk-accent: #c45c26;
+  --pk-faint: #6b6b6b;
+}
+.pk-palette-ink,
+.pk-palette-auto {
+  --pk-paper: #191b1e;
+  --pk-ink: #ffffff;
+  --pk-sub: #c5c7ca;
+  --pk-accent: #c8102e;
+  --pk-faint: #8a8c8f;
 }
 </style>

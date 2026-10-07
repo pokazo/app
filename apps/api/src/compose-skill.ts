@@ -4,7 +4,8 @@ export function composeSkill(theme: string, locale: string): string {
 
 Tools:
 - Slidev MCP: slidev-get-info, slidev-list-slides, slidev-get-slide, slidev-update-slide, slidev-insert-slide, slidev-remove-slide, slidev-move-slide
-- Unsplash stock (always available): stock-search, stock-download. MUST call stock-search then stock-download, then set frontmatter image: /slide-N.jpg (local path only).
+- Unsplash stock: stock-search, stock-download. Search returns description/altDescription — judge if the photo is the RIGHT subject.
+- OpenAI image-generate (cheap gpt-image-1-mini, low quality): use when stock is empty OR hits are the wrong subject (e.g. wrong car/brand). Writes local /slide-N-gen.png.
 
 Visual rules:
 - Follow outline: same slide count and order; honor each slide intent and visual hint.
@@ -21,21 +22,28 @@ Visual rules:
 - For visual timeline: layout: timeline. Put kicker, source, and steps (3–5 objects: phase, title, body, state done|current|todo) in frontmatter. Body of the slide is only the H1 title.
 - For visual stats: layout: stats. Put kicker, source, and frontmatter items (not stats) — 2–4 objects: value, label, note. Body is only the H1. Key name is items: (YAML list). Never use stats: as the frontmatter key.
 - For visual skills: layout: skills. Put kicker and items (name, level, pct 0–100) in frontmatter. Body is only the H1.
-- Cover/intro: layout: hero with kicker (uppercase short label). Body: H1 + 1–2 sentences, no bullet list. hero and cover also get a photo (background or image-right) via stock-download.
+- Cover/intro: layout: hero with kicker (uppercase short label). Body: H1 + 1–2 sentences, no bullet list. hero and cover also get a photo via stock-download or image-generate.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
-- Photo slides (visual image-right, image-left, hero, cover, and any slide with a non-empty imageQuery): stock-search (English query from imageQuery, orientation landscape) → stock-download (id from search, filename slide-N.jpg) → insert/update with layout + image: /slide-N.jpg. Local paths only — never http(s) image URLs.
-- If one search is empty, retry once with a simpler English query (2–4 concrete nouns, no people names). Then still insert that slide with a photo if the retry returns hits.
-- Only skip a photo on that one slide if BOTH search attempts return error/empty. Never treat one stock error as permission to skip photos for the rest of the deck. Keep calling stock-search for later image slides.
-- A finished deck with fewer than 3 local images is a failure. at least 3 slides must have image: /slide-N.jpg before you stop.
+- Photo slides (visual image-right, image-left, hero, cover, and any slide with a non-empty imageQuery):
+  1) stock-search (English query from imageQuery, orientation landscape)
+  2) Read description/altDescription. If empty results OR clearly wrong subject → image-generate with a precise English prompt that NAMES the subject (brand/model/scene), filename slide-N-gen.png
+  3) Else stock-download (id, filename slide-N.jpg)
+  4) insert/update with layout + image: /slide-N.jpg or /slide-N-gen.png
+  Local paths only — never http(s) image URLs. Never use expensive/high image quality.
+- If one search is empty or off-topic, retry once with a simpler English query (2–4 concrete nouns). If still wrong/empty → image-generate for that slide.
+- Never treat one stock error as permission to skip photos for the rest of the deck.
+- A finished deck with fewer than 3 local images is a failure. at least 3 slides must have image: /slide-N.jpg or /slide-N-gen.png before you stop.
+- Dense facts: prefer concrete numbers, named entities, and source: on stats/timeline/comparison slides. For side-by-side specs use two-cols or a markdown table in default layout — not vague marketing bullets.
 - Icons: carbon-* / mdi-* style icons when visual=icon; no custom Vue SFCs, no <script>.
-- theme is already ${theme} in headmatter — do not change theme.
+- theme/palette are already set in headmatter — do not change theme or palette.
 - Language: ${lang}.
 - One strong idea per slide; heading short; ≤5 bullets; numbers can be large in content.
 
 Structural rules:
 - Scaffold already has slide 1 with theme/title. Update that same slide in place (do not insert an extra blank first slide). Then insert remaining slides ONE AT A TIME (sequential inserts only — never parallel insert with future after: numbers).
 - After inserts, call slidev-list-slides to verify count matches outline.
-- Finish when list-slides length matches outline AND at least 3 slides have local image: paths.`;
+- Finish when list-slides length matches outline AND at least 3 slides have local image: paths.
+- Picker theme hint (do not rewrite frontmatter theme): ${theme}.`;
 }
 
 export function outlineUserPrompt(opts: {
@@ -54,8 +62,8 @@ export function outlineUserPrompt(opts: {
 steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
 stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].
 skills — массив {name,level,pct} только для visual=skills, иначе [].
-kicker/source — короткие подписи или "".
-imageQuery — английский Unsplash-запрос (конкретная сцена без имён людей, 4–8 слов) для каждого фото-слайда; иначе "".
+kicker/source — короткие подписи или "". Для stats/timeline с цифрами source обязателен (откуда факт), иначе "".
+imageQuery — английский поисковый запрос под РЕАЛЬНЫЙ объект темы (конкретная модель/сцена, 4–8 слов); иначе "".
 
 Жёсткие правила плана (проверка тестами; провал = доработка):
 - Ни одного пустого слайда: у каждого непустой heading и заполненный payload под visual.
@@ -64,6 +72,7 @@ imageQuery — английский Unsplash-запрос (конкретная 
 - cover/hero в начале с imageQuery и текстом (points или kicker).
 - Минимум 3 слайда image-right или image-left с imageQuery.
 - Хотя бы один timeline или stats или skills с полным payload.
+- В points/stats — конкретные факты и числа по теме, не общие маркетинговые фразы.
 Не пиши markdown — только JSON-структуру.`;
 }
 
@@ -89,6 +98,7 @@ ${opts.issues}
 - Не оставляй пустых слайдов (heading + payload).
 - Не оставляй слайдов только с текстом: нельзя none|default|center|section|intro|end.
 - Для image/hero/cover нужен imageQuery; для icon — iconHint; timeline — ≥3 steps; stats — ≥2; skills — ≥2.
+- Добавь source на слайды stats/timeline с цифрами.
 
 Предыдущий план (исправь его, не упрощай):
 ${JSON.stringify(opts.previous)}
@@ -98,11 +108,13 @@ ${JSON.stringify(opts.previous)}
 
 export function composeUserPrompt(outline: unknown, locale: string): string {
   return `Собери колоду по outline через tools.
-Для каждого слайда с visual image-right, image-left, hero, cover или непустым imageQuery: stock-search then stock-download BEFORE insert/update. Put image: /slide-N.jpg in frontmatter.
-For visual=stats: map outline.stats → frontmatter items: (never stats:). Body = H1 only.
-For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji.
-Do not finish with zero local images. At least 3 downloads.
-Do not skip remaining photos after one stock error — retry once with a simpler English query, then continue.
+Для каждого слайда с visual image-right, image-left, hero, cover или непустым imageQuery:
+  stock-search → judge description/altDescription → stock-download OR image-generate → then insert/update with image: /slide-N.jpg or /slide-N-gen.png.
+If stock hits are the wrong subject, do NOT download them — image-generate with the exact subject named in the prompt.
+For visual=stats: map outline.stats → frontmatter items: (never stats:). Body = H1 only. Keep source when present.
+For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji. Use for comparisons when useful.
+Do not finish with zero local images. At least 3 local image: paths.
+Do not skip remaining photos after one stock error — retry once, then generate, then continue.
 outline:
 ${JSON.stringify(outline)}
 locale=${locale}`;

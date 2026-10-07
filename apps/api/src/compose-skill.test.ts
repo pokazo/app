@@ -22,16 +22,18 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/Never dump|ONLY through (MCP|tools)/i);
   });
 
-  it("requires Unsplash photos on image slides instead of skipping the deck", () => {
+  it("requires stock with relevance judgment and image-generate fallback", () => {
     const skill = composeSkill("shibainu", "ru");
     expect(skill).toMatch(/stock-download/);
-    expect(skill).toMatch(/MUST call stock-search then stock-download/i);
+    expect(skill).toMatch(/image-generate/);
+    expect(skill).toMatch(/description\/altDescription|wrong subject/i);
+    expect(skill).toMatch(/gpt-image-1-mini|low quality/i);
     expect(skill).toMatch(/image: \/slide-/);
     expect(skill).toMatch(/retry once with a simpler English query/i);
     expect(skill).not.toMatch(/If stock tools return an error, fall back/i);
-    expect(skill).not.toMatch(/when available/i);
     expect(skill).toMatch(/hero and cover also get a photo/i);
     expect(skill).toMatch(/at least 3 slides must have image:/i);
+    expect(skill).not.toMatch(/high quality/i);
   });
 
   it("teaches two-cols H1-before-columns and stats items frontmatter", () => {
@@ -58,6 +60,7 @@ describe("outlineUserPrompt", () => {
     expect(prompt).toMatch(/минимум 3 слайда image-right или image-left/i);
     expect(prompt).toMatch(/запрещены visual none\|default/i);
     expect(prompt).toMatch(/пустого слайда/i);
+    expect(prompt).toMatch(/конкретные факты/i);
   });
 });
 
@@ -79,14 +82,11 @@ describe("outlineRevisePrompt", () => {
 });
 
 describe("composeUserPrompt", () => {
-  it("orders stock-download before insert for every photo slide", () => {
-    const prompt = composeUserPrompt(
-      { title: "Demo", slides: [{ heading: "Hi", visual: "image-right", imageQuery: "laptop" }] },
-      "ru",
-    );
-    expect(prompt).toMatch(/stock-search then stock-download BEFORE insert\/update/i);
-    expect(prompt).toMatch(/Do not finish with zero local images/i);
-    expect(prompt).toContain('"imageQuery":"laptop"');
-    expect(prompt).toMatch(/locale=ru/);
+  it("repeats stock → generate fallback and image frontmatter", () => {
+    const prompt = composeUserPrompt({ title: "T", slides: [] }, "ru");
+    expect(prompt).toMatch(/stock-search/);
+    expect(prompt).toMatch(/image-generate/);
+    expect(prompt).toMatch(/wrong subject/i);
+    expect(prompt).toMatch(/At least 3/i);
   });
 });

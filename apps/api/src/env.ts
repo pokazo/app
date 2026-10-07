@@ -26,4 +26,7 @@ export const config = {
   unsplashAccessKey: env("UNSPLASH_ACCESS_KEY"),
   unsplashApiBase: env("UNSPLASH_API_BASE", "https://api.unsplash.com"),
   unsplashImagesBase: env("UNSPLASH_IMAGES_BASE"),
+  openaiApiKey: env("OPENAI_API_KEY"),
+  openaiImageModel: env("OPENAI_IMAGE_MODEL", "gpt-image-1-mini"),
+  openaiImageApiBase: env("OPENAI_IMAGE_API_BASE", "https://api.openai.com/v1"),
 };

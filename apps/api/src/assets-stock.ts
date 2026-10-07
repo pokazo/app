@@ -9,6 +9,10 @@ export type StockHit = {
   height: number;
   photographer: string;
   attributionUrl: string;
+  /** Unsplash description — used by compose to judge subject relevance. */
+  description: string;
+  /** Unsplash alt_description — secondary relevance signal. */
+  altDescription: string;
 };
 
 export type StockAttribution = {
@@ -72,6 +76,8 @@ export async function searchUnsplash(opts: {
   const data = (await res.json()) as {
     results?: Array<{
       id: string;
+      description?: string | null;
+      alt_description?: string | null;
       urls: { raw?: string; regular?: string; small?: string };
       width: number;
       height: number;
@@ -89,6 +95,8 @@ export async function searchUnsplash(opts: {
       height: r.height,
       photographer: r.user?.name ?? "Unknown",
       attributionUrl: r.user?.links?.html ?? "https://unsplash.com",
+      description: (r.description ?? "").trim(),
+      altDescription: (r.alt_description ?? "").trim(),
     };
   });
 }

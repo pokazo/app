@@ -41,6 +41,8 @@ describe("deck theme picker", () => {
       "apple-basic",
       "bricks",
       "shibainu",
+      "ink-dark",
+      "brand-auto",
     ]);
   });
 

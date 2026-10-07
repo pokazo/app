@@ -52,6 +52,8 @@ export const DECK_THEMES: DeckTheme[] = [
   { id: "apple-basic", title: "Keynote", hint: "Бизнес, минимум", emoji: "🖥️", colors: ["#ffffff", "#111111", "#9ca3af"] },
   { id: "bricks", title: "Кирпичи", hint: "Яркие блоки", emoji: "🧱", colors: ["#e85d4c", "#f4d35e", "#2a9d8f"] },
   { id: "shibainu", title: "Тёплый", hint: "Школа и рассказ", emoji: "🐕", colors: ["#f4e4d4", "#c45c26", "#3d2b1f"] },
+  { id: "ink-dark", title: "Тёмный", hint: "Редакционный тёмный", emoji: "🌑", colors: ["#191b1e", "#ffffff", "#c8102e"] },
+  { id: "brand-auto", title: "Автобренд", hint: "Тёмный + красный акцент", emoji: "🚗", colors: ["#191b1e", "#c8102e", "#ffffff"] },
 ];
 
 const THEME_IDS = new Set(DECK_THEMES.map((t) => t.id));
