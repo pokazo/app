@@ -4,7 +4,11 @@ const props = defineProps<{
   source?: string
   brand?: string
   image?: string
+  palette?: string
 }>()
+
+const paletteClass =
+  props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
 
 function photoSrc(image?: string) {
   if (!image) return ""
@@ -15,7 +19,7 @@ function photoSrc(image?: string) {
 </script>
 
 <template>
-  <div class="pk-brick pk-hero" :class="{ 'pk-hero--photo': Boolean(props.image) }">
+  <div class="pk-brick pk-hero" :class="[paletteClass, { 'pk-hero--photo': Boolean(props.image) }]">
     <div class="pk-brick__pane">
       <div class="pk-brand" v-if="brand">
         <span class="pk-brand__mark" />
@@ -49,6 +53,21 @@ function photoSrc(image?: string) {
   background: var(--pk-paper);
   color: var(--pk-ink);
   font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.pk-palette-cream {
+  --pk-paper: #f7f3ec;
+  --pk-ink: #161616;
+  --pk-sub: #3d3d3d;
+  --pk-accent: #c45c26;
+  --pk-faint: #6b6b6b;
+}
+.pk-palette-ink,
+.pk-palette-auto {
+  --pk-paper: #191b1e;
+  --pk-ink: #ffffff;
+  --pk-sub: #c5c7ca;
+  --pk-accent: #c8102e;
+  --pk-faint: #8a8c8f;
 }
 .pk-hero--photo {
   display: grid;

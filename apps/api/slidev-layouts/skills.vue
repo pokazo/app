@@ -6,6 +6,8 @@ export type SkillItem = {
 }
 
 const props = defineProps<{
+  palette?: string
+
   kicker?: string
   source?: string
   items?: SkillItem[]
@@ -16,10 +18,13 @@ const items = (props.items ?? []).slice(0, 8).map((it) => ({
   level: it.level ?? "",
   pct: Math.min(100, Math.max(8, Number(it.pct) || 70)),
 }))
+
+const paletteClass =
+  props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
 </script>
 
 <template>
-  <div class="pk-brick pk-skills">
+  <div class="pk-brick pk-skills" :class="paletteClass">
     <div class="pk-brick__grid" />
     <div class="pk-brick__frame" />
     <div class="pk-brick__inner">
@@ -197,5 +202,21 @@ const items = (props.items ?? []).slice(0, 8).map((it) => ({
   font-size: 12px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;
+}
+
+.pk-palette-cream {
+  --pk-paper: #f7f3ec;
+  --pk-ink: #161616;
+  --pk-sub: #3d3d3d;
+  --pk-accent: #c45c26;
+  --pk-faint: #6b6b6b;
+}
+.pk-palette-ink,
+.pk-palette-auto {
+  --pk-paper: #191b1e;
+  --pk-ink: #ffffff;
+  --pk-sub: #c5c7ca;
+  --pk-accent: #c8102e;
+  --pk-faint: #8a8c8f;
 }
 </style>

@@ -6,7 +6,6 @@ import { config } from "./env.js";
 import { buildSlidev, installDeckLayouts, scaffoldMarkdown, writeSlides } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp, type McpCallLog } from "./slidev-mcp.js";
-import { slidevThemeId } from "./themes.js";
 import { Outline } from "./outline.js";
 import {
   composeSkill,
@@ -15,6 +14,7 @@ import {
   outlineUserPrompt,
 } from "./compose-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
+import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
 import { composeMaxSteps, mergeComposeTools } from "./generate-helpers.js";
 import {
   formatOutlinePlanIssues,
@@ -91,10 +91,10 @@ export async function generateDeck(opts: {
   theme: string;
   workDir: string;
 }): Promise<void> {
-  const theme = slidevThemeId(opts.theme);
+  const theme = opts.theme;
   const skill = composeSkill(theme, opts.locale);
   const mcpCalls: McpCallLog[] = [];
-  const attributions: StockToolAttribution[] = [];
+  const attributions: Array<StockToolAttribution | GenToolAttribution> = [];
   const llm: unknown[] = [];
 
   await mkdir(join(opts.workDir, "public"), { recursive: true });
@@ -174,11 +174,17 @@ export async function generateDeck(opts: {
     imagesBase: config.unsplashImagesBase,
     onAttribution: (entry) => attributions.push(entry),
   });
+  const imageGenTools = createImageGenTools(opts.workDir, {
+    apiKey: config.openaiApiKey,
+    model: config.openaiImageModel,
+    apiBase: config.openaiImageApiBase,
+    onAttribution: (entry) => attributions.push(entry),
+  });
 
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
-      const tools = mergeComposeTools(slidevTools, stockTools);
+      const tools = mergeComposeTools(slidevTools, stockTools, imageGenTools);
       const result = await generateText({
         model: model(config.composeModel),
         system: skill,
@@ -206,13 +212,13 @@ export async function generateDeck(opts: {
     await withSlidevMcp(
       opts.workDir,
       async (slidevTools) => {
-        const tools = mergeComposeTools(slidevTools, stockTools);
+        const tools = mergeComposeTools(slidevTools, stockTools, imageGenTools);
         const result = await generateText({
           model: model(config.composeModel),
           system: skill,
           tools: tools as never,
           maxSteps: 24,
-          prompt: `Сборка Slidev упала. Исправь колоду только через tools (MCP update/insert/remove/move и stock при необходимости; не переписывай весь файл текстом).\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
+          prompt: `Сборка Slidev упала. Исправь колоду только через tools (MCP update/insert/remove/move, stock или image-generate при необходимости; не переписывай весь файл текстом).\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
           onStepFinish: async (step) => {
             const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
             console.info(`[llm] repair step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
@@ -224,6 +230,19 @@ export async function generateDeck(opts: {
     );
     md = await guardWorkSlides(opts.workDir, theme);
     await buildSlidev(opts.workDir, base);
+  }
+
+  try {
+    const { generateSpeechForDeck } = await import("./speech-agent.js");
+    await generateSpeechForDeck({
+      workDir: opts.workDir,
+      outline: outline.object,
+      locale: opts.locale,
+      slidesMd: md,
+    });
+    console.info(`[generate] speech.json ok slides=${outline.object.slides.length}`);
+  } catch (err) {
+    console.error(`[generate] speech agent failed (deck still ready): ${String(err).slice(0, 400)}`);
   }
 
   await writeFile(join(opts.workDir, "assets.json"), JSON.stringify({ attributions }, null, 2));

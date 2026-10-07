@@ -40,9 +40,36 @@ describe("searchUnsplash", () => {
     expect(hits).toHaveLength(1);
     expect(hits[0]?.id).toBe("abc");
     expect(hits[0]?.photographer).toBe("Ada");
+    expect(hits[0]?.description).toBe("");
+    expect(hits[0]?.altDescription).toBe("");
     const url = String(fetchMock.mock.calls.at(0)?.[0] ?? "");
     expect(url).toContain("https://api.unsplash.com/search/photos");
     expect(url).toContain("query=office+atrium");
+  });
+
+  it("maps description and alt_description for relevance judgment", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        results: [
+          {
+            id: "car1",
+            description: "Red Hyundai Santa Fe parked outdoors",
+            alt_description: "modern suv front three-quarter view",
+            urls: { raw: "https://images.unsplash.com/photo-car" },
+            width: 1600,
+            height: 1067,
+            user: { name: "Bob", links: { html: "https://unsplash.com/@bob" } },
+          },
+        ],
+      }),
+    );
+    const hits = await searchUnsplash({
+      accessKey: "key",
+      query: "UAZ Patriot SUV",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(hits[0]?.description).toBe("Red Hyundai Santa Fe parked outdoors");
+    expect(hits[0]?.altDescription).toBe("modern suv front three-quarter view");
   });
 
   it("uses apiBase for search URL", async () => {

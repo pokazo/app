@@ -1,4 +1,4 @@
-import { slidevThemeId } from "./themes.js";
+import { layoutPalette, slidevThemeId } from "./themes.js";
 import { normalizeStatsFrontmatter } from "./stats-frontmatter.js";
 
 const ALLOWED_LAYOUTS = new Set([
@@ -53,6 +53,17 @@ function pinTheme(md: string, theme: string): string {
   return out;
 }
 
+function pinPalette(md: string, palette: string): string {
+  if (!md.trim().startsWith("---")) {
+    return `---\npalette: ${palette}\n---\n\n${md}`;
+  }
+  let out = md.replace(/^palette:\s*.+$/m, `palette: ${palette}`);
+  if (!/^palette:/m.test(out.slice(0, 240))) {
+    out = out.replace(/^---\n/, `---\npalette: ${palette}\n`);
+  }
+  return out;
+}
+
 /** Keep only local public paths like /hero.jpg; drop remote or traversal. */
 function sanitizeImageFrontmatter(md: string): string {
   return md.replace(/^image:\s*(.+)$/gim, (_m, raw: string) => {
@@ -69,6 +80,7 @@ function sanitizeImageFrontmatter(md: string): string {
 
 export function guardMarkdown(md: string, theme = "default"): string {
   const pinned = slidevThemeId(theme);
+  const palette = layoutPalette(theme);
   let out = md.replace(/<script[\s\S]*?<\/script>/gi, "");
   out = out.replace(/<[^>]*\.vue[^>]*>/gi, "");
   // Allow carbon-* / mdi-* icon components; strip other unknown custom tags
@@ -87,7 +99,7 @@ export function guardMarkdown(md: string, theme = "default"): string {
   });
   out = sanitizeImageFrontmatter(out);
   out = normalizeStatsFrontmatter(out);
-  return quoteFrontmatterTitle(pinTheme(out, pinned));
+  return quoteFrontmatterTitle(pinPalette(pinTheme(out, pinned), palette));
 }
 
 export function isSafePath(next: string | null): string {
