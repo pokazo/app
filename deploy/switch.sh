@@ -84,13 +84,17 @@ rollback_nginx() {
 
 echo "active=$ACTIVE idle=$IDLE new=:$PORT_NEW old=:$PORT_OLD image=$IMAGE"
 
-# API image includes Playwright Chromium — disk fills with old tags; prune before pull.
-docker image prune -af >/dev/null 2>&1 || true
-docker builder prune -af >/dev/null 2>&1 || true
-
-docker pull "$IMAGE"
+# Free disk before pull: stop idle first so its image is unused, then prune.
+# API images embed Playwright Chromium; extract fails with ENOSPC otherwise.
 docker stop "$NAME-$IDLE" 2>/dev/null || true
 docker rm "$NAME-$IDLE" 2>/dev/null || true
+docker container prune -f >/dev/null 2>&1 || true
+docker image prune -af >/dev/null 2>&1 || true
+docker builder prune -af >/dev/null 2>&1 || true
+docker system prune -af >/dev/null 2>&1 || true
+df -h / /var/lib/docker 2>/dev/null | head -20 || df -h / | head -5 || true
+
+docker pull "$IMAGE"
 
 if [ "$KIND" = web ]; then
   docker run -d --name "$NAME-$IDLE" --restart unless-stopped \
