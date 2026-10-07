@@ -1,5 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, symlinkSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -38,30 +38,6 @@ export function slidevSpawnSpec(workDir: string, base: string): SlidevSpawnSpec 
 }
 
 export type SlidevExportFormat = "pdf" | "pptx";
-
-/** Playwright export: PDF pages or PPTX (one image per slide). */
-export function slidevExportSpawnSpec(
-  workDir: string,
-  format: SlidevExportFormat,
-  output: string,
-): SlidevSpawnSpec {
-  return {
-    bin: slidevBin(),
-    args: [
-      "export",
-      "slides.md",
-      "--format",
-      format,
-      "--output",
-      output,
-      "--timeout",
-      "60000",
-      "--with-clicks",
-      "false",
-    ],
-    cwd: workDir,
-  };
-}
 
 /** Stdio MCP server for the deck entry (no live goto tool). */
 export function slidevMcpSpawnSpec(workDir: string): SlidevSpawnSpec {
@@ -155,22 +131,3 @@ export async function buildSlidev(workDir: string, base = "./", timeoutMs = 180_
   }
 }
 
-export async function exportSlidev(
-  workDir: string,
-  format: SlidevExportFormat,
-  outputBasename: string,
-  timeoutMs = 180_000,
-): Promise<string> {
-  ensureDeckNodeModules(workDir);
-  installDeckLayouts(workDir);
-  const outRel = outputBasename.endsWith(`.${format}`)
-    ? outputBasename
-    : `${outputBasename}.${format}`;
-  const outAbs = join(workDir, outRel);
-  const spec = slidevExportSpawnSpec(workDir, format, outRel);
-  await runSlidev(spec, timeoutMs, `slidev export ${format}`);
-  if (!existsSync(outAbs)) {
-    throw new Error(`slidev export produced no ${outAbs}`);
-  }
-  return outAbs;
-}

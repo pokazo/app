@@ -1,8 +1,10 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { exportSlidev, type SlidevExportFormat } from "./slidev.js";
+import type { SlidevExportFormat } from "./slidev.js";
 
 const inflight = new Map<string, Promise<string>>();
+
+export type { SlidevExportFormat };
 
 export function isExportFormat(raw: string): raw is SlidevExportFormat {
   return raw === "pdf" || raw === "pptx";
@@ -16,12 +18,18 @@ export function exportArtifactPath(workDir: string, format: SlidevExportFormat):
   return join(workDir, exportArtifactName(format));
 }
 
-/** True when a cached export is newer than slides.md. */
+/** True when a cached export is newer than slides.md (and speech.json for pptx). */
 export function isExportFresh(workDir: string, format: SlidevExportFormat): boolean {
   const artifact = exportArtifactPath(workDir, format);
   const slides = join(workDir, "slides.md");
   if (!existsSync(artifact) || !existsSync(slides)) return false;
-  return statSync(artifact).mtimeMs >= statSync(slides).mtimeMs;
+  const artM = statSync(artifact).mtimeMs;
+  if (artM < statSync(slides).mtimeMs) return false;
+  if (format === "pptx") {
+    const speech = join(workDir, "speech.json");
+    if (existsSync(speech) && artM < statSync(speech).mtimeMs) return false;
+  }
+  return true;
 }
 
 export function downloadBasename(topic: string, format: SlidevExportFormat): string {
@@ -51,11 +59,13 @@ export async function ensureDeckExport(
   const pending = inflight.get(key);
   if (pending) return pending;
 
-  const job = exportSlidev(workDir, format, "export")
-    .then((path) => path)
-    .finally(() => {
-      inflight.delete(key);
-    });
+  const out = exportArtifactPath(workDir, format);
+  const job = (async () => {
+    const { renderDeckExport } = await import("./deck-export-render.js");
+    return renderDeckExport(workDir, format, out);
+  })().finally(() => {
+    inflight.delete(key);
+  });
   inflight.set(key, job);
   return job;
 }

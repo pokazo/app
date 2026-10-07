@@ -63,4 +63,15 @@ describe("isExportFresh", () => {
     writeFileSync(join(dir, "slides.md"), "# newer");
     expect(isExportFresh(dir, "pptx")).toBe(false);
   });
+
+  it("pptx is stale when speech.json is newer than export", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pokazo-export-"));
+    writeFileSync(join(dir, "slides.md"), "# hi");
+    writeFileSync(exportArtifactPath(dir, "pptx"), "PK");
+    const older = Date.now() / 1000 - 20;
+    utimesSync(exportArtifactPath(dir, "pptx"), older, older);
+    utimesSync(join(dir, "slides.md"), older, older);
+    writeFileSync(join(dir, "speech.json"), "{}");
+    expect(isExportFresh(dir, "pptx")).toBe(false);
+  });
 });

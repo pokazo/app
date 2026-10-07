@@ -554,3 +554,93 @@ footer.foot {
   .deck-item .pk-btn { width: 100%; }
   .head-email { display: none; }
 }
+
+.speech-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(20, 16, 28, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.speech-modal {
+  width: min(840px, 100%);
+  max-height: min(90vh, 920px);
+  display: flex;
+  flex-direction: column;
+  background: var(--pk-paper);
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-md);
+  box-shadow: var(--pk-shadow);
+  overflow: hidden;
+}
+.speech-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pk-line);
+  flex-shrink: 0;
+}
+.speech-modal-title {
+  margin: 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.speech-modal-mic { color: var(--pk-spot); font-size: 14px; }
+.speech-modal-actions { display: flex; align-items: center; gap: 8px; }
+.speech-close { min-width: 40px; padding-inline: 10px; }
+.speech-modal-body {
+  overflow: auto;
+  padding: 16px 18px 24px;
+}
+.speech-slide {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--pk-line);
+}
+.speech-slide:last-of-type { border-bottom: 0; }
+.speech-slide-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--pk-spot);
+}
+.speech-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.speech-label-text {
+  font-size: 13px;
+  color: var(--pk-ink-muted);
+}
+.speech-theses,
+.speech-speech {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-sm);
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--pk-ink);
+  font: inherit;
+  line-height: 1.45;
+}
+.speech-theses {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+.speech-note { margin: 8px 0; font-size: 14px; }
+.speech-note.muted { color: var(--pk-ink-muted); }
+.speech-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+}
