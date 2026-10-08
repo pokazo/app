@@ -103,8 +103,34 @@ image: /h.jpg
 # Hero
 `;
 
-  it("truncates to built slides while progressive", () => {
+  it("truncates to hero-only while progressive (dist is not rebuilt yet)", () => {
     expect(slidesForView({ outlineSlides: outline, markdown: md, progressive: true })).toEqual([
+      { index: 1, heading: "Hero", image: "/h.jpg" },
+    ]);
+  });
+
+  it("ignores slides.md growth while progressive — preview dist is still hero-only", () => {
+    const growing = `---
+layout: hero
+image: /h.jpg
+---
+
+# Hero
+
+---
+layout: image-right
+image: /b.jpg
+---
+
+# Body
+
+---
+layout: default
+---
+
+# End
+`;
+    expect(slidesForView({ outlineSlides: outline, markdown: growing, progressive: true })).toEqual([
       { index: 1, heading: "Hero", image: "/h.jpg" },
     ]);
   });
@@ -117,3 +143,4 @@ image: /h.jpg
     ]);
   });
 });
+

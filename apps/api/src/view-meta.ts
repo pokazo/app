@@ -40,13 +40,14 @@ export function countSlidesInMarkdown(md: string): number {
 }
 
 /**
- * For progressive preview: expose only slides that already exist in slides.md,
- * keeping outline headings/images for those indices.
+ * For progressive preview: expose only the hero slide.
+ * Compose mutates slides.md early, but preview `dist/` is still the hero-only build
+ * until the final rebuild — listing md slides makes every thumb/stage show slide 1.
  */
 export function slidesForView(opts: {
   outlineSlides: ViewSlide[];
   markdown?: string;
-  /** When true (preview / still composing), truncate to built markdown slides. */
+  /** When true (preview / still composing), hero-only until final dist rebuild. */
   progressive?: boolean;
 }): ViewSlide[] {
   const { outlineSlides, markdown, progressive } = opts;
@@ -54,8 +55,7 @@ export function slidesForView(opts: {
   const images = parseSlideImages(markdown);
   const withImages = withSlideImages(outlineSlides, images);
   if (!progressive) return withImages;
-  const n = Math.max(1, images.length);
-  return withImages.slice(0, Math.min(n, withImages.length));
+  return withImages.slice(0, 1);
 }
 
 export function outlineTitle(raw: unknown, fallback = ""): string {
