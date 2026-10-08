@@ -4,6 +4,7 @@ import {
   DECK_THEMES,
   deckBusy,
   deckStatusLabel,
+  deckViewable,
   formatWhen,
   sanitizeDeckTheme,
 } from "./decks";
@@ -15,14 +16,22 @@ describe("deck history screen", () => {
 
   it("labels pipeline statuses in Russian", () => {
     expect(deckStatusLabel("queued")).toBe("В очереди");
+    expect(deckStatusLabel("preview")).toMatch(/Первый слайд/);
     expect(deckStatusLabel("ready")).toBe("Готово");
     expect(deckStatusLabel("weird")).toBe("weird");
   });
 
-  it("treats queued generating building as busy", () => {
+  it("treats queued generating preview building as busy", () => {
     expect(deckBusy("queued")).toBe(true);
+    expect(deckBusy("preview")).toBe(true);
     expect(deckBusy("ready")).toBe(false);
     expect(deckBusy("failed")).toBe(false);
+  });
+
+  it("allows viewing preview and ready", () => {
+    expect(deckViewable("preview")).toBe(true);
+    expect(deckViewable("ready")).toBe(true);
+    expect(deckViewable("generating")).toBe(false);
   });
 
   it("formats createdAt for the list", () => {

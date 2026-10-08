@@ -58,27 +58,52 @@ export function SpeechModal({ deckId, topic, onClose }: Props) {
     let cancelled = false;
     setLoading(true);
     setErr("");
-    fetch(apiUrl(`/api/decks/${deckId}/speech`), { credentials: "include" })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("load failed");
-        return r.json() as Promise<SpeechGet>;
-      })
-      .then((data) => {
+    setBusy(false);
+    setMissing(false);
+    setDoc(null);
+
+    async function loadOrGenerate() {
+      try {
+        const getRes = await fetch(apiUrl(`/api/decks/${deckId}/speech`), {
+          credentials: "include",
+        });
+        if (!getRes.ok) throw new Error("load failed");
+        const data = (await getRes.json()) as SpeechGet;
         if (cancelled) return;
-        if (isMissing(data)) {
-          setMissing(true);
-          setDoc(null);
-        } else {
+
+        if (!isMissing(data)) {
           setMissing(false);
           setDoc(data);
+          return;
         }
-      })
-      .catch(() => {
-        if (!cancelled) setErr("Не удалось загрузить спич.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+        // Lazy: no speech.json yet — generate on first open
+        setBusy(true);
+        setMissing(true);
+        const regen = await fetch(apiUrl(`/api/decks/${deckId}/speech/regenerate`), {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!regen.ok) throw new Error("regen failed");
+        const generated = (await regen.json()) as SpeechDoc;
+        if (cancelled) return;
+        setDoc(generated);
+        setMissing(false);
+      } catch {
+        if (!cancelled) {
+          setErr("Не удалось загрузить или сгенерировать спич.");
+          setMissing(true);
+          setDoc(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setBusy(false);
+        }
+      }
+    }
+
+    void loadOrGenerate();
     return () => {
       cancelled = true;
     };
@@ -194,11 +219,13 @@ export function SpeechModal({ deckId, topic, onClose }: Props) {
         </header>
 
         <div className="speech-modal-body">
-          {loading ? <p className="speech-note">Загружаем…</p> : null}
+          {loading ? (
+            <p className="speech-note">{busy ? "Генерируем спич…" : "Загружаем…"}</p>
+          ) : null}
           {err ? <p className="err speech-note">{err}</p> : null}
-          {!loading && missing ? (
+          {!loading && missing && !doc ? (
             <div className="speech-empty">
-              <p>Спич ещё не готов. Можно сгенерировать по слайдам колоды.</p>
+              <p>{busy ? "Генерируем спич по слайдам колоды…" : "Спич ещё не готов."}</p>
               <button type="button" className="pk primary" disabled={busy} onClick={() => void regenerate()}>
                 {busy ? "Генерируем…" : "Сгенерировать"}
               </button>

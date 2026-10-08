@@ -34,6 +34,30 @@ export function withSlideImages(slides: ViewSlide[], images: Array<string | null
   return slides.map((s, i) => ({ ...s, image: images[i] ?? null }));
 }
 
+/** How many Slidev slides are present in markdown (frontmatter blocks). */
+export function countSlidesInMarkdown(md: string): number {
+  return parseSlideImages(md).length;
+}
+
+/**
+ * For progressive preview: expose only slides that already exist in slides.md,
+ * keeping outline headings/images for those indices.
+ */
+export function slidesForView(opts: {
+  outlineSlides: ViewSlide[];
+  markdown?: string;
+  /** When true (preview / still composing), truncate to built markdown slides. */
+  progressive?: boolean;
+}): ViewSlide[] {
+  const { outlineSlides, markdown, progressive } = opts;
+  if (!markdown) return outlineSlides;
+  const images = parseSlideImages(markdown);
+  const withImages = withSlideImages(outlineSlides, images);
+  if (!progressive) return withImages;
+  const n = Math.max(1, images.length);
+  return withImages.slice(0, Math.min(n, withImages.length));
+}
+
 export function outlineTitle(raw: unknown, fallback = ""): string {
   if (raw && typeof raw === "object" && typeof (raw as { title?: unknown }).title === "string") {
     const t = (raw as { title: string }).title.trim();

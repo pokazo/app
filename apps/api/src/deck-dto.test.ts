@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { toDeckDto } from "./deck-dto.js";
 
 describe("toDeckDto", () => {
-  it("adds viewUrl only when ready", () => {
+  it("adds viewUrl when ready or preview", () => {
     const row = {
       id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       topic: "Фотосинтез",
@@ -14,6 +14,9 @@ describe("toDeckDto", () => {
     };
     expect(toDeckDto(row).viewUrl).toBeNull();
     expect(toDeckDto({ ...row, status: "ready" }).viewUrl).toMatch(
+      /\/view\/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee$/,
+    );
+    expect(toDeckDto({ ...row, status: "preview" }).viewUrl).toMatch(
       /\/view\/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee$/,
     );
   });

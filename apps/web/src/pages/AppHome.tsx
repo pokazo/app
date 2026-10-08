@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { api, apiUrl } from "../api";
-import { deckStatusLabel, sanitizeDeckTheme } from "../decks";
+import { deckStatusLabel, deckViewable, sanitizeDeckTheme } from "../decks";
 import { ThemePicker } from "../components/ThemePicker";
 
 type Me = { id: string; email: string; name: string };
@@ -52,7 +52,7 @@ export function AppHome() {
           `/api/decks/${created.deckId}`,
         );
         setStatus(d.status);
-        if (d.status === "ready") {
+        if (deckViewable(d.status)) {
           nav(`/view/${created.deckId}`);
           return;
         }

@@ -10,7 +10,7 @@ import { createAuth } from "./auth.js";
 import { enqueueDeck } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
-import { outlineTitle, parseSlideImages, slidesFromOutline, withSlideImages } from "./view-meta.js";
+import { outlineTitle, slidesForView, slidesFromOutline } from "./view-meta.js";
 import { injectPlayerChromeHide, deckAssetCacheControl, deckAssetContentType } from "./player-chrome.js";
 import { sanitizePickerTheme } from "./themes.js";
 import {
@@ -120,6 +120,15 @@ export function createApp() {
     }
     const dir = join(config.deckDataDir, id);
     if (!existsSync(join(dir, "dist", "index.html"))) return c.json({ error: "not ready" }, 404);
+    let deckStatus = "ready";
+    if (pool) {
+      try {
+        const { rows } = await pool.query<{ status: string }>(`SELECT status FROM deck WHERE id=$1`, [id]);
+        if (rows[0]?.status) deckStatus = rows[0].status;
+      } catch {
+        /* keep ready */
+      }
+    }
     let outline: unknown = null;
     let input: { topic?: string; slideCount?: number } = {};
     try {
@@ -132,19 +141,23 @@ export function createApp() {
     } catch {
       input = {};
     }
-    let slides = slidesFromOutline(outline, Number(input.slideCount ?? 0));
-    if (!slides.length) return c.json({ error: "not ready" }, 404);
+    const outlineSlides = slidesFromOutline(outline, Number(input.slideCount ?? 0));
+    if (!outlineSlides.length) return c.json({ error: "not ready" }, 404);
+    let markdown: string | undefined;
     try {
-      const md = await readFile(join(dir, "slides.md"), "utf8");
-      slides = withSlideImages(slides, parseSlideImages(md));
+      markdown = await readFile(join(dir, "slides.md"), "utf8");
     } catch {
-      /* outline headings only */
+      markdown = undefined;
     }
+    const progressive = deckStatus === "preview" || deckStatus === "generating";
+    const slides = slidesForView({ outlineSlides, markdown, progressive });
     return c.json({
       deckId: id,
       topic: outlineTitle(outline, input.topic ?? ""),
       slideCount: slides.length,
       slides,
+      status: deckStatus,
+      building: progressive,
       embedBase: `${config.apiOrigin}/p/${id}/`,
     });
   });
