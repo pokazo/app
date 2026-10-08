@@ -21,7 +21,7 @@ export const config = {
   openrouterKey: env("OPENROUTER_API_KEY"),
   openrouterBaseUrl: env("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
   outlineModel: env("LLM_OUTLINE_MODEL", "openai/gpt-4.1-mini"),
-  composeModel: env("LLM_COMPOSE_MODEL", "anthropic/claude-sonnet-4.5"),
+  composeModel: env("LLM_COMPOSE_MODEL", "deepseek/deepseek-v4-flash"),
   llmReferer: env("LLM_HTTP_REFERER", "https://pokazo.ru"),
   llmTitle: env("LLM_APP_TITLE", "Pokazo"),
   deckDataDir: env("DECK_DATA_DIR", "./data/decks"),

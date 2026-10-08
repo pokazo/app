@@ -53,7 +53,7 @@ MVP — **генератор**: тема → колода Slidev → веб-по
 | `OPENROUTER_API_KEY` | ключ, только на 80.87.196.33 | — |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | — |
 | `LLM_OUTLINE_MODEL` | JSON-оглавление | дешёвая с `json`/`structured`: например `openai/gpt-4.1-mini` |
-| `LLM_COMPOSE_MODEL` | слайды + MCP tools | сильнее tool-calling: например `anthropic/claude-sonnet-4.5` |
+| `LLM_COMPOSE_MODEL` | слайды + MCP tools | быстрый/дешёвый agent: `deepseek/deepseek-v4-flash` |
 | `LLM_HTTP_REFERER` | `https://pokazo.ru` | требование OpenRouter |
 | `LLM_APP_TITLE` | `Pokazo` | — |
 
