@@ -317,9 +317,19 @@ export async function generateDeck(opts: {
 
   await writeFile(join(opts.workDir, "assets.json"), JSON.stringify({ attributions }, null, 2));
   const visualSlides = outline.object.slides.filter((s) =>
-    ["image-right", "image-left", "icon", "two-cols", "quote", "fact", "timeline", "stats", "skills", "hero"].includes(
-      s.visual,
-    ),
+    [
+      "image-right",
+      "image-left",
+      "icon",
+      "two-cols",
+      "quote",
+      "fact",
+      "cards",
+      "timeline",
+      "stats",
+      "skills",
+      "hero",
+    ].includes(s.visual),
   ).length;
   const heroPhase = llm.find(
     (entry) => entry && typeof entry === "object" && "phase" in entry && (entry as { phase?: string }).phase === "hero",

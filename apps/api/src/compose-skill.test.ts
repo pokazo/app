@@ -52,6 +52,16 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/no emoji/i);
     expect(skill).toMatch(/frontmatter items \(not stats\)/i);
   });
+
+  it("teaches quote/fact/icon/cards layouts", () => {
+    const skill = composeSkill("bricks", "ru");
+    expect(skill).toMatch(/layout: quote/);
+    expect(skill).toMatch(/layout: fact/);
+    expect(skill).toMatch(/layout: icon/);
+    expect(skill).toMatch(/layout: cards/);
+    expect(skill).toMatch(/outline\.cards → items/i);
+    expect(skill).toMatch(/Never use cards:/i);
+  });
 });
 
 describe("outlineUserPrompt", () => {
@@ -70,6 +80,8 @@ describe("outlineUserPrompt", () => {
     expect(prompt).toMatch(/запрещены visual none\|default/i);
     expect(prompt).toMatch(/пустого слайда/i);
     expect(prompt).toMatch(/конкретные факты/i);
+    expect(prompt).toMatch(/visual=cards/);
+    expect(prompt).toMatch(/cards — массив/);
   });
 
   it("embeds research brief when provided", () => {
@@ -128,5 +140,6 @@ describe("composeUserPrompt", () => {
     expect(prompt).toMatch(/wrong subject/i);
     expect(prompt).toMatch(/At least 3/i);
     expect(prompt).toMatch(/Slide 1 \(hero\) уже готов/i);
+    expect(prompt).toMatch(/outline\.cards → frontmatter items/i);
   });
 });

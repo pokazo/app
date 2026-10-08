@@ -96,6 +96,11 @@ describe("md-guard", () => {
     expect(guardMarkdown(`---\nlayout: stats\n---\n\n# S`)).toMatch(/layout: stats/);
     expect(guardMarkdown(`---\nlayout: skills\n---\n\n# K`)).toMatch(/layout: skills/);
     expect(guardMarkdown(`---\nlayout: hero\n---\n\n# H`)).toMatch(/layout: hero/);
+    expect(guardMarkdown(`---\nlayout: two-cols\n---\n\n# T`)).toMatch(/layout: two-cols/);
+    expect(guardMarkdown(`---\nlayout: quote\n---\n\n# Q`)).toMatch(/layout: quote/);
+    expect(guardMarkdown(`---\nlayout: fact\n---\n\n# F`)).toMatch(/layout: fact/);
+    expect(guardMarkdown(`---\nlayout: icon\n---\n\n# I`)).toMatch(/layout: icon/);
+    expect(guardMarkdown(`---\nlayout: cards\n---\n\n# C`)).toMatch(/layout: cards/);
   });
 
   it("keeps timeline steps YAML", () => {

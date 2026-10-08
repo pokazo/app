@@ -8,6 +8,7 @@ export const OutlineVisual = z.enum([
   "two-cols",
   "quote",
   "fact",
+  "cards",
   "section",
   "cover",
   "end",
@@ -39,6 +40,11 @@ export const SkillItem = z.object({
   pct: z.number(),
 });
 
+export const CardItem = z.object({
+  title: z.string(),
+  body: z.string(),
+});
+
 export const OutlineSlide = z.object({
   heading: z.string(),
   points: z.array(z.string()).max(5),
@@ -53,6 +59,8 @@ export const OutlineSlide = z.object({
   steps: z.array(TimelineStep).max(5),
   stats: z.array(StatItem).max(4),
   skills: z.array(SkillItem).max(8),
+  /** Feature cards when visual is cards; mapped to frontmatter items. */
+  cards: z.array(CardItem).max(4),
 });
 
 export const Outline = z.object({

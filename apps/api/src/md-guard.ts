@@ -19,6 +19,8 @@ const ALLOWED_LAYOUTS = new Set([
   "stats",
   "skills",
   "hero",
+  "icon",
+  "cards",
 ]);
 
 function quoteYamlScalar(value: string): string {

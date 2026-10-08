@@ -11,9 +11,9 @@ Tools:
 Visual rules:
 - Follow outline: same slide count and order; honor each slide intent and visual hint.
 - You MAY refine headings/copy and pick exact layout; do NOT invent extra slides.
-- Prefer variety: image-right, image-left, two-cols (::right::), quote, fact, timeline, stats, skills — avoid every slide being default bullets.
+- Prefer variety: image-right, image-left, two-cols (::right::), quote, fact, icon, cards, timeline, stats, skills — avoid every slide being default bullets.
 - Slide 1 is already a finished hero (composed by a separate hero agent). Do NOT update, remove, or replace slide 1. Do NOT change its layout/variant/image.
-- For visual two-cols: layout: two-cols. Structure MUST be: H1 title ABOVE ::left::, then ::left:: column, then ::right:: column. Never put the H1 inside ::left::. Short columns (≤4 bullets each). No emoji in headings or bullets. Example body:
+- For visual two-cols: layout: two-cols. Structure MUST be: H1 title ABOVE ::left::, then ::left:: column, then ::right:: column. Never put the H1 inside ::left::. Short columns (≤4 bullets each). No emoji in headings or bullets. Optional kicker/source in frontmatter. Example body:
   # Title here
   ::left::
   - point A
@@ -21,6 +21,10 @@ Visual rules:
   ::right::
   - point C
   - point D
+- For visual quote: layout: quote. Body = quote text (H1 or paragraph) plus attribution as a bullet or short line; optional kicker/source. No emoji.
+- For visual fact: layout: fact. Body = short H1 claim (≤12 words); optional supporting line; optional kicker/source.
+- For visual icon: layout: icon. Put iconHint (carbon-* / mdi-*) in frontmatter. Body = H1 + ≤4 bullets. No emoji.
+- For visual cards: layout: cards. Put kicker and frontmatter items (not cards) — 2–4 objects: title, body. Body of the slide is only the H1. Key name is items: (YAML list). Map outline.cards → items:. Never use cards: as the frontmatter key.
 - For visual timeline: layout: timeline. Put kicker, source, and steps (3–5 objects: phase, title, body, state done|current|todo) in frontmatter. Body of the slide is only the H1 title.
 - For visual stats: layout: stats. Put kicker, source, and frontmatter items (not stats) — 2–4 objects: value, label, note. Body is only the H1. Key name is items: (YAML list). Never use stats: as the frontmatter key.
 - For visual skills: layout: skills. Put kicker and items (name, level, pct 0–100) in frontmatter. Body is only the H1.
@@ -72,20 +76,22 @@ export function outlineUserPrompt(opts: {
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}Составь оглавление презентации.
 
-Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero), imageQuery, iconHint, kicker, source, steps, stats, skills.
+Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero|cards|quote|fact|icon|two-cols), imageQuery, iconHint, kicker, source, steps, stats, skills, cards.
 steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
 stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].
 skills — массив {name,level,pct} только для visual=skills, иначе [].
+cards — массив {title,body} только для visual=cards (2–4 шт, feature-grid), иначе [].
 kicker/source — короткие подписи или "". Для stats/timeline с цифрами source обязателен (откуда факт), иначе "".
 imageQuery — поисковый запрос под РЕАЛЬНЫЙ объект темы (конкретная модель/сцена, 4–8 слов); для locale=ru — на русском (для Yandex Images); иначе на языке темы / английском; иначе "".
 
 Жёсткие правила плана (проверка тестами; провал = доработка):
 - Ни одного пустого слайда: у каждого непустой heading и заполненный payload под visual.
 - Ни одного слайда «только текст»: запрещены visual none|default|center|section|intro|end.
-- Каждый слайд — один из: cover|hero|image-right|image-left|icon|timeline|stats|skills|two-cols|quote|fact — с обязательным payload (imageQuery / iconHint / steps≥3 / stats≥2 / skills≥2 / points).
+- Каждый слайд — один из: cover|hero|image-right|image-left|icon|timeline|stats|skills|two-cols|quote|fact|cards — с обязательным payload (imageQuery / iconHint / steps≥3 / stats≥2 / skills≥2 / cards≥2 / points).
 - cover/hero в начале с imageQuery и текстом (points или kicker).
 - Минимум 3 слайда image-right или image-left с imageQuery.
-- Хотя бы один timeline или stats или skills с полным payload.
+- Хотя бы один timeline или stats или skills или cards с полным payload.
+- Для feature-list / сетки преимуществ предпочитай visual=cards (не default bullets).
 - В points/stats — конкретные факты и числа по теме, не общие маркетинговые фразы.
 Не пиши markdown — только JSON-структуру.`;
 }
@@ -112,7 +118,7 @@ ${opts.issues}
 Правила (обязательно устранить все ошибки):
 - Не оставляй пустых слайдов (heading + payload).
 - Не оставляй слайдов только с текстом: нельзя none|default|center|section|intro|end.
-- Для image/hero/cover нужен imageQuery; для icon — iconHint; timeline — ≥3 steps; stats — ≥2; skills — ≥2.
+- Для image/hero/cover нужен imageQuery; для icon — iconHint; timeline — ≥3 steps; stats — ≥2; skills — ≥2; cards — ≥2.
 - Добавь source на слайды stats/timeline с цифрами.
 - Факты и source бери из Research brief выше, не выдумывай.
 
@@ -131,7 +137,9 @@ Slide 1 (hero) уже готов — не обновляй и не удаляй 
   OR image-generate → then insert/update with image: /slide-N.jpg or /slide-N-gen.png.
 If Yandex/Unsplash hits are the wrong subject, do NOT download them — next step in the pipeline, then image-generate with the exact subject named in the prompt.
 For visual=stats: map outline.stats → frontmatter items: (never stats:). Body = H1 only. Keep source when present.
+For visual=cards: map outline.cards → frontmatter items: (never cards:). Body = H1 only. Optional kicker.
 For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji. Use for comparisons when useful.
+For visual=quote|fact|icon: use matching layout; icon needs iconHint in frontmatter; fact = short H1 claim; quote = quote + attribution.
 Hero already has one local image. At least 3 local image: paths total when finished.
 Do not skip remaining photos after one stock error — try Yandex, then Unsplash (retry once), then generate, then continue.
 outline:

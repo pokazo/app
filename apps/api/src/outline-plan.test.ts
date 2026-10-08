@@ -14,6 +14,7 @@ const base = {
   steps: [] as const,
   stats: [] as const,
   skills: [] as const,
+  cards: [] as const,
 };
 
 function richEight(): OutlineT {
@@ -223,6 +224,65 @@ describe("validateOutlinePlan", () => {
     expect(msg).toMatch(/timeline/i);
     expect(msg).toMatch(/stats/i);
     expect(msg).toMatch(/skills/i);
+  });
+
+  it("rejects cards without payload and accepts filled cards", () => {
+    const broken: OutlineT = {
+      title: "Cards broken",
+      slides: [
+        {
+          heading: "Сетка",
+          points: [],
+          intent: "features",
+          visual: "cards",
+          ...base,
+        },
+        {
+          heading: "Photo",
+          points: ["ok"],
+          intent: "p",
+          visual: "image-right",
+          ...base,
+          imageQuery: "bridge over river",
+        },
+        {
+          heading: "Quote",
+          points: ["Цитата автора"],
+          intent: "q",
+          visual: "quote",
+          ...base,
+        },
+        {
+          heading: "Fact",
+          points: ["Короткий факт"],
+          intent: "f",
+          visual: "fact",
+          ...base,
+        },
+      ],
+    };
+    expect(formatOutlinePlanIssues(validateOutlinePlan(broken))).toMatch(/cards/i);
+
+    const ok: OutlineT = {
+      ...broken,
+      slides: [
+        {
+          heading: "Сетка",
+          points: [],
+          intent: "features",
+          visual: "cards",
+          ...base,
+          cards: [
+            { title: "A", body: "one" },
+            { title: "B", body: "two" },
+          ],
+        },
+        broken.slides[1]!,
+        broken.slides[2]!,
+        broken.slides[3]!,
+      ],
+    };
+    expect(validateOutlinePlan(ok)).toEqual([]);
   });
 
   it("rejects wrong slide count", () => {

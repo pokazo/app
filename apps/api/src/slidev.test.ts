@@ -46,6 +46,9 @@ describe("installDeckLayouts", () => {
     expect(existsSync(join(dir, "layouts", "stats.vue"))).toBe(true);
     expect(existsSync(join(dir, "layouts", "skills.vue"))).toBe(true);
     expect(existsSync(join(dir, "layouts", "hero.vue"))).toBe(true);
+    for (const name of ["two-cols.vue", "quote.vue", "fact.vue", "icon.vue", "cards.vue"]) {
+      expect(existsSync(join(dir, "layouts", name))).toBe(true);
+    }
   });
 
   it("copies photo splits that pin cream pane and dark ink", () => {

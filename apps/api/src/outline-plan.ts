@@ -72,6 +72,20 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
     return [];
   }
 
+  if (visual === "cards") {
+    const cards = (slide.cards ?? []).filter((c) => c.title?.trim());
+    if (cards.length < 2) {
+      return [
+        {
+          slide: index,
+          code: "empty_slide",
+          message: `${label}: cards пустой — нужно ≥2 cards с title (сейчас ${cards.length})`,
+        },
+      ];
+    }
+    return [];
+  }
+
   if (visual === "icon") {
     if (!slide.iconHint?.trim()) {
       return [{ slide: index, code: "empty_slide", message: `${label}: visual=icon без iconHint` }];
@@ -153,7 +167,7 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
       {
         slide: index,
         code: "text_only",
-        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact с заполненным payload`,
+        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards с заполненным payload`,
       },
     ];
   }
@@ -204,6 +218,16 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
         slide: index,
         code: "text_only",
         message: `${label}: skills без skills[] — останется заголовок`,
+      },
+    ];
+  }
+
+  if (visual === "cards" && (slide.cards?.length ?? 0) < 2) {
+    return [
+      {
+        slide: index,
+        code: "text_only",
+        message: `${label}: cards без cards[] — останется заголовок`,
       },
     ];
   }

@@ -24,7 +24,19 @@ export function installDeckLayouts(workDir: string): void {
   const dest = join(workDir, "layouts");
   mkdirSync(dest, { recursive: true });
   const src = join(apiDir(), "slidev-layouts");
-  for (const name of ["timeline.vue", "stats.vue", "skills.vue", "hero.vue", "image-right.vue", "image-left.vue"]) {
+  for (const name of [
+    "timeline.vue",
+    "stats.vue",
+    "skills.vue",
+    "hero.vue",
+    "image-right.vue",
+    "image-left.vue",
+    "two-cols.vue",
+    "quote.vue",
+    "fact.vue",
+    "icon.vue",
+    "cards.vue",
+  ]) {
     copyFileSync(join(src, name), join(dest, name));
   }
 }

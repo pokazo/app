@@ -49,6 +49,7 @@ describe("heroUserPrompt", () => {
             steps: [],
             stats: [],
             skills: [],
+            cards: [],
           },
         ],
       },

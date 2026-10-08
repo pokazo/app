@@ -9,6 +9,7 @@ const emptyVisual = {
   steps: [] as const,
   stats: [] as const,
   skills: [] as const,
+  cards: [] as const,
 };
 
 describe("Outline schema", () => {
@@ -96,6 +97,31 @@ describe("Outline schema", () => {
     });
     expect(parsed.slides[1]?.stats[0]?.value).toBe("12+");
     expect(parsed.slides[2]?.steps).toHaveLength(3);
+  });
+
+  it("accepts cards payload", () => {
+    const parsed = Outline.parse({
+      title: "Features",
+      slides: [
+        { heading: "Cover", points: [], intent: "open", visual: "cover", ...emptyVisual },
+        {
+          heading: "Возможности",
+          points: [],
+          intent: "features",
+          visual: "cards",
+          ...emptyVisual,
+          kicker: "FEATURES",
+          cards: [
+            { title: "Быстро", body: "Сборка за минуты" },
+            { title: "Плотно", body: "Карточки без пустоты" },
+          ],
+        },
+        { heading: "C", points: [], intent: "c", visual: "end", ...emptyVisual },
+        { heading: "D", points: [], intent: "d", visual: "end", ...emptyVisual },
+      ],
+    });
+    expect(parsed.slides[1]?.visual).toBe("cards");
+    expect(parsed.slides[1]?.cards).toHaveLength(2);
   });
 
   it("rejects more than 5 points", () => {
