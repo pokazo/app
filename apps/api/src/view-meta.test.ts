@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { outlineTitle, parseSlideImages, slidesFromOutline, withSlideImages } from "./view-meta.js";
+import {
+  outlineTitle,
+  parseSlideImages,
+  slidesForView,
+  slidesFromOutline,
+  withSlideImages,
+} from "./view-meta.js";
 
 describe("slidesFromOutline", () => {
   it("maps headings 1-based", () => {
@@ -80,5 +86,34 @@ describe("outlineTitle", () => {
   it("reads title", () => {
     expect(outlineTitle({ title: " Тема " }, "x")).toBe("Тема");
     expect(outlineTitle({}, "x")).toBe("x");
+  });
+});
+
+describe("slidesForView", () => {
+  const outline = [
+    { index: 1, heading: "Hero", image: null },
+    { index: 2, heading: "Body", image: null },
+    { index: 3, heading: "End", image: null },
+  ];
+  const md = `---
+layout: hero
+image: /h.jpg
+---
+
+# Hero
+`;
+
+  it("truncates to built slides while progressive", () => {
+    expect(slidesForView({ outlineSlides: outline, markdown: md, progressive: true })).toEqual([
+      { index: 1, heading: "Hero", image: "/h.jpg" },
+    ]);
+  });
+
+  it("returns full deck when not progressive", () => {
+    expect(slidesForView({ outlineSlides: outline, markdown: md, progressive: false })).toEqual([
+      { index: 1, heading: "Hero", image: "/h.jpg" },
+      { index: 2, heading: "Body", image: null },
+      { index: 3, heading: "End", image: null },
+    ]);
   });
 });

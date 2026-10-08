@@ -92,6 +92,8 @@ export async function generateDeck(opts: {
   audience: string;
   theme: string;
   workDir: string;
+  /** Called after hero slide is built so the player can open early. */
+  onPreviewReady?: () => Promise<void>;
 }): Promise<void> {
   const theme = opts.theme;
   const skill = composeSkill(theme, opts.locale);
@@ -243,6 +245,19 @@ export async function generateDeck(opts: {
   await guardWorkSlides(opts.workDir, theme);
   console.info(`[generate] hero-compose done`);
 
+  const base = `/p/${opts.id}/`;
+  // Early build of slide 1 so the player can open while the rest compose.
+  try {
+    await buildSlidev(opts.workDir, base);
+    console.info(`[generate] preview build ok (hero)`);
+    if (opts.onPreviewReady) {
+      await opts.onPreviewReady();
+      console.info(`[generate] preview status published`);
+    }
+  } catch (err) {
+    console.warn(`[generate] preview build skipped: ${String(err).slice(0, 300)}`);
+  }
+
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
@@ -264,7 +279,6 @@ export async function generateDeck(opts: {
   );
 
   let md = await guardWorkSlides(opts.workDir, theme);
-  const base = `/p/${opts.id}/`;
   let repaired = false;
   try {
     await buildSlidev(opts.workDir, base);
@@ -294,18 +308,7 @@ export async function generateDeck(opts: {
     await buildSlidev(opts.workDir, base);
   }
 
-  try {
-    const { generateSpeechForDeck } = await import("./speech-agent.js");
-    await generateSpeechForDeck({
-      workDir: opts.workDir,
-      outline: outline.object,
-      locale: opts.locale,
-      slidesMd: md,
-    });
-    console.info(`[generate] speech.json ok slides=${outline.object.slides.length}`);
-  } catch (err) {
-    console.error(`[generate] speech agent failed (deck still ready): ${String(err).slice(0, 400)}`);
-  }
+  // Speech is lazy: generated on first open via POST /api/decks/:id/speech/regenerate
 
   await writeFile(join(opts.workDir, "assets.json"), JSON.stringify({ attributions }, null, 2));
   const visualSlides = outline.object.slides.filter((s) =>

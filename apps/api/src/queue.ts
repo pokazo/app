@@ -59,6 +59,9 @@ export async function processDeck(id: string): Promise<void> {
       audience: deck.audience,
       theme: sanitizePickerTheme(deck.theme),
       workDir,
+      onPreviewReady: async () => {
+        await pool.query(`UPDATE deck SET status='preview', updated_at=now() WHERE id=$1`, [id]);
+      },
     });
     let researchUsed = false;
     try {

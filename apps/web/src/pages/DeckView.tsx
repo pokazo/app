@@ -13,6 +13,8 @@ type ViewMeta = {
   topic: string;
   slides: Slide[];
   embedBase: string;
+  status?: string;
+  building?: boolean;
 };
 
 export function DeckView() {
@@ -27,6 +29,8 @@ export function DeckView() {
   const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
   const [exportErr, setExportErr] = useState("");
   const [speechOpen, setSpeechOpen] = useState(false);
+  const [embedKey, setEmbedKey] = useState(0);
+  const [building, setBuilding] = useState(false);
 
   const embedBase = apiUrl(`/p/${id}/`);
 
@@ -39,22 +43,62 @@ export function DeckView() {
       .catch(() => {});
   }, []);
 
+  const loadView = useCallback(async () => {
+    const r = await fetch(apiUrl(`/api/view/${id}`), { credentials: "include" });
+    if (!r.ok) throw new Error("not ready");
+    return r.json() as Promise<ViewMeta>;
+  }, [id]);
+
   useEffect(() => {
+    let cancelled = false;
     setMeta(null);
     setErr("");
     setCurrent(1);
     setStageReady(false);
-    fetch(apiUrl(`/api/view/${id}`), { credentials: "include" })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("not ready");
-        return r.json() as Promise<ViewMeta>;
-      })
+    setBuilding(false);
+    setEmbedKey(0);
+
+    loadView()
       .then((data) => {
+        if (cancelled) return;
         setMeta(data);
+        setBuilding(Boolean(data.building));
         setCurrent(data.slides[0]?.index ?? 1);
       })
-      .catch(() => setErr("Презентация ещё не готова или ссылка неверная."));
-  }, [id]);
+      .catch(() => {
+        if (!cancelled) setErr("Презентация ещё не готова или ссылка неверная.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, loadView]);
+
+  // While preview/building: poll until ready, then refresh meta + remount iframe (full rebuild).
+  useEffect(() => {
+    if (!id || !building) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const data = await loadView();
+        if (cancelled) return;
+        setMeta(data);
+        setBuilding(Boolean(data.building));
+        if (!data.building) {
+          setStageReady(false);
+          setEmbedKey((k) => k + 1);
+          setCurrent(data.slides[0]?.index ?? 1);
+        }
+      } catch {
+        /* keep polling */
+      }
+    };
+    const t = window.setInterval(() => void tick(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [id, building, loadView]);
 
   const last = meta?.slides.length ?? 1;
   const go = useCallback(
@@ -108,7 +152,7 @@ export function DeckView() {
   }
 
   async function downloadExport(format: "pdf" | "pptx") {
-    if (!id || exporting) return;
+    if (!id || exporting || building) return;
     setExporting(format);
     setExportErr("");
     try {
@@ -154,13 +198,19 @@ export function DeckView() {
           </button>
           {meta ? (
             <>
-              <button type="button" className="pk ghost" onClick={() => setSpeechOpen(true)}>
+              <button
+                type="button"
+                className="pk ghost"
+                disabled={building}
+                title={building ? "Дождитесь окончания сборки" : undefined}
+                onClick={() => setSpeechOpen(true)}
+              >
                 Спич
               </button>
               <button
                 type="button"
                 className="pk ghost"
-                disabled={!!exporting}
+                disabled={!!exporting || building}
                 onClick={() => void downloadExport("pdf")}
               >
                 {exporting === "pdf" ? "Сохраняем PDF…" : "Скачать PDF"}
@@ -168,7 +218,7 @@ export function DeckView() {
               <button
                 type="button"
                 className="pk ghost"
-                disabled={!!exporting}
+                disabled={!!exporting || building}
                 onClick={() => void downloadExport("pptx")}
               >
                 {exporting === "pptx" ? "Сохраняем PPTX…" : "Скачать PPTX"}
@@ -184,7 +234,10 @@ export function DeckView() {
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
-      {speechOpen && id ? (
+      {building && meta ? (
+        <p className="app-note deck-building">Собираем остальные слайды… первый уже можно смотреть.</p>
+      ) : null}
+      {speechOpen && id && !building ? (
         <SpeechModal
           deckId={id}
           topic={meta?.topic ?? "Презентация"}
@@ -217,9 +270,10 @@ export function DeckView() {
           <div className="deck-stage-frame">
             {id && !err ? (
               <iframe
+                key={embedKey}
                 ref={stageRef}
                 title={meta?.topic ?? "Презентация"}
-                src={embedDeckUrl(embedBase)}
+                src={`${embedDeckUrl(embedBase)}${embedKey ? `&_r=${embedKey}` : ""}`}
                 fetchPriority="high"
                 onLoad={() => setStageReady(true)}
               />

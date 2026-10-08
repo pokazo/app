@@ -13,6 +13,7 @@ export type Deck = {
 export const DECK_STATUS_LABEL: Record<string, string> = {
   queued: "В очереди",
   generating: "Пишем слайды",
+  preview: "Первый слайд готов — собираем остальные",
   building: "Собираем показ",
   ready: "Готово",
   failed: "Не собралось",
@@ -23,7 +24,17 @@ export function deckStatusLabel(status: string) {
 }
 
 export function deckBusy(status: string) {
-  return status === "queued" || status === "generating" || status === "building";
+  return (
+    status === "queued" ||
+    status === "generating" ||
+    status === "preview" ||
+    status === "building"
+  );
+}
+
+/** Deck can be opened in the player while the rest still generates. */
+export function deckViewable(status: string) {
+  return status === "preview" || status === "ready";
 }
 
 export function formatWhen(iso: string) {

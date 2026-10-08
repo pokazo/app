@@ -88,9 +88,9 @@ export function DeckHistory() {
                     </p>
                     {d.status === "failed" && d.error ? <p className="err deck-error">{d.error}</p> : null}
                   </div>
-                  {d.status === "ready" ? (
+                  {d.status === "ready" || d.status === "preview" ? (
                     <Link className="pk-btn primary" to={`/view/${d.deckId}`}>
-                      Смотреть
+                      {d.status === "preview" ? "Смотреть (сборка…)" : "Смотреть"}
                     </Link>
                   ) : null}
                 </li>
