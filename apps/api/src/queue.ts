@@ -34,8 +34,9 @@ export function startDeckWorker(): Queue | null {
 
 export async function processDeck(id: string): Promise<void> {
   if (!pool) throw new Error("no db");
-  await pool.query(`UPDATE deck SET status='generating', updated_at=now() WHERE id=$1`, [id]);
-  const { rows } = await pool.query(`SELECT * FROM deck WHERE id=$1`, [id]);
+  const db = pool;
+  await db.query(`UPDATE deck SET status='generating', updated_at=now() WHERE id=$1`, [id]);
+  const { rows } = await db.query(`SELECT * FROM deck WHERE id=$1`, [id]);
   const deck = rows[0];
   if (!deck) throw new Error("deck not found");
   const workDir = join(config.deckDataDir, id);
@@ -60,7 +61,7 @@ export async function processDeck(id: string): Promise<void> {
       theme: sanitizePickerTheme(deck.theme),
       workDir,
       onPreviewReady: async () => {
-        await pool.query(`UPDATE deck SET status='preview', updated_at=now() WHERE id=$1`, [id]);
+        await db.query(`UPDATE deck SET status='preview', updated_at=now() WHERE id=$1`, [id]);
       },
     });
     let researchUsed = false;
@@ -80,9 +81,9 @@ export async function processDeck(id: string): Promise<void> {
         researchUsed,
       }),
     );
-    await pool.query(`UPDATE deck SET status='ready', updated_at=now() WHERE id=$1`, [id]);
+    await db.query(`UPDATE deck SET status='ready', updated_at=now() WHERE id=$1`, [id]);
   } catch (err) {
-    await pool.query(`UPDATE deck SET status='failed', error=$2, updated_at=now() WHERE id=$1`, [
+    await db.query(`UPDATE deck SET status='failed', error=$2, updated_at=now() WHERE id=$1`, [
       id,
       String(err),
     ]);
