@@ -9,9 +9,10 @@ describe("composeMaxSteps", () => {
 });
 
 describe("mergeComposeTools", () => {
-  it("merges slidev, stock, and image-gen tool maps", () => {
+  it("merges slidev, yandex, stock, and image-gen tool maps", () => {
     const merged = mergeComposeTools(
       { "slidev-list-slides": { a: 1 } },
+      { "yandex-image-search": { y: 1 }, "yandex-image-download": { z: 2 } },
       { "stock-search": { b: 2 }, "stock-download": { c: 3 } },
       { "image-generate": { d: 4 } },
     );
@@ -20,6 +21,8 @@ describe("mergeComposeTools", () => {
       "slidev-list-slides",
       "stock-download",
       "stock-search",
+      "yandex-image-download",
+      "yandex-image-search",
     ]);
   });
 });
@@ -32,6 +35,7 @@ describe("pickHeroTools", () => {
       "slidev-remove-slide": 3,
       "slidev-move-slide": 4,
       "slidev-list-slides": 5,
+      "yandex-image-search": 8,
       "stock-search": 6,
       "image-generate": 7,
     });
@@ -40,6 +44,7 @@ describe("pickHeroTools", () => {
       "slidev-list-slides",
       "slidev-update-slide",
       "stock-search",
+      "yandex-image-search",
     ]);
   });
 });

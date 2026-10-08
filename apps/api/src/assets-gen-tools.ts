@@ -44,7 +44,7 @@ export function createImageGenTools(
   return {
     "image-generate": tool({
       description:
-        "Generate a subject-true photo with OpenAI (cheap gpt-image-1-mini, low quality) into the deck public/ folder. Use when stock-search is empty OR hits are the wrong subject (check description/altDescription). filename must be a simple basename like slide-3-gen.png. Returns path for Slidev frontmatter image: (e.g. /slide-3-gen.png). Prefer stock-download when a hit clearly matches the subject.",
+        "Generate a subject-true photo with OpenAI (cheap gpt-image-1-mini, low quality) into the deck public/ folder. Use when yandex-image-search and stock-search are empty OR hits are the wrong subject. filename must be a simple basename like slide-3-gen.png. Returns path for Slidev frontmatter image: (e.g. /slide-3-gen.png). Prefer yandex-image-download or stock-download when a hit clearly matches the subject.",
       parameters: z.object({
         prompt: z
           .string()

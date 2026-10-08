@@ -16,6 +16,7 @@ import {
 import { heroMaxSteps, heroSkill, heroUserPrompt } from "./hero-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
+import { createYandexImageTools, type YandexToolAttribution } from "./assets-yandex-tools.js";
 import { composeMaxSteps, mergeComposeTools, pickHeroTools } from "./generate-helpers.js";
 import {
   formatOutlinePlanIssues,
@@ -99,7 +100,7 @@ export async function generateDeck(opts: {
   const skill = composeSkill(theme, opts.locale);
   const heroSystem = heroSkill(theme, opts.locale);
   const mcpCalls: McpCallLog[] = [];
-  const attributions: Array<StockToolAttribution | GenToolAttribution> = [];
+  const attributions: Array<StockToolAttribution | GenToolAttribution | YandexToolAttribution> = [];
   const llm: unknown[] = [];
 
   await mkdir(join(opts.workDir, "public"), { recursive: true });
@@ -205,6 +206,10 @@ export async function generateDeck(opts: {
   await writeSlides(opts.workDir, scaffold, theme);
 
   const maxSteps = composeMaxSteps(outline.object.slides.length);
+  const yandexTools = createYandexImageTools(opts.workDir, {
+    baseUrl: config.yandexImagesUrl,
+    onAttribution: (entry) => attributions.push(entry),
+  });
   const stockTools = createStockTools(opts.workDir, {
     accessKey: config.unsplashAccessKey,
     apiBase: config.unsplashApiBase,
@@ -222,7 +227,7 @@ export async function generateDeck(opts: {
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
-      const tools = pickHeroTools(mergeComposeTools(slidevTools, stockTools, imageGenTools));
+      const tools = pickHeroTools(mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools));
       const result = await generateText({
         model: model(config.composeModel),
         system: heroSystem,
@@ -261,7 +266,7 @@ export async function generateDeck(opts: {
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
-      const tools = mergeComposeTools(slidevTools, stockTools, imageGenTools);
+      const tools = mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools);
       const result = await generateText({
         model: model(config.composeModel),
         system: skill,
@@ -288,13 +293,13 @@ export async function generateDeck(opts: {
     await withSlidevMcp(
       opts.workDir,
       async (slidevTools) => {
-        const tools = mergeComposeTools(slidevTools, stockTools, imageGenTools);
+        const tools = mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools);
         const result = await generateText({
           model: model(config.composeModel),
           system: skill,
           tools: tools as never,
           maxSteps: 24,
-          prompt: `Сборка Slidev упала. Исправь колоду только через tools (MCP update/insert/remove/move, stock или image-generate при необходимости; не переписывай весь файл текстом). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
+          prompt: `Сборка Slidev упала. Исправь колоду только через tools (MCP update/insert/remove/move, yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
           onStepFinish: async (step) => {
             const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
             console.info(`[llm] repair step finish=${step.finishReason} tools=${names.join(",") || "-"}`);

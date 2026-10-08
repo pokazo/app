@@ -50,7 +50,7 @@ export function createStockTools(
   return {
     "stock-search": tool({
       description:
-        "Search Unsplash stock photos. Prefer landscape. Returns ids plus description/altDescription so you can judge subject relevance. If hits are empty OR clearly the wrong subject (e.g. wrong car model), do NOT download — call image-generate instead. Otherwise stock-download with the matching id. Empty/error: retry once with a simpler English query, then generate. Do not skip photos for the rest of the deck.",
+        "SECOND photo search after yandex-image-search. Search Unsplash stock photos (English query). Prefer landscape. Returns ids plus description/altDescription so you can judge subject relevance. Use when Yandex was empty, wrong subject, or errored. If Unsplash hits are empty OR clearly the wrong subject, do NOT download — call image-generate instead. Otherwise stock-download with the matching id. Empty/error: retry once with a simpler English query, then generate. Do not skip photos for the rest of the deck.",
       parameters: z.object({
         query: z.string().describe("English search query, e.g. modern glass office atrium"),
         orientation: z.enum(["landscape", "portrait", "squarish"]).optional(),

@@ -12,6 +12,8 @@ const HERO_TOOL_ALLOW = new Set([
   "slidev-list-slides",
   "slidev-get-slide",
   "slidev-update-slide",
+  "yandex-image-search",
+  "yandex-image-download",
   "stock-search",
   "stock-download",
   "image-generate",
