@@ -4,8 +4,9 @@ export function composeSkill(theme: string, locale: string): string {
 
 Tools:
 - Slidev MCP: slidev-get-info, slidev-list-slides, slidev-get-slide, slidev-update-slide, slidev-insert-slide, slidev-remove-slide, slidev-move-slide
-- Unsplash stock: stock-search, stock-download. Search returns description/altDescription — judge if the photo is the RIGHT subject.
-- OpenAI image-generate (cheap gpt-image-1-mini, low quality): use when stock is empty OR hits are the wrong subject (e.g. wrong car/brand). Writes local /slide-N-gen.png.
+- Yandex Images (FIRST): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl.
+- Unsplash (SECOND): stock-search, stock-download. English query. Judge description/altDescription.
+- OpenAI image-generate (LAST, cheap gpt-image-1-mini, low quality): when Yandex and Unsplash are empty OR wrong subject. Writes local /slide-N-gen.png.
 
 Visual rules:
 - Follow outline: same slide count and order; honor each slide intent and visual hint.
@@ -25,12 +26,13 @@ Visual rules:
 - For visual skills: layout: skills. Put kicker and items (name, level, pct 0–100) in frontmatter. Body is only the H1.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
 - Photo slides (visual image-right, image-left, and any remaining slide with a non-empty imageQuery — NOT slide 1):
-  1) stock-search (English query from imageQuery, orientation landscape)
-  2) Read description/altDescription. If empty results OR clearly wrong subject → image-generate with a precise English prompt that NAMES the subject (brand/model/scene), filename slide-N-gen.png
-  3) Else stock-download (id, filename slide-N.jpg)
-  4) insert/update with layout + image: /slide-N.jpg or /slide-N-gen.png
+  1) yandex-image-search (Russian/natural query from imageQuery when locale is Russian; orientation horizontal)
+  2) Judge title/domain/pageUrl. If empty/wrong/error → stock-search (English query, orientation landscape)
+  3) Judge Unsplash description/altDescription. If empty/wrong → image-generate with a precise English prompt that NAMES the subject (brand/model/scene), filename slide-N-gen.png
+  4) Else yandex-image-download or stock-download (id, filename slide-N.jpg)
+  5) insert/update with layout + image: /slide-N.jpg or /slide-N-gen.png
   Local paths only — never http(s) image URLs. Never use expensive/high image quality.
-- If one search is empty or off-topic, retry once with a simpler English query (2–4 concrete nouns). If still wrong/empty → image-generate for that slide.
+- If Yandex is empty or off-topic, go to Unsplash. If Unsplash is empty or off-topic, retry once with a simpler English query (2–4 concrete nouns). If still wrong/empty → image-generate for that slide.
 - Never treat one stock error as permission to skip photos for the rest of the deck.
 - Slide 1 already has a local hero image. Finish with at least 3 local image: paths total (hero + ≥2 more).
 - Dense facts: prefer concrete numbers, named entities, and source: on stats/timeline/comparison slides. For side-by-side specs use two-cols or a markdown table in default layout — not vague marketing bullets.
@@ -75,7 +77,7 @@ steps — массив {phase,title,body,state:done|current|todo} только �
 stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].
 skills — массив {name,level,pct} только для visual=skills, иначе [].
 kicker/source — короткие подписи или "". Для stats/timeline с цифрами source обязателен (откуда факт), иначе "".
-imageQuery — английский поисковый запрос под РЕАЛЬНЫЙ объект темы (конкретная модель/сцена, 4–8 слов); иначе "".
+imageQuery — поисковый запрос под РЕАЛЬНЫЙ объект темы (конкретная модель/сцена, 4–8 слов); для locale=ru — на русском (для Yandex Images); иначе на языке темы / английском; иначе "".
 
 Жёсткие правила плана (проверка тестами; провал = доработка):
 - Ни одного пустого слайда: у каждого непустой heading и заполненный payload под visual.
@@ -124,12 +126,14 @@ export function composeUserPrompt(outline: unknown, locale: string): string {
   return `Собери ОСТАЛЬНЫЕ слайды колоды по outline через tools.
 Slide 1 (hero) уже готов — не обновляй и не удаляй его.
 Для каждого слайда со 2-го с visual image-right, image-left или непустым imageQuery:
-  stock-search → judge description/altDescription → stock-download OR image-generate → then insert/update with image: /slide-N.jpg or /slide-N-gen.png.
-If stock hits are the wrong subject, do NOT download them — image-generate with the exact subject named in the prompt.
+  yandex-image-search → judge title/domain/pageUrl → yandex-image-download
+  OR (if empty/wrong/error) stock-search → judge description/altDescription → stock-download
+  OR image-generate → then insert/update with image: /slide-N.jpg or /slide-N-gen.png.
+If Yandex/Unsplash hits are the wrong subject, do NOT download them — next step in the pipeline, then image-generate with the exact subject named in the prompt.
 For visual=stats: map outline.stats → frontmatter items: (never stats:). Body = H1 only. Keep source when present.
 For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji. Use for comparisons when useful.
 Hero already has one local image. At least 3 local image: paths total when finished.
-Do not skip remaining photos after one stock error — retry once, then generate, then continue.
+Do not skip remaining photos after one stock error — try Yandex, then Unsplash (retry once), then generate, then continue.
 outline:
 ${JSON.stringify(outline)}
 locale=${locale}`;

@@ -18,8 +18,10 @@ describe("heroSkill", () => {
     expect(skill).toMatch(/product/);
     expect(skill).toMatch(/never use split/i);
     expect(skill).not.toMatch(/\bsplit\b.*50\/50|layout: split/i);
+    expect(skill).toMatch(/yandex-image-search/);
     expect(skill).toMatch(/stock-search/);
     expect(skill).toMatch(/image-generate/);
+    expect(skill).toMatch(/yandex-image-search[\s\S]*stock-search/i);
     expect(skill).toMatch(/slidev-update-slide/);
     expect(skill).toMatch(/Do NOT insert/i);
     expect(skill).toMatch(/variant:/);
@@ -54,6 +56,7 @@ describe("heroUserPrompt", () => {
     expect(prompt).toContain("УАЗ Патриот");
     expect(prompt).toMatch(/centered \| fullbleed \| editorial \| product/);
     expect(prompt).toMatch(/Never use split/i);
+    expect(prompt).toMatch(/yandex-image-search/);
   });
 });
 

@@ -13,6 +13,9 @@ export const config = {
   yandexClientSecret: env("YANDEX_CLIENT_SECRET"),
   yandexSearchApiKey: env("YANDEX_SEARCH_API_KEY"),
   yandexFolderId: env("YANDEX_FOLDER_ID"),
+  /** HTTP base for yandex-images service (e.g. http://91.207.75.72:3021). Empty disables tools. */
+  yandexImagesUrl: env("YANDEX_IMAGES_URL"),
+
   smtpHost: env("SMTP_HOST"),
   smtpPort: Number(env("SMTP_PORT", "587")),
   smtpUser: env("SMTP_USER"),

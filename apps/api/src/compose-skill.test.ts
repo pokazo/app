@@ -36,6 +36,14 @@ describe("composeSkill", () => {
     expect(skill).not.toMatch(/high quality/i);
   });
 
+  it("requires Yandex-first then Unsplash then image-generate", () => {
+    const skill = composeSkill("shibainu", "ru");
+    expect(skill).toMatch(/yandex-image-search/);
+    expect(skill).toMatch(/yandex-image-download/);
+    expect(skill).toMatch(/yandex-image-search[\s\S]*stock-search[\s\S]*image-generate/i);
+    expect(skill).toMatch(/title\/domain\/pageUrl|wrong subject/i);
+  });
+
   it("teaches two-cols H1-before-columns and stats items frontmatter", () => {
     const skill = composeSkill("bricks", "ru");
     expect(skill).toMatch(/two-cols/);
@@ -47,7 +55,7 @@ describe("composeSkill", () => {
 });
 
 describe("outlineUserPrompt", () => {
-  it("asks for several image-* slides with English imageQuery", () => {
+  it("asks for several image-* slides with Russian imageQuery for locale=ru", () => {
     const prompt = outlineUserPrompt({
       topic: "Антон Бутов Kotlin",
       locale: "ru",
@@ -57,6 +65,7 @@ describe("outlineUserPrompt", () => {
     expect(prompt).toMatch(/image-right/);
     expect(prompt).toMatch(/image-left/);
     expect(prompt).toMatch(/imageQuery/);
+    expect(prompt).toMatch(/на русском|Yandex Images/i);
     expect(prompt).toMatch(/минимум 3 слайда image-right или image-left/i);
     expect(prompt).toMatch(/запрещены visual none\|default/i);
     expect(prompt).toMatch(/пустого слайда/i);
@@ -111,8 +120,9 @@ describe("outlineRevisePrompt", () => {
 });
 
 describe("composeUserPrompt", () => {
-  it("repeats stock → generate fallback and leaves hero alone", () => {
+  it("repeats Yandex → Unsplash → generate fallback and leaves hero alone", () => {
     const prompt = composeUserPrompt({ title: "T", slides: [] }, "ru");
+    expect(prompt).toMatch(/yandex-image-search/);
     expect(prompt).toMatch(/stock-search/);
     expect(prompt).toMatch(/image-generate/);
     expect(prompt).toMatch(/wrong subject/i);
