@@ -12,7 +12,7 @@ Unsplash (compose `stock-search`) often returns subject-wrong photos for Russian
 
 | ID | Decision |
 |----|----------|
-| D1 | Source = Yandex Search API image search (`images-xml` / Yandex Images index) |
+| D1 | Source = Yandex Cloud Search API **v2** `POST /v2/image/search` (base64 XML `rawData`; legacy `images-xml` v1 returns 403) |
 | D2 | Architecture = one HTTP search service on VPS; Pokazo calls it over HTTP |
 | D3 | **Not** registered in Cursor `mcp.json` — Cursor agents do not use this service |
 | D4 | Compose order: **Yandex → Unsplash → image-generate** |
