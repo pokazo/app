@@ -3,6 +3,12 @@ import { Link, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage } from "../deck-view";
+import {
+  isDeckId,
+  shouldPollDeckView,
+  VIEW_NOT_FOUND_ERR,
+  VIEW_WAITING_NOTE,
+} from "../deck-view-poll";
 import { APP_HISTORY_PATH } from "../decks";
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
@@ -17,12 +23,16 @@ type ViewMeta = {
   building?: boolean;
 };
 
+const WAIT_TIMEOUT_MS = 20 * 60 * 1000;
+const POLL_MS = 2000;
+
 export function DeckView() {
   const { id = "" } = useParams();
   const stageRef = useRef<HTMLIFrameElement>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [meta, setMeta] = useState<ViewMeta | null>(null);
   const [err, setErr] = useState("");
+  const [waiting, setWaiting] = useState(true);
   const [current, setCurrent] = useState(1);
   const [copied, setCopied] = useState(false);
   const [stageReady, setStageReady] = useState(false);
@@ -33,6 +43,7 @@ export function DeckView() {
   const [building, setBuilding] = useState(false);
 
   const embedBase = apiUrl(`/p/${id}/`);
+  const idOk = isDeckId(id);
 
   useEffect(() => {
     fetch(apiUrl("/api/auth/me"), { credentials: "include" })
@@ -49,56 +60,90 @@ export function DeckView() {
     return r.json() as Promise<ViewMeta>;
   }, [id]);
 
+  // Wait for first preview dist, then poll until compose finishes (remount iframe on ready).
   useEffect(() => {
-    let cancelled = false;
     setMeta(null);
     setErr("");
+    setWaiting(true);
     setCurrent(1);
     setStageReady(false);
     setBuilding(false);
     setEmbedKey(0);
+    setSpeechOpen(false);
 
-    loadView()
-      .then((data) => {
-        if (cancelled) return;
-        setMeta(data);
-        setBuilding(Boolean(data.building));
-        setCurrent(data.slides[0]?.index ?? 1);
-      })
-      .catch(() => {
-        if (!cancelled) setErr("Презентация ещё не готова или ссылка неверная.");
-      });
+    if (!idOk) {
+      setWaiting(false);
+      setErr(VIEW_NOT_FOUND_ERR);
+      return;
+    }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [id, loadView]);
-
-  // While preview/building: poll until ready, then refresh meta + remount iframe (full rebuild).
-  useEffect(() => {
-    if (!id || !building) return;
     let cancelled = false;
+    let stopped = false;
+    let hasMeta = false;
+    let isBuilding = false;
+    const started = Date.now();
+
+    const stopWithError = (message: string) => {
+      stopped = true;
+      setWaiting(false);
+      setErr(message);
+    };
+
     const tick = async () => {
+      if (cancelled || stopped) return;
+      if (!shouldPollDeckView({ hasMeta, building: isBuilding })) return;
+
       try {
         const data = await loadView();
-        if (cancelled) return;
+        if (cancelled || stopped) return;
+        const firstMeta = !hasMeta;
+        const wasBuilding = hasMeta && isBuilding;
+        hasMeta = true;
+        isBuilding = Boolean(data.building);
         setMeta(data);
-        setBuilding(Boolean(data.building));
-        if (!data.building) {
+        setWaiting(false);
+        setErr("");
+        setBuilding(isBuilding);
+        if (firstMeta) {
+          setCurrent(data.slides[0]?.index ?? 1);
+        }
+        if (wasBuilding && !isBuilding) {
           setStageReady(false);
           setEmbedKey((k) => k + 1);
           setCurrent(data.slides[0]?.index ?? 1);
         }
       } catch {
-        /* keep polling */
+        if (cancelled || stopped || hasMeta) return;
+        try {
+          const dr = await fetch(apiUrl(`/api/decks/${id}`), { credentials: "include" });
+          if (cancelled || stopped) return;
+          if (dr.status === 404) {
+            stopWithError(VIEW_NOT_FOUND_ERR);
+            return;
+          }
+          if (dr.ok) {
+            const d = (await dr.json()) as { status?: string; error?: string };
+            if (d.status === "failed") {
+              stopWithError(d.error || "Не собралось");
+              return;
+            }
+          }
+        } catch {
+          /* public link — keep waiting for /api/view */
+        }
+        if (Date.now() - started > WAIT_TIMEOUT_MS) {
+          stopWithError(VIEW_NOT_FOUND_ERR);
+        }
       }
     };
-    const t = window.setInterval(() => void tick(), 3000);
+
+    void tick();
+    const t = window.setInterval(() => void tick(), POLL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(t);
     };
-  }, [id, building, loadView]);
+  }, [id, idOk, loadView]);
 
   const last = meta?.slides.length ?? 1;
   const go = useCallback(
@@ -234,6 +279,7 @@ export function DeckView() {
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
+      {waiting && !err ? <p className="app-note deck-building">{VIEW_WAITING_NOTE}</p> : null}
       {building && meta ? (
         <p className="app-note deck-building">Собираем остальные слайды… первый уже можно смотреть.</p>
       ) : null}
@@ -268,11 +314,11 @@ export function DeckView() {
         </nav>
         <div className="deck-stage">
           <div className="deck-stage-frame">
-            {id && !err ? (
+            {id && meta && !err ? (
               <iframe
                 key={embedKey}
                 ref={stageRef}
-                title={meta?.topic ?? "Презентация"}
+                title={meta.topic ?? "Презентация"}
                 src={`${embedDeckUrl(embedBase)}${embedKey ? `&_r=${embedKey}` : ""}`}
                 fetchPriority="high"
                 onLoad={() => setStageReady(true)}
