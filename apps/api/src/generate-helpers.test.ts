@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeMaxSteps, mergeComposeTools } from "./generate-helpers.js";
+import { composeMaxSteps, mergeComposeTools, pickHeroTools } from "./generate-helpers.js";
 
 describe("composeMaxSteps", () => {
   it("scales with slide count and caps", () => {
@@ -19,6 +19,26 @@ describe("mergeComposeTools", () => {
       "image-generate",
       "slidev-list-slides",
       "stock-download",
+      "stock-search",
+    ]);
+  });
+});
+
+describe("pickHeroTools", () => {
+  it("keeps update + assets and drops insert/remove/move", () => {
+    const picked = pickHeroTools({
+      "slidev-update-slide": 1,
+      "slidev-insert-slide": 2,
+      "slidev-remove-slide": 3,
+      "slidev-move-slide": 4,
+      "slidev-list-slides": 5,
+      "stock-search": 6,
+      "image-generate": 7,
+    });
+    expect(Object.keys(picked).sort()).toEqual([
+      "image-generate",
+      "slidev-list-slides",
+      "slidev-update-slide",
       "stock-search",
     ]);
   });

@@ -78,6 +78,16 @@ function sanitizeImageFrontmatter(md: string): string {
   });
 }
 
+const HERO_VARIANTS = new Set(["centered", "fullbleed", "editorial", "product"]);
+
+/** Drop unknown hero variants (no split / interactive). */
+export function sanitizeHeroVariantFrontmatter(md: string): string {
+  return md.replace(/^variant:\s*(.+)$/gim, (_m, raw: string) => {
+    const val = raw.trim().replace(/^["']|["']$/g, "").toLowerCase();
+    return HERO_VARIANTS.has(val) ? `variant: ${val}` : "variant: fullbleed";
+  });
+}
+
 export function guardMarkdown(md: string, theme = "default"): string {
   const pinned = slidevThemeId(theme);
   const palette = layoutPalette(theme);
@@ -98,6 +108,7 @@ export function guardMarkdown(md: string, theme = "default"): string {
     return ALLOWED_LAYOUTS.has(id) ? `layout: ${id}` : "layout: default";
   });
   out = sanitizeImageFrontmatter(out);
+  out = sanitizeHeroVariantFrontmatter(out);
   out = normalizeStatsFrontmatter(out);
   return quoteFrontmatterTitle(pinPalette(pinTheme(out, pinned), palette));
 }

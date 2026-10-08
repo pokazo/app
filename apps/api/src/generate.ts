@@ -13,9 +13,10 @@ import {
   outlineRevisePrompt,
   outlineUserPrompt,
 } from "./compose-skill.js";
+import { heroMaxSteps, heroSkill, heroUserPrompt } from "./hero-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
-import { composeMaxSteps, mergeComposeTools } from "./generate-helpers.js";
+import { composeMaxSteps, mergeComposeTools, pickHeroTools } from "./generate-helpers.js";
 import {
   formatOutlinePlanIssues,
   refineOutlineUntilValid,
@@ -44,7 +45,7 @@ async function guardWorkSlides(workDir: string, theme: string): Promise<string> 
 }
 
 type LlmStepLog = {
-  phase: "compose" | "repair";
+  phase: "hero" | "compose" | "repair";
   step: number;
   finishReason: string;
   text?: string;
@@ -52,7 +53,7 @@ type LlmStepLog = {
 };
 
 function summarizeGenerate(
-  phase: "compose" | "repair",
+  phase: "hero" | "compose" | "repair",
   result: {
     finishReason: string;
     text: string;
@@ -94,6 +95,7 @@ export async function generateDeck(opts: {
 }): Promise<void> {
   const theme = opts.theme;
   const skill = composeSkill(theme, opts.locale);
+  const heroSystem = heroSkill(theme, opts.locale);
   const mcpCalls: McpCallLog[] = [];
   const attributions: Array<StockToolAttribution | GenToolAttribution> = [];
   const llm: unknown[] = [];
@@ -101,7 +103,9 @@ export async function generateDeck(opts: {
   await mkdir(join(opts.workDir, "public"), { recursive: true });
   installDeckLayouts(opts.workDir);
 
-  console.info(`[generate] outline model=${config.outlineModel} compose=${config.composeModel} topic=${opts.topic}`);
+  console.info(
+    `[generate] outline model=${config.outlineModel} compose=${config.composeModel} topic=${opts.topic}`,
+  );
 
   console.info(`[generate] research start topic=${opts.topic}`);
   const research = await runTopicResearch({
@@ -212,6 +216,33 @@ export async function generateDeck(opts: {
     onAttribution: (entry) => attributions.push(entry),
   });
 
+  console.info(`[generate] hero-compose start`);
+  await withSlidevMcp(
+    opts.workDir,
+    async (slidevTools) => {
+      const tools = pickHeroTools(mergeComposeTools(slidevTools, stockTools, imageGenTools));
+      const result = await generateText({
+        model: model(config.composeModel),
+        system: heroSystem,
+        tools: tools as never,
+        maxSteps: heroMaxSteps(),
+        prompt: heroUserPrompt({
+          outline: outline.object,
+          locale: opts.locale,
+          topic: opts.topic,
+        }),
+        onStepFinish: async (step) => {
+          const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+          console.info(`[llm] hero step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
+        },
+      });
+      llm.push(summarizeGenerate("hero", result));
+    },
+    (call) => mcpCalls.push(call),
+  );
+  await guardWorkSlides(opts.workDir, theme);
+  console.info(`[generate] hero-compose done`);
+
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
@@ -249,7 +280,7 @@ export async function generateDeck(opts: {
           system: skill,
           tools: tools as never,
           maxSteps: 24,
-          prompt: `Сборка Slidev упала. Исправь колоду только через tools (MCP update/insert/remove/move, stock или image-generate при необходимости; не переписывай весь файл текстом).\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
+          prompt: `Сборка Slidev упала. Исправь колоду только через tools (MCP update/insert/remove/move, stock или image-generate при необходимости; не переписывай весь файл текстом). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
           onStepFinish: async (step) => {
             const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
             console.info(`[llm] repair step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
@@ -282,6 +313,9 @@ export async function generateDeck(opts: {
       s.visual,
     ),
   ).length;
+  const heroPhase = llm.find(
+    (entry) => entry && typeof entry === "object" && "phase" in entry && (entry as { phase?: string }).phase === "hero",
+  );
   const trace = {
     outlineModel: config.outlineModel,
     composeModel: config.composeModel,
@@ -291,6 +325,7 @@ export async function generateDeck(opts: {
     repaired,
     researchUsed: research.used,
     researchSearchCalls: research.searchCalls,
+    heroComposed: Boolean(heroPhase),
     mcpCalls,
     attributions,
     llm,

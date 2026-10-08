@@ -5,10 +5,16 @@ const props = defineProps<{
   brand?: string
   image?: string
   palette?: string
+  /** centered | fullbleed | editorial | product — never split */
+  variant?: string
 }>()
 
 const paletteClass =
   props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
+
+const VARIANTS = new Set(["centered", "fullbleed", "editorial", "product"])
+const variant =
+  props.variant && VARIANTS.has(props.variant) ? props.variant : props.image ? "fullbleed" : "centered"
 
 function photoSrc(image?: string) {
   if (!image) return ""
@@ -19,7 +25,15 @@ function photoSrc(image?: string) {
 </script>
 
 <template>
-  <div class="pk-brick pk-hero" :class="[paletteClass, { 'pk-hero--photo': Boolean(props.image) }]">
+  <div
+    class="pk-brick pk-hero"
+    :class="[paletteClass, `pk-hero--${variant}`, { 'pk-hero--photo': Boolean(props.image) }]"
+  >
+    <div v-if="props.image" class="pk-hero__photo" aria-hidden="true">
+      <img :src="photoSrc(props.image)" alt="" />
+      <div class="pk-hero__veil" />
+    </div>
+
     <div class="pk-brick__pane">
       <div class="pk-brand" v-if="brand">
         <span class="pk-brand__mark" />
@@ -34,9 +48,6 @@ function photoSrc(image?: string) {
       </div>
       <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
-    <div v-if="props.image" class="pk-hero__photo">
-      <img :src="photoSrc(props.image)" alt="" />
-    </div>
   </div>
 </template>
 
@@ -47,6 +58,7 @@ function photoSrc(image?: string) {
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
+  --pk-veil: rgba(247, 243, 236, 0.72);
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -60,6 +72,7 @@ function photoSrc(image?: string) {
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
+  --pk-veil: rgba(247, 243, 236, 0.72);
 }
 .pk-palette-ink,
 .pk-palette-auto {
@@ -68,11 +81,29 @@ function photoSrc(image?: string) {
   --pk-sub: #c5c7ca;
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
+  --pk-veil: rgba(25, 27, 30, 0.55);
 }
-.pk-hero--photo {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+
+.pk-hero__photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background-color: #1a1a1a;
 }
+.pk-hero__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pk-hero__veil {
+  position: absolute;
+  inset: 0;
+  background: var(--pk-veil);
+  pointer-events: none;
+}
+
 .pk-brick__pane {
   position: relative;
   z-index: 1;
@@ -80,7 +111,6 @@ function photoSrc(image?: string) {
   padding: 48px 56px;
   display: flex;
   flex-direction: column;
-  background: var(--pk-paper);
   color: var(--pk-ink);
 }
 .pk-brand {
@@ -151,23 +181,154 @@ function photoSrc(image?: string) {
   color: var(--pk-sub);
   margin: 0 0 8px;
 }
+.pk-hero__body :deep(p) {
+  font-size: 20px;
+  line-height: 1.45;
+  color: var(--pk-sub);
+  max-width: 36ch;
+  margin: 0;
+}
 .pk-source {
   font-size: 13px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;
 }
-.pk-hero__photo {
-  min-height: 0;
-  min-width: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background-color: #1a1a1a;
+
+/* --- centered: brand/kicker/body centered over veiled photo --- */
+.pk-hero--centered .pk-brick__pane {
+  align-items: center;
+  text-align: center;
+  justify-content: center;
 }
-.pk-hero__photo img {
-  display: block;
+.pk-hero--centered .pk-brand,
+.pk-hero--centered .pk-kicker {
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.pk-hero--centered .pk-hero__body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pk-hero--centered .pk-hero__body :deep(h1) {
+  max-width: 18ch;
+  font-size: 56px;
+}
+.pk-hero--centered .pk-hero__body :deep(p) {
+  max-width: 32ch;
+}
+.pk-hero--centered .pk-source {
+  margin-top: 28px;
+}
+
+/* --- fullbleed: strong photo, light veil, text bottom-left --- */
+.pk-hero--fullbleed .pk-hero__veil {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.55) 55%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+}
+.pk-hero--fullbleed.pk-palette-cream {
+  --pk-ink: #ffffff;
+  --pk-sub: #e8e4dc;
+  --pk-faint: #cfc9bd;
+}
+.pk-hero--fullbleed .pk-brick__pane {
+  justify-content: flex-end;
+  padding-bottom: 56px;
+}
+.pk-hero--fullbleed .pk-brand {
+  margin-bottom: auto;
+}
+.pk-hero--fullbleed .pk-hero__body {
+  margin: 0;
+}
+.pk-hero--fullbleed .pk-hero__body :deep(h1) {
+  max-width: 14ch;
+  font-size: 54px;
+}
+
+/* --- editorial: asymmetric type, photo as right-biased crop --- */
+.pk-hero--editorial .pk-hero__photo {
+  inset: 0 0 0 38%;
+  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%);
+}
+.pk-hero--editorial .pk-hero__veil {
+  background: transparent;
+}
+.pk-hero--editorial .pk-brick__pane {
+  width: 58%;
+  background: var(--pk-paper);
+  justify-content: center;
+  padding-right: 40px;
+}
+.pk-hero--editorial .pk-brand {
+  margin-bottom: 48px;
+}
+.pk-hero--editorial .pk-hero__body {
+  margin: 0;
+}
+.pk-hero--editorial .pk-hero__body :deep(h1) {
+  font-size: 58px;
+  max-width: 11ch;
+  letter-spacing: -0.04em;
+}
+.pk-hero--editorial .pk-hero__body :deep(p) {
+  max-width: 28ch;
+  font-size: 18px;
+}
+.pk-hero--editorial:not(.pk-hero--photo) .pk-brick__pane {
   width: 100%;
+}
+
+/* --- product: large visual stage + promise band --- */
+.pk-hero--product {
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+.pk-hero--product .pk-hero__photo {
+  inset: auto;
+  position: relative;
   height: 100%;
-  object-fit: cover;
+  min-height: 0;
+}
+.pk-hero--product .pk-hero__veil {
+  background: transparent;
+}
+.pk-hero--product .pk-brick__pane {
+  height: auto;
+  background: var(--pk-paper);
+  padding: 28px 48px 36px;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.pk-hero--product .pk-brand {
+  margin-bottom: 0;
+}
+.pk-hero--product .pk-kicker {
+  margin-bottom: 8px;
+}
+.pk-hero--product .pk-hero__body {
+  margin: 0;
+}
+.pk-hero--product .pk-hero__body :deep(h1) {
+  font-size: 36px;
+  max-width: 22ch;
+  margin-bottom: 10px;
+}
+.pk-hero--product .pk-hero__body :deep(p) {
+  font-size: 18px;
+  max-width: 40ch;
+}
+.pk-hero--product:not(.pk-hero--photo) {
+  display: block;
+}
+.pk-hero--product:not(.pk-hero--photo) .pk-brick__pane {
+  height: 100%;
+  justify-content: center;
+  padding: 48px 56px;
 }
 </style>

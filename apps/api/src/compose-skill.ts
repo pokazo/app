@@ -10,7 +10,8 @@ Tools:
 Visual rules:
 - Follow outline: same slide count and order; honor each slide intent and visual hint.
 - You MAY refine headings/copy and pick exact layout; do NOT invent extra slides.
-- Prefer variety: cover, image-right, image-left, two-cols (::right::), quote, fact, timeline, stats, section, end — avoid every slide being default bullets.
+- Prefer variety: image-right, image-left, two-cols (::right::), quote, fact, timeline, stats, skills — avoid every slide being default bullets.
+- Slide 1 is already a finished hero (composed by a separate hero agent). Do NOT update, remove, or replace slide 1. Do NOT change its layout/variant/image.
 - For visual two-cols: layout: two-cols. Structure MUST be: H1 title ABOVE ::left::, then ::left:: column, then ::right:: column. Never put the H1 inside ::left::. Short columns (≤4 bullets each). No emoji in headings or bullets. Example body:
   # Title here
   ::left::
@@ -22,9 +23,8 @@ Visual rules:
 - For visual timeline: layout: timeline. Put kicker, source, and steps (3–5 objects: phase, title, body, state done|current|todo) in frontmatter. Body of the slide is only the H1 title.
 - For visual stats: layout: stats. Put kicker, source, and frontmatter items (not stats) — 2–4 objects: value, label, note. Body is only the H1. Key name is items: (YAML list). Never use stats: as the frontmatter key.
 - For visual skills: layout: skills. Put kicker and items (name, level, pct 0–100) in frontmatter. Body is only the H1.
-- Cover/intro: layout: hero with kicker (uppercase short label). Body: H1 + 1–2 sentences, no bullet list. hero and cover also get a photo via stock-download or image-generate.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
-- Photo slides (visual image-right, image-left, hero, cover, and any slide with a non-empty imageQuery):
+- Photo slides (visual image-right, image-left, and any remaining slide with a non-empty imageQuery — NOT slide 1):
   1) stock-search (English query from imageQuery, orientation landscape)
   2) Read description/altDescription. If empty results OR clearly wrong subject → image-generate with a precise English prompt that NAMES the subject (brand/model/scene), filename slide-N-gen.png
   3) Else stock-download (id, filename slide-N.jpg)
@@ -32,7 +32,7 @@ Visual rules:
   Local paths only — never http(s) image URLs. Never use expensive/high image quality.
 - If one search is empty or off-topic, retry once with a simpler English query (2–4 concrete nouns). If still wrong/empty → image-generate for that slide.
 - Never treat one stock error as permission to skip photos for the rest of the deck.
-- A finished deck with fewer than 3 local images is a failure. at least 3 slides must have image: /slide-N.jpg or /slide-N-gen.png before you stop.
+- Slide 1 already has a local hero image. Finish with at least 3 local image: paths total (hero + ≥2 more).
 - Dense facts: prefer concrete numbers, named entities, and source: on stats/timeline/comparison slides. For side-by-side specs use two-cols or a markdown table in default layout — not vague marketing bullets.
 - Icons: carbon-* / mdi-* style icons when visual=icon; no custom Vue SFCs, no <script>.
 - theme/palette are already set in headmatter — do not change theme or palette.
@@ -40,7 +40,7 @@ Visual rules:
 - One strong idea per slide; heading short; ≤5 bullets; numbers can be large in content.
 
 Structural rules:
-- Scaffold already has slide 1 with theme/title. Update that same slide in place (do not insert an extra blank first slide). Then insert remaining slides ONE AT A TIME (sequential inserts only — never parallel insert with future after: numbers).
+- Slide 1 (hero) is already composed. Leave it alone. Insert outline slides 2..N ONE AT A TIME after slide 1 (sequential inserts only — never parallel insert with future after: numbers). Do not insert an extra blank first slide.
 - After inserts, call slidev-list-slides to verify count matches outline.
 - Finish when list-slides length matches outline AND at least 3 slides have local image: paths.
 - Picker theme hint (do not rewrite frontmatter theme): ${theme}.`;
@@ -121,13 +121,14 @@ ${JSON.stringify(opts.previous)}
 }
 
 export function composeUserPrompt(outline: unknown, locale: string): string {
-  return `Собери колоду по outline через tools.
-Для каждого слайда с visual image-right, image-left, hero, cover или непустым imageQuery:
+  return `Собери ОСТАЛЬНЫЕ слайды колоды по outline через tools.
+Slide 1 (hero) уже готов — не обновляй и не удаляй его.
+Для каждого слайда со 2-го с visual image-right, image-left или непустым imageQuery:
   stock-search → judge description/altDescription → stock-download OR image-generate → then insert/update with image: /slide-N.jpg or /slide-N-gen.png.
 If stock hits are the wrong subject, do NOT download them — image-generate with the exact subject named in the prompt.
 For visual=stats: map outline.stats → frontmatter items: (never stats:). Body = H1 only. Keep source when present.
 For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji. Use for comparisons when useful.
-Do not finish with zero local images. At least 3 local image: paths.
+Hero already has one local image. At least 3 local image: paths total when finished.
 Do not skip remaining photos after one stock error — retry once, then generate, then continue.
 outline:
 ${JSON.stringify(outline)}

@@ -18,7 +18,7 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/layout: timeline/);
     expect(skill).toMatch(/layout: stats/);
     expect(skill).toMatch(/layout: skills/);
-    expect(skill).toMatch(/layout: hero/);
+    expect(skill).toMatch(/finished hero/i);
     expect(skill).toMatch(/Never dump|ONLY through (MCP|tools)/i);
   });
 
@@ -31,8 +31,8 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/image: \/slide-/);
     expect(skill).toMatch(/retry once with a simpler English query/i);
     expect(skill).not.toMatch(/If stock tools return an error, fall back/i);
-    expect(skill).toMatch(/hero and cover also get a photo/i);
-    expect(skill).toMatch(/at least 3 slides must have image:/i);
+    expect(skill).toMatch(/Slide 1 is already a finished hero/i);
+    expect(skill).toMatch(/at least 3 local image: paths total/i);
     expect(skill).not.toMatch(/high quality/i);
   });
 
@@ -111,11 +111,12 @@ describe("outlineRevisePrompt", () => {
 });
 
 describe("composeUserPrompt", () => {
-  it("repeats stock → generate fallback and image frontmatter", () => {
+  it("repeats stock → generate fallback and leaves hero alone", () => {
     const prompt = composeUserPrompt({ title: "T", slides: [] }, "ru");
     expect(prompt).toMatch(/stock-search/);
     expect(prompt).toMatch(/image-generate/);
     expect(prompt).toMatch(/wrong subject/i);
     expect(prompt).toMatch(/At least 3/i);
+    expect(prompt).toMatch(/Slide 1 \(hero\) уже готов/i);
   });
 });
