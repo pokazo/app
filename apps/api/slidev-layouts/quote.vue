@@ -17,9 +17,11 @@ const paletteClass =
         <span class="pk-kicker__line" />
         <span class="pk-kicker__text">{{ kicker }}</span>
       </div>
-      <div class="pk-quote__mark" aria-hidden>“</div>
-      <div class="pk-quote__body">
-        <slot />
+      <div class="pk-quote__row">
+        <div class="pk-quote__body">
+          <slot />
+        </div>
+        <div class="pk-quote__mark" aria-hidden>“</div>
       </div>
       <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
@@ -54,10 +56,9 @@ const paletteClass =
   z-index: 1;
   height: 100%;
   width: 100%;
-  padding: 40px 52px 32px;
+  padding: 40px 48px 28px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   min-height: 0;
   box-sizing: border-box;
 }
@@ -65,7 +66,7 @@ const paletteClass =
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   flex: none;
 }
 .pk-kicker__line {
@@ -82,34 +83,26 @@ const paletteClass =
   text-transform: uppercase;
   color: var(--pk-accent);
 }
-.pk-quote__mark {
-  font-size: 56px;
-  line-height: 1;
-  font-weight: 800;
-  color: var(--pk-accent);
-  opacity: 0.85;
-  margin: 0 0 8px;
-  flex: none;
+.pk-quote__row {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(140px, 0.6fr);
+  gap: 24px;
+  align-items: center;
 }
 .pk-quote__body {
   min-width: 0;
-  width: 100%;
-  max-width: none;
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 .pk-quote__body :deep(h1),
 .pk-quote__body :deep(p),
 .pk-quote__body :deep(blockquote) {
-  margin: 0 0 16px;
-  font-size: 34px;
+  margin: 0 0 14px;
+  font-size: 30px;
   line-height: 1.28;
   font-weight: 700;
   letter-spacing: -0.02em;
   max-width: none;
-  width: 100%;
 }
 .pk-quote__body :deep(ul) {
   list-style: none;
@@ -125,9 +118,18 @@ const paletteClass =
 .pk-quote__body :deep(li::before) {
   content: none;
 }
+.pk-quote__mark {
+  font-size: 180px;
+  line-height: 0.85;
+  font-weight: 800;
+  color: var(--pk-accent);
+  opacity: 0.22;
+  text-align: right;
+  user-select: none;
+}
 .pk-source {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 14px;
   font-size: 13px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;

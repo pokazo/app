@@ -40,6 +40,7 @@ const paletteClass =
   --pk-sub: #5c5c5c;
   --pk-accent: #e10600;
   --pk-faint: #9a9a9a;
+  --pk-card: #f2f2f2;
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -123,19 +124,27 @@ const paletteClass =
   font-weight: 800;
   line-height: 1.2;
 }
+.pk-twocols__col :deep(> :first-child) {
+  margin-top: 0;
+}
 .pk-twocols__col :deep(ul) {
   margin: 0;
-  padding: 0;
+  padding: 18px 18px;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  justify-content: space-evenly;
+  gap: 14px;
   flex: 1;
+  min-height: 0;
+  background: var(--pk-card, #efe8dc);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 18px;
 }
 .pk-twocols__col :deep(li) {
   position: relative;
   padding-left: 1.15em;
-  font-size: 20px;
+  font-size: 19px;
   line-height: 1.4;
   color: var(--pk-ink);
 }
@@ -171,6 +180,7 @@ const paletteClass =
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
+  --pk-card: #efe8dc;
 }
 .pk-palette-ink,
 .pk-palette-auto {
@@ -179,5 +189,6 @@ const paletteClass =
   --pk-sub: #c5c7ca;
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
+  --pk-card: #25282d;
 }
 </style>
