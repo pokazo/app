@@ -23,6 +23,7 @@ Hero variants (pick ONE; never use split or interactive):
 
 How to choose:
 - Brand / manifesto / personal intro → centered or editorial
+- If the chosen photo already has big logos/slogans/type → prefer editorial or product (never centered over text-heavy art)
 - Atmosphere, place, story, drama → fullbleed
 - Concrete product, vehicle, device, UI, named object → product
 - Pick the strongest match for the outline intent; vary intentionally — do not default to the same variant every time.
