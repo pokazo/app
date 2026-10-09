@@ -16,7 +16,7 @@ Tools:
 Do NOT insert, remove, or move slides. Do NOT create slide 2+. Only update slide 1 in place.
 
 Hero variants (pick ONE; never use split or interactive):
-- centered — text centered over a veiled full-bleed photo; brand/kicker centered; H1 + 1 short sentence.
+- centered — text centered on an opaque plate over the photo (never letters-on-letters if the image has baked-in type); brand/kicker centered; H1 + 1 short sentence.
 - fullbleed — photo fills the frame; text over a dark gradient at the bottom-left; cinematic.
 - editorial — asymmetric magazine look: large type on the left pane, photo cropped on the right (not 50/50 split).
 - product — large product/scene photo on top, short promise band below (H1 + one line).

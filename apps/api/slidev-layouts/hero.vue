@@ -35,18 +35,20 @@ function photoSrc(image?: string) {
     </div>
 
     <div class="pk-brick__pane">
-      <div class="pk-brand" v-if="brand">
-        <span class="pk-brand__mark" />
-        <span class="pk-brand__text">{{ brand }}</span>
+      <div class="pk-hero__plate">
+        <div class="pk-brand" v-if="brand">
+          <span class="pk-brand__mark" />
+          <span class="pk-brand__text">{{ brand }}</span>
+        </div>
+        <div class="pk-kicker" v-if="kicker">
+          <span class="pk-kicker__line" />
+          <span class="pk-kicker__text">{{ kicker }}</span>
+        </div>
+        <div class="pk-hero__body">
+          <slot />
+        </div>
+        <div v-if="source" class="pk-source">{{ source }}</div>
       </div>
-      <div class="pk-kicker" v-if="kicker">
-        <span class="pk-kicker__line" />
-        <span class="pk-kicker__text">{{ kicker }}</span>
-      </div>
-      <div class="pk-hero__body">
-        <slot />
-      </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -58,7 +60,7 @@ function photoSrc(image?: string) {
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
-  --pk-veil: rgba(247, 243, 236, 0.88);
+  --pk-veil: rgba(247, 243, 236, 0.55);
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -72,7 +74,7 @@ function photoSrc(image?: string) {
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
-  --pk-veil: rgba(247, 243, 236, 0.88);
+  --pk-veil: rgba(247, 243, 236, 0.55);
 }
 .pk-palette-ink,
 .pk-palette-auto {
@@ -81,7 +83,7 @@ function photoSrc(image?: string) {
   --pk-sub: #c5c7ca;
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
-  --pk-veil: rgba(25, 27, 30, 0.72);
+  --pk-veil: rgba(25, 27, 30, 0.45);
 }
 
 .pk-hero__photo {
@@ -112,6 +114,14 @@ function photoSrc(image?: string) {
   display: flex;
   flex-direction: column;
   color: var(--pk-ink);
+  box-sizing: border-box;
+}
+/* Default: plate is transparent pass-through (no photo / editorial pane already solid). */
+.pk-hero__plate {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
 }
 .pk-brand {
   display: flex;
@@ -194,16 +204,37 @@ function photoSrc(image?: string) {
   font-family: ui-monospace, monospace;
 }
 
-/* --- centered: brand/kicker/body centered over veiled photo --- */
+/* --- centered: brand/kicker/body centered; solid plate when photo has baked-in type --- */
 .pk-hero--centered .pk-brick__pane {
   align-items: center;
   text-align: center;
   justify-content: center;
 }
+.pk-hero--centered .pk-hero__plate {
+  align-items: center;
+}
+.pk-hero--centered.pk-hero--photo .pk-hero__veil {
+  /* Keep photo visible at edges; text rides on an opaque plate so image type cannot collide. */
+  background: rgba(247, 243, 236, 0.35);
+}
+.pk-hero--centered.pk-palette-ink.pk-hero--photo .pk-hero__veil,
+.pk-hero--centered.pk-palette-auto.pk-hero--photo .pk-hero__veil {
+  background: rgba(25, 27, 30, 0.35);
+}
+.pk-hero--centered.pk-hero--photo .pk-hero__plate {
+  background: var(--pk-paper);
+  padding: 36px 44px 32px;
+  border-radius: 28px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  max-width: min(780px, 92%);
+}
 .pk-hero--centered .pk-brand,
 .pk-hero--centered .pk-kicker {
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+.pk-hero--centered .pk-brand {
+  margin-bottom: 12px;
 }
 .pk-hero--centered .pk-hero__body {
   margin: 0;
@@ -212,14 +243,14 @@ function photoSrc(image?: string) {
   align-items: center;
 }
 .pk-hero--centered .pk-hero__body :deep(h1) {
-  max-width: min(16em, 92%);
-  font-size: 48px;
+  max-width: min(16em, 100%);
+  font-size: 44px;
 }
 .pk-hero--centered .pk-hero__body :deep(p) {
-  max-width: min(36em, 92%);
+  max-width: min(36em, 100%);
 }
 .pk-hero--centered .pk-source {
-  margin-top: 28px;
+  margin-top: 20px;
 }
 
 /* --- fullbleed: strong photo, light veil, text bottom-left --- */
@@ -247,8 +278,12 @@ function photoSrc(image?: string) {
   margin: 0;
 }
 .pk-hero--fullbleed .pk-hero__body :deep(h1) {
-  max-width: 14ch;
+  max-width: min(14em, 100%);
   font-size: 54px;
+}
+/* Fullbleed: dark gradient already; add text shadow so pale image type cannot compete. */
+.pk-hero--fullbleed.pk-hero--photo .pk-hero__plate {
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
 }
 
 /* --- editorial: asymmetric type, photo as right-biased crop --- */
