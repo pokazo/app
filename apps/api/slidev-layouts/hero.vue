@@ -58,7 +58,7 @@ function photoSrc(image?: string) {
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
-  --pk-veil: rgba(247, 243, 236, 0.72);
+  --pk-veil: rgba(247, 243, 236, 0.88);
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -72,7 +72,7 @@ function photoSrc(image?: string) {
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
-  --pk-veil: rgba(247, 243, 236, 0.72);
+  --pk-veil: rgba(247, 243, 236, 0.88);
 }
 .pk-palette-ink,
 .pk-palette-auto {
@@ -81,7 +81,7 @@ function photoSrc(image?: string) {
   --pk-sub: #c5c7ca;
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
-  --pk-veil: rgba(25, 27, 30, 0.55);
+  --pk-veil: rgba(25, 27, 30, 0.72);
 }
 
 .pk-hero__photo {
