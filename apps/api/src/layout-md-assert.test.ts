@@ -4,7 +4,12 @@ import {
   parseSlideBlocks,
   parseSimpleYaml,
 } from "./layout-md-assert.js";
-import { badStatsMarkdown, happyPathLayoutsMarkdown } from "./layout-fixtures.js";
+import {
+  BAD_LAYOUT_MARKDOWN,
+  LAYOUT_SHOT_ORDER,
+  badMarkdownForLayout,
+  happyPathLayoutsMarkdown,
+} from "./layout-fixtures.js";
 
 describe("parseSimpleYaml", () => {
   it("parses items list", () => {
@@ -24,19 +29,24 @@ items:
 });
 
 describe("assertLayoutsInMarkdown", () => {
-  it("accepts happy-path gallery", () => {
+  it("accepts happy-path gallery for all custom layouts", () => {
     expect(() => assertLayoutsInMarkdown(happyPathLayoutsMarkdown())).not.toThrow();
+    const layouts = parseSlideBlocks(happyPathLayoutsMarkdown())
+      .map((b) => b.fm.layout)
+      .filter(Boolean);
+    for (const name of LAYOUT_SHOT_ORDER) {
+      expect(layouts, `gallery missing ${name}`).toContain(name);
+    }
   });
 
-  it("throws LayoutError[stats] for sparse stats", () => {
-    expect(() => assertLayoutsInMarkdown(badStatsMarkdown())).toThrow(/LayoutError\[stats\]/);
-  });
-
-  it("parses gallery into layout slides", () => {
-    const blocks = parseSlideBlocks(happyPathLayoutsMarkdown());
-    const layouts = blocks.map((b) => b.fm.layout).filter(Boolean);
-    expect(layouts).toContain("hero");
-    expect(layouts).toContain("two-cols");
-    expect(layouts).toContain("skills");
-  });
+  it.each(LAYOUT_SHOT_ORDER)(
+    "throws LayoutError[%s] for undrawable %s slide",
+    (layout) => {
+      const md = badMarkdownForLayout(layout);
+      expect(BAD_LAYOUT_MARKDOWN[layout]).toBeTruthy();
+      expect(() => assertLayoutsInMarkdown(md)).toThrow(
+        new RegExp(`LayoutError\\[${layout}\\]`),
+      );
+    },
+  );
 });

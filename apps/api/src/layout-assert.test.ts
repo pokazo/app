@@ -12,11 +12,25 @@ import {
   assertTwoColsLayout,
   isLocalImagePath,
   layoutError,
-} from "../slidev-layouts/layout-assert.js"; // plain JS — Slidev copies this into decks
+} from "../slidev-layouts/layout-assert.js";
 
 describe("layoutError", () => {
-  it("uses stable prefix", () => {
-    expect(layoutError("stats", "x").message).toBe("LayoutError[stats]: x");
+  it("uses stable prefix for every layout name", () => {
+    for (const name of [
+      "hero",
+      "image-right",
+      "image-left",
+      "two-cols",
+      "quote",
+      "fact",
+      "icon",
+      "cards",
+      "timeline",
+      "stats",
+      "skills",
+    ]) {
+      expect(layoutError(name, "x").message).toBe(`LayoutError[${name}]: x`);
+    }
   });
 });
 
@@ -27,6 +41,7 @@ describe("isLocalImagePath", () => {
   });
   it("rejects empty and http", () => {
     expect(isLocalImagePath("")).toBe(false);
+    expect(isLocalImagePath(null)).toBe(false);
     expect(isLocalImagePath("https://x/y.jpg")).toBe(false);
   });
 });
@@ -42,8 +57,14 @@ describe("assertStatsLayout", () => {
       }),
     ).not.toThrow();
   });
-  it("throws when empty", () => {
+  it("throws LayoutError[stats] when empty or incomplete", () => {
     expect(() => assertStatsLayout({ items: [] })).toThrow(/LayoutError\[stats\]/);
+    expect(() => assertStatsLayout({ items: [{ value: "1", label: "Only" }] })).toThrow(
+      /LayoutError\[stats\]/,
+    );
+    expect(() => assertStatsLayout({ items: [{ value: "1" }, { value: "2" }] })).toThrow(
+      /LayoutError\[stats\]/,
+    );
   });
   it("accepts stats: alias", () => {
     expect(() =>
@@ -58,32 +79,45 @@ describe("assertStatsLayout", () => {
 });
 
 describe("assertCardsLayout", () => {
-  it("throws with one card", () => {
+  it("throws LayoutError[cards] with <2 titles", () => {
+    expect(() => assertCardsLayout({ items: [] })).toThrow(/LayoutError\[cards\]/);
     expect(() => assertCardsLayout({ items: [{ title: "Only" }] })).toThrow(
       /LayoutError\[cards\]/,
     );
+    expect(() => assertCardsLayout({ items: [{ body: "no title" }, { body: "x" }] })).toThrow(
+      /LayoutError\[cards\]/,
+    );
   });
-  it("passes with two titles", () => {
+  it("passes with two titles and cards: alias", () => {
     expect(() =>
       assertCardsLayout({ items: [{ title: "A" }, { title: "B" }] }),
+    ).not.toThrow();
+    expect(() =>
+      assertCardsLayout({ cards: [{ title: "A" }, { title: "B" }] }),
     ).not.toThrow();
   });
 });
 
 describe("assertSkillsLayout", () => {
-  it("throws without names", () => {
-    expect(() => assertSkillsLayout({ items: [{ pct: 50 }] })).toThrow(
+  it("throws LayoutError[skills] without ≥2 names", () => {
+    expect(() => assertSkillsLayout({ items: [] })).toThrow(/LayoutError\[skills\]/);
+    expect(() => assertSkillsLayout({ items: [{ pct: 50 }] })).toThrow(/LayoutError\[skills\]/);
+    expect(() => assertSkillsLayout({ items: [{ name: "Solo" }] })).toThrow(
       /LayoutError\[skills\]/,
     );
+  });
+  it("passes with two names", () => {
+    expect(() =>
+      assertSkillsLayout({ items: [{ name: "TS" }, { name: "Vue" }] }),
+    ).not.toThrow();
   });
 });
 
 describe("assertTimelineLayout", () => {
-  it("throws with two steps", () => {
+  it("throws LayoutError[timeline] with <3 titled steps", () => {
+    expect(() => assertTimelineLayout({ steps: [] })).toThrow(/LayoutError\[timeline\]/);
     expect(() =>
-      assertTimelineLayout({
-        steps: [{ title: "A" }, { title: "B" }],
-      }),
+      assertTimelineLayout({ steps: [{ title: "A" }, { title: "B" }] }),
     ).toThrow(/LayoutError\[timeline\]/);
   });
   it("passes with three", () => {
@@ -96,47 +130,81 @@ describe("assertTimelineLayout", () => {
 });
 
 describe("assertIconLayout", () => {
-  it("requires iconHint", () => {
+  it("throws LayoutError[icon] without iconHint", () => {
     expect(() => assertIconLayout({})).toThrow(/LayoutError\[icon\]/);
+    expect(() => assertIconLayout({ iconHint: "  " })).toThrow(/LayoutError\[icon\]/);
+  });
+  it("passes with iconHint", () => {
     expect(() => assertIconLayout({ iconHint: "carbon-idea" })).not.toThrow();
   });
 });
 
 describe("assertImageLayout", () => {
-  it("requires local image", () => {
+  it("throws LayoutError[image-right] / [image-left]", () => {
     expect(() => assertImageLayout("image-right", {})).toThrow(/LayoutError\[image-right\]/);
+    expect(() => assertImageLayout("image-left", {})).toThrow(/LayoutError\[image-left\]/);
     expect(() =>
       assertImageLayout("image-left", { image: "https://evil/x.jpg" }),
     ).toThrow(/LayoutError\[image-left\]/);
+  });
+  it("passes with local image", () => {
     expect(() =>
       assertImageLayout("image-right", { image: "/slide-2.jpg" }),
+    ).not.toThrow();
+    expect(() =>
+      assertImageLayout("image-left", { image: "/slide-3.png" }),
     ).not.toThrow();
   });
 });
 
 describe("assertHeroLayout", () => {
-  it("rejects invalid variant", () => {
+  it("throws LayoutError[hero] on invalid / missing variant", () => {
+    expect(() => assertHeroLayout({})).toThrow(/LayoutError\[hero\]/);
     expect(() => assertHeroLayout({ variant: "split" })).toThrow(/LayoutError\[hero\]/);
+    expect(() => assertHeroLayout({ variant: "interactive" })).toThrow(/LayoutError\[hero\]/);
   });
-  it("requires image for fullbleed", () => {
+  it("throws LayoutError[hero] when fullbleed/product lack image", () => {
     expect(() => assertHeroLayout({ variant: "fullbleed" })).toThrow(/LayoutError\[hero\]/);
+    expect(() => assertHeroLayout({ variant: "product" })).toThrow(/LayoutError\[hero\]/);
+  });
+  it("passes valid variants", () => {
+    expect(() => assertHeroLayout({ variant: "centered" })).not.toThrow();
+    expect(() => assertHeroLayout({ variant: "editorial" })).not.toThrow();
     expect(() =>
       assertHeroLayout({ variant: "fullbleed", image: "/slide-1.jpg" }),
     ).not.toThrow();
-  });
-  it("allows centered without image", () => {
-    expect(() => assertHeroLayout({ variant: "centered" })).not.toThrow();
+    expect(() =>
+      assertHeroLayout({ variant: "product", image: "/slide-1.jpg" }),
+    ).not.toThrow();
   });
 });
 
-describe("slot layouts", () => {
-  it("quote/fact need body slot", () => {
+describe("assertQuoteLayout / assertFactLayout", () => {
+  it("throws LayoutError[quote] / [fact] without body slot", () => {
     expect(() => assertQuoteLayout({ hasBodySlot: false })).toThrow(/LayoutError\[quote\]/);
+    expect(() => assertFactLayout({ hasBodySlot: false })).toThrow(/LayoutError\[fact\]/);
+  });
+  it("passes with body slot", () => {
+    expect(() => assertQuoteLayout({ hasBodySlot: true })).not.toThrow();
     expect(() => assertFactLayout({ hasBodySlot: true })).not.toThrow();
   });
-  it("two-cols needs both columns", () => {
+});
+
+describe("assertTwoColsLayout", () => {
+  it("throws LayoutError[two-cols] if either column missing", () => {
+    expect(() =>
+      assertTwoColsLayout({ hasLeftSlot: false, hasRightSlot: false }),
+    ).toThrow(/LayoutError\[two-cols\]/);
     expect(() =>
       assertTwoColsLayout({ hasLeftSlot: true, hasRightSlot: false }),
     ).toThrow(/LayoutError\[two-cols\]/);
+    expect(() =>
+      assertTwoColsLayout({ hasLeftSlot: false, hasRightSlot: true }),
+    ).toThrow(/LayoutError\[two-cols\]/);
+  });
+  it("passes with both columns", () => {
+    expect(() =>
+      assertTwoColsLayout({ hasLeftSlot: true, hasRightSlot: true }),
+    ).not.toThrow();
   });
 });

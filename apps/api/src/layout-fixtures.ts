@@ -172,13 +172,116 @@ items:
 `;
 }
 
-export function badStatsMarkdown(): string {
+function deckWithSlide(title: string, slideBody: string): string {
   return `---
 theme: default
-title: "Bad stats"
+title: ${JSON.stringify(title)}
 ---
 
+${slideBody.trim()}
+`;
+}
+
+/** One undrawable slide per custom layout — assertLayoutsInMarkdown must throw LayoutError[<layout>]. */
+export const BAD_LAYOUT_MARKDOWN: Record<
+  (typeof LAYOUT_SHOT_ORDER)[number],
+  string
+> = {
+  hero: deckWithSlide(
+    "Bad hero",
+    `---
+layout: hero
+variant: split
 ---
+
+# Broken hero
+`,
+  ),
+  "image-right": deckWithSlide(
+    "Bad image-right",
+    `---
+layout: image-right
+image: https://evil.example/x.jpg
+---
+
+# Broken image-right
+`,
+  ),
+  "image-left": deckWithSlide(
+    "Bad image-left",
+    `---
+layout: image-left
+---
+
+# Broken image-left
+`,
+  ),
+  "two-cols": deckWithSlide(
+    "Bad two-cols",
+    `---
+layout: two-cols
+---
+
+# Broken two-cols
+
+::left::
+- Only left
+`,
+  ),
+  quote: deckWithSlide(
+    "Bad quote",
+    `---
+layout: quote
+---
+
+No heading here
+`,
+  ),
+  fact: deckWithSlide(
+    "Bad fact",
+    `---
+layout: fact
+---
+
+just text
+`,
+  ),
+  icon: deckWithSlide(
+    "Bad icon",
+    `---
+layout: icon
+---
+
+# Broken icon
+`,
+  ),
+  cards: deckWithSlide(
+    "Bad cards",
+    `---
+layout: cards
+items:
+  - title: Only
+    body: one card is not enough
+---
+
+# Broken cards
+`,
+  ),
+  timeline: deckWithSlide(
+    "Bad timeline",
+    `---
+layout: timeline
+steps:
+  - title: A
+  - title: B
+---
+
+# Broken timeline
+`,
+  ),
+  stats: deckWithSlide(
+    "Bad stats",
+    `---
 layout: stats
 items:
   - value: "1"
@@ -186,5 +289,26 @@ items:
 ---
 
 # Broken stats
-`;
+`,
+  ),
+  skills: deckWithSlide(
+    "Bad skills",
+    `---
+layout: skills
+items:
+  - name: Solo
+    pct: 50
+---
+
+# Broken skills
+`,
+  ),
+};
+
+export function badStatsMarkdown(): string {
+  return BAD_LAYOUT_MARKDOWN.stats;
+}
+
+export function badMarkdownForLayout(layout: (typeof LAYOUT_SHOT_ORDER)[number]): string {
+  return BAD_LAYOUT_MARKDOWN[layout];
 }
