@@ -214,12 +214,13 @@ function photoSrc(image?: string) {
   align-items: center;
 }
 .pk-hero--centered.pk-hero--photo .pk-hero__veil {
-  /* Keep photo visible at edges; text rides on an opaque plate so image type cannot collide. */
-  background: rgba(247, 243, 236, 0.35);
+  /* Wash out baked-in image lettering; plate carries our copy. */
+  background: color-mix(in srgb, var(--pk-paper) 92%, transparent);
 }
-.pk-hero--centered.pk-palette-ink.pk-hero--photo .pk-hero__veil,
-.pk-hero--centered.pk-palette-auto.pk-hero--photo .pk-hero__veil {
-  background: rgba(25, 27, 30, 0.35);
+.pk-hero--centered.pk-hero--photo .pk-hero__photo img {
+  /* Soften remaining photo type at the edges */
+  filter: blur(1.2px) saturate(0.9);
+  transform: scale(1.03);
 }
 .pk-hero--centered.pk-hero--photo .pk-hero__plate {
   background: var(--pk-paper);
