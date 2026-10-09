@@ -289,32 +289,49 @@ function photoSrc(image?: string) {
 
 /* --- editorial: asymmetric type, photo as right-biased crop --- */
 .pk-hero--editorial .pk-hero__photo {
-  inset: 0 0 0 38%;
-  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%);
+  inset: 0 0 0 42%;
+  clip-path: polygon(6% 0, 100% 0, 100% 100%, 0 100%);
 }
 .pk-hero--editorial .pk-hero__veil {
-  background: transparent;
+  /* Mute logos/slogans baked into the stock photo along the cut edge */
+  background: linear-gradient(90deg, var(--pk-paper) 0%, rgba(247, 243, 236, 0.15) 28%, transparent 55%);
+}
+.pk-hero--editorial.pk-palette-ink .pk-hero__veil,
+.pk-hero--editorial.pk-palette-auto .pk-hero__veil {
+  background: linear-gradient(90deg, var(--pk-paper) 0%, rgba(25, 27, 30, 0.2) 28%, transparent 55%);
 }
 .pk-hero--editorial .pk-brick__pane {
-  width: 58%;
+  width: 52%;
   background: var(--pk-paper);
   justify-content: center;
-  padding-right: 40px;
+  padding-right: 36px;
+}
+.pk-hero--editorial .pk-hero__plate {
+  width: 100%;
+  align-items: flex-start;
+  text-align: left;
 }
 .pk-hero--editorial .pk-brand {
-  margin-bottom: 48px;
+  margin-bottom: 28px;
+}
+.pk-hero--editorial .pk-kicker {
+  margin-bottom: 18px;
 }
 .pk-hero--editorial .pk-hero__body {
   margin: 0;
 }
 .pk-hero--editorial .pk-hero__body :deep(h1) {
-  font-size: 58px;
-  max-width: 11ch;
-  letter-spacing: -0.04em;
+  font-size: 42px;
+  line-height: 1.16;
+  max-width: none;
+  width: 100%;
+  letter-spacing: -0.03em;
 }
 .pk-hero--editorial .pk-hero__body :deep(p) {
-  max-width: 28ch;
+  max-width: none;
+  width: 100%;
   font-size: 18px;
+  line-height: 1.4;
 }
 .pk-hero--editorial:not(.pk-hero--photo) .pk-brick__pane {
   width: 100%;
