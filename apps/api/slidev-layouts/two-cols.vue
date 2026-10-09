@@ -60,12 +60,13 @@ const paletteClass =
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 48px 56px 40px;
+  width: 100%;
+  padding: 40px 52px 32px;
   display: flex;
   flex-direction: column;
   min-height: 0;
   box-sizing: border-box;
-  justify-content: safe center;
+  justify-content: flex-start;
 }
 .pk-kicker {
   display: flex;
@@ -87,9 +88,12 @@ const paletteClass =
   text-transform: uppercase;
   color: var(--pk-accent);
 }
+.pk-title {
+  flex: none;
+}
 .pk-title :deep(h1) {
-  margin: 0 0 28px;
-  font-size: 36px;
+  margin: 0 0 24px;
+  font-size: 34px;
   line-height: 1.12;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -102,10 +106,15 @@ const paletteClass =
 .pk-twocols__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 36px 48px;
-  flex: 1;
+  gap: 28px 40px;
+  flex: 1 1 auto;
   min-height: 0;
-  align-items: start;
+  align-items: stretch;
+}
+.pk-twocols__col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .pk-twocols__col :deep(h1),
 .pk-twocols__col :deep(h2) {
@@ -120,12 +129,13 @@ const paletteClass =
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  flex: 1;
 }
 .pk-twocols__col :deep(li) {
   position: relative;
   padding-left: 1.15em;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.4;
   color: var(--pk-ink);
 }

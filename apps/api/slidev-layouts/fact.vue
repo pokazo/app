@@ -52,7 +52,8 @@ const paletteClass =
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 48px 64px 40px;
+  width: 100%;
+  padding: 44px 56px 36px;
   display: flex;
   flex-direction: column;
   justify-content: safe center;
@@ -63,7 +64,7 @@ const paletteClass =
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   flex: none;
 }
 .pk-kicker__line {
@@ -82,24 +83,25 @@ const paletteClass =
 }
 .pk-fact__body {
   min-width: 0;
-  /* ch is relative to this box's font (16px) — use % so big H1 does not wrap into a skinny column */
-  max-width: min(720px, 85%);
+  width: 100%;
+  max-width: none;
 }
 .pk-fact__body :deep(h1) {
   margin: 0;
-  font-size: 40px;
-  line-height: 1.18;
+  font-size: 48px;
+  line-height: 1.12;
   font-weight: 800;
   letter-spacing: -0.03em;
   max-width: none;
+  width: 100%;
 }
 .pk-fact__body :deep(p),
 .pk-fact__body :deep(li) {
-  margin: 16px 0 0;
-  font-size: 20px;
+  margin: 20px 0 0;
+  font-size: 22px;
   line-height: 1.4;
   color: var(--pk-sub);
-  max-width: 40em;
+  max-width: 46em;
 }
 .pk-fact__body :deep(ul) {
   list-style: none;
@@ -107,7 +109,7 @@ const paletteClass =
   padding: 0;
 }
 .pk-source {
-  margin-top: 20px;
+  margin-top: 24px;
   font-size: 12px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;

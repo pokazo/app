@@ -168,7 +168,7 @@ function photoSrc(image?: string) {
   line-height: 1.08;
   font-weight: 800;
   letter-spacing: -0.03em;
-  max-width: 16ch;
+  max-width: min(18em, 92%);
 }
 .pk-hero__body :deep(ul) {
   list-style: none;
@@ -212,11 +212,11 @@ function photoSrc(image?: string) {
   align-items: center;
 }
 .pk-hero--centered .pk-hero__body :deep(h1) {
-  max-width: 18ch;
-  font-size: 56px;
+  max-width: min(16em, 92%);
+  font-size: 48px;
 }
 .pk-hero--centered .pk-hero__body :deep(p) {
-  max-width: 32ch;
+  max-width: min(36em, 92%);
 }
 .pk-hero--centered .pk-source {
   margin-top: 28px;

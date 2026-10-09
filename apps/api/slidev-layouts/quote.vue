@@ -53,7 +53,8 @@ const paletteClass =
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 48px 64px 40px;
+  width: 100%;
+  padding: 44px 56px 36px;
   display: flex;
   flex-direction: column;
   justify-content: safe center;
@@ -64,7 +65,7 @@ const paletteClass =
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex: none;
 }
 .pk-kicker__line {
@@ -82,28 +83,29 @@ const paletteClass =
   color: var(--pk-accent);
 }
 .pk-quote__mark {
-  font-size: 64px;
+  font-size: 56px;
   line-height: 1;
   font-weight: 800;
   color: var(--pk-accent);
   opacity: 0.85;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   flex: none;
 }
 .pk-quote__body {
   min-width: 0;
-  /* ch uses this element's 16px font — prefer % so large quote type stays wide */
-  max-width: min(780px, 88%);
+  width: 100%;
+  max-width: none;
 }
 .pk-quote__body :deep(h1),
 .pk-quote__body :deep(p),
 .pk-quote__body :deep(blockquote) {
   margin: 0 0 16px;
-  font-size: 28px;
-  line-height: 1.32;
+  font-size: 32px;
+  line-height: 1.28;
   font-weight: 700;
   letter-spacing: -0.02em;
   max-width: none;
+  width: 100%;
 }
 .pk-quote__body :deep(ul) {
   list-style: none;
