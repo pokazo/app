@@ -107,13 +107,16 @@ const paletteClass =
 .pk-twocols__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 28px 40px;
+  gap: 20px 28px;
   flex: 1 1 auto;
   min-height: 0;
   align-items: stretch;
+  height: 100%;
 }
 .pk-twocols__col {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -129,17 +132,19 @@ const paletteClass =
 }
 .pk-twocols__col :deep(ul) {
   margin: 0;
-  padding: 18px 18px;
+  padding: 22px 20px;
   list-style: none;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
-  gap: 14px;
-  flex: 1;
+  justify-content: flex-start;
+  gap: 16px;
+  flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   background: var(--pk-card, #efe8dc);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 18px;
+  box-sizing: border-box;
 }
 .pk-twocols__col :deep(li) {
   position: relative;
