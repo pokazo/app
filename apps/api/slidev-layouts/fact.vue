@@ -52,16 +52,19 @@ const paletteClass =
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 56px 72px 48px;
+  padding: 48px 64px 40px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
+  min-height: 0;
+  box-sizing: border-box;
 }
 .pk-kicker {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  flex: none;
 }
 .pk-kicker__line {
   width: 28px;
@@ -77,21 +80,25 @@ const paletteClass =
   text-transform: uppercase;
   color: var(--pk-accent);
 }
+.pk-fact__body {
+  min-width: 0;
+  max-width: 28ch;
+}
 .pk-fact__body :deep(h1) {
   margin: 0;
-  font-size: 48px;
-  line-height: 1.12;
+  font-size: 42px;
+  line-height: 1.15;
   font-weight: 800;
   letter-spacing: -0.03em;
-  max-width: 16ch;
+  max-width: none;
 }
 .pk-fact__body :deep(p),
 .pk-fact__body :deep(li) {
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   font-size: 20px;
   line-height: 1.4;
   color: var(--pk-sub);
-  max-width: 36ch;
+  max-width: none;
 }
 .pk-fact__body :deep(ul) {
   list-style: none;
@@ -99,10 +106,12 @@ const paletteClass =
   padding: 0;
 }
 .pk-source {
-  margin-top: 28px;
+  margin-top: 20px;
   font-size: 12px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+  flex: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

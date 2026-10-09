@@ -53,16 +53,19 @@ const paletteClass =
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 56px 72px 48px;
+  padding: 48px 64px 40px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
+  min-height: 0;
+  box-sizing: border-box;
 }
 .pk-kicker {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex: none;
 }
 .pk-kicker__line {
   width: 28px;
@@ -79,22 +82,27 @@ const paletteClass =
   color: var(--pk-accent);
 }
 .pk-quote__mark {
-  font-size: 96px;
-  line-height: 0.7;
+  font-size: 64px;
+  line-height: 1;
   font-weight: 800;
   color: var(--pk-accent);
   opacity: 0.85;
-  margin-bottom: 8px;
+  margin: 0 0 12px;
+  flex: none;
+}
+.pk-quote__body {
+  min-width: 0;
+  max-width: 38ch;
 }
 .pk-quote__body :deep(h1),
 .pk-quote__body :deep(p),
 .pk-quote__body :deep(blockquote) {
-  margin: 0 0 18px;
-  font-size: 36px;
-  line-height: 1.25;
+  margin: 0 0 16px;
+  font-size: 30px;
+  line-height: 1.3;
   font-weight: 700;
   letter-spacing: -0.02em;
-  max-width: 18ch;
+  max-width: none;
 }
 .pk-quote__body :deep(ul) {
   list-style: none;
@@ -111,10 +119,12 @@ const paletteClass =
   content: none;
 }
 .pk-source {
-  margin-top: 20px;
-  font-size: 14px;
+  margin-top: 16px;
+  font-size: 13px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+  flex: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

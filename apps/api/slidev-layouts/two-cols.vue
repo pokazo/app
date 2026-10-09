@@ -64,6 +64,8 @@ const paletteClass =
   display: flex;
   flex-direction: column;
   min-height: 0;
+  box-sizing: border-box;
+  justify-content: safe center;
 }
 .pk-kicker {
   display: flex;
@@ -149,6 +151,8 @@ const paletteClass =
   font-size: 12px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+  flex: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

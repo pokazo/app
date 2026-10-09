@@ -123,10 +123,13 @@ const paletteClass =
   text-align: center;
   padding: 0 10px;
 }
+.pk-icon__body {
+  min-width: 0;
+}
 .pk-icon__body :deep(h1) {
   margin: 0 0 18px;
-  font-size: 36px;
-  line-height: 1.12;
+  font-size: 32px;
+  line-height: 1.15;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
