@@ -92,14 +92,15 @@ const paletteClass =
 }
 .pk-quote__body {
   min-width: 0;
-  max-width: 38ch;
+  /* ch uses this element's 16px font — prefer % so large quote type stays wide */
+  max-width: min(780px, 88%);
 }
 .pk-quote__body :deep(h1),
 .pk-quote__body :deep(p),
 .pk-quote__body :deep(blockquote) {
   margin: 0 0 16px;
-  font-size: 30px;
-  line-height: 1.3;
+  font-size: 28px;
+  line-height: 1.32;
   font-weight: 700;
   letter-spacing: -0.02em;
   max-width: none;

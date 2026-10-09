@@ -82,12 +82,13 @@ const paletteClass =
 }
 .pk-fact__body {
   min-width: 0;
-  max-width: 28ch;
+  /* ch is relative to this box's font (16px) — use % so big H1 does not wrap into a skinny column */
+  max-width: min(720px, 85%);
 }
 .pk-fact__body :deep(h1) {
   margin: 0;
-  font-size: 42px;
-  line-height: 1.15;
+  font-size: 40px;
+  line-height: 1.18;
   font-weight: 800;
   letter-spacing: -0.03em;
   max-width: none;
@@ -98,7 +99,7 @@ const paletteClass =
   font-size: 20px;
   line-height: 1.4;
   color: var(--pk-sub);
-  max-width: none;
+  max-width: 40em;
 }
 .pk-fact__body :deep(ul) {
   list-style: none;
