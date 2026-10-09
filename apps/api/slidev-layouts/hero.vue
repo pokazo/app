@@ -293,19 +293,18 @@ function photoSrc(image?: string) {
   clip-path: polygon(6% 0, 100% 0, 100% 100%, 0 100%);
 }
 .pk-hero--editorial .pk-hero__veil {
-  /* Solid-enough wash: stock/gen slogans must not remain readable beside our copy */
+  /* Near-opaque wash — any baked-in slogan must be unreadable */
   background: linear-gradient(
     90deg,
     var(--pk-paper) 0%,
-    rgba(18, 18, 20, 0.62) 18%,
-    rgba(18, 18, 20, 0.72) 100%
+    rgba(18, 18, 20, 0.82) 16%,
+    rgba(18, 18, 20, 0.88) 100%
   );
 }
 .pk-hero--editorial .pk-hero__photo img {
-  /* Bias toward the subject; blur leftover type into the photo grain */
-  object-position: 80% center;
-  filter: blur(2.5px) brightness(0.78) saturate(1.05);
-  transform: scale(1.06);
+  object-position: 82% center;
+  filter: blur(6px) brightness(0.62) saturate(1.1);
+  transform: scale(1.08);
 }
 .pk-hero--editorial .pk-brick__pane {
   width: 52%;
