@@ -54,10 +54,10 @@ const paletteClass =
   z-index: 1;
   height: 100%;
   width: 100%;
-  padding: 44px 56px 36px;
+  padding: 40px 52px 32px;
   display: flex;
   flex-direction: column;
-  justify-content: safe center;
+  justify-content: flex-start;
   min-height: 0;
   box-sizing: border-box;
 }
@@ -95,12 +95,16 @@ const paletteClass =
   min-width: 0;
   width: 100%;
   max-width: none;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .pk-quote__body :deep(h1),
 .pk-quote__body :deep(p),
 .pk-quote__body :deep(blockquote) {
   margin: 0 0 16px;
-  font-size: 32px;
+  font-size: 34px;
   line-height: 1.28;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -122,7 +126,8 @@ const paletteClass =
   content: none;
 }
 .pk-source {
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 16px;
   font-size: 13px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;

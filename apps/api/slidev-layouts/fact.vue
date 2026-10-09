@@ -53,10 +53,10 @@ const paletteClass =
   z-index: 1;
   height: 100%;
   width: 100%;
-  padding: 44px 56px 36px;
+  padding: 40px 52px 32px;
   display: flex;
   flex-direction: column;
-  justify-content: safe center;
+  justify-content: flex-start;
   min-height: 0;
   box-sizing: border-box;
 }
@@ -64,7 +64,7 @@ const paletteClass =
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex: none;
 }
 .pk-kicker__line {
@@ -85,10 +85,14 @@ const paletteClass =
   min-width: 0;
   width: 100%;
   max-width: none;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .pk-fact__body :deep(h1) {
   margin: 0;
-  font-size: 48px;
+  font-size: 52px;
   line-height: 1.12;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -97,11 +101,12 @@ const paletteClass =
 }
 .pk-fact__body :deep(p),
 .pk-fact__body :deep(li) {
-  margin: 20px 0 0;
-  font-size: 22px;
+  margin: 22px 0 0;
+  font-size: 24px;
   line-height: 1.4;
   color: var(--pk-sub);
-  max-width: 46em;
+  max-width: none;
+  width: 100%;
 }
 .pk-fact__body :deep(ul) {
   list-style: none;
@@ -109,7 +114,8 @@ const paletteClass =
   padding: 0;
 }
 .pk-source {
-  margin-top: 24px;
+  margin-top: auto;
+  padding-top: 20px;
   font-size: 12px;
   color: var(--pk-faint);
   font-family: ui-monospace, monospace;

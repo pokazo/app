@@ -156,7 +156,8 @@ const paletteClass =
   color: var(--pk-sub);
 }
 .pk-source {
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 16px;
   text-align: right;
   font-size: 12px;
   color: var(--pk-faint);
