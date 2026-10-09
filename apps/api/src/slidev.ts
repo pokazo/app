@@ -1,8 +1,9 @@
-import { copyFileSync, existsSync, mkdirSync, symlinkSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { assertLayoutsInMarkdown } from "./layout-md-assert.js";
 import { guardMarkdown } from "./md-guard.js";
 
 export type SlidevSpawnSpec = {
@@ -25,6 +26,7 @@ export function installDeckLayouts(workDir: string): void {
   mkdirSync(dest, { recursive: true });
   const src = join(apiDir(), "slidev-layouts");
   for (const name of [
+    "layout-assert.js",
     "timeline.vue",
     "stats.vue",
     "skills.vue",
@@ -134,6 +136,10 @@ function runSlidev(spec: SlidevSpawnSpec, timeoutMs: number, label: string): Pro
 export async function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
   ensureDeckNodeModules(workDir);
   installDeckLayouts(workDir);
+  const slidesPath = join(workDir, "slides.md");
+  if (existsSync(slidesPath)) {
+    assertLayoutsInMarkdown(readFileSync(slidesPath, "utf8"));
+  }
   const spec = slidevSpawnSpec(workDir, base);
   const log = await runSlidev(spec, timeoutMs, "slidev build");
   try {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { assertHeroLayout } from './layout-assert.js'
+
 const props = defineProps<{
   kicker?: string
   source?: string
@@ -9,12 +11,12 @@ const props = defineProps<{
   variant?: string
 }>()
 
+assertHeroLayout(props)
+
 const paletteClass =
   props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
 
-const VARIANTS = new Set(["centered", "fullbleed", "editorial", "product"])
-const variant =
-  props.variant && VARIANTS.has(props.variant) ? props.variant : props.image ? "fullbleed" : "centered"
+const variant = props.variant!.trim()
 
 function photoSrc(image?: string) {
   if (!image) return ""

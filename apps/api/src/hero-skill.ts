@@ -68,7 +68,7 @@ First outline slide (content source; YOU choose variant):
 ${JSON.stringify(first ?? null)}
 
 Rules:
-- Choose exactly one variant: centered | fullbleed | editorial | product
+- Choose exactly one variant: centered | fullbleed | editorial | product (required — missing/invalid variant throws LayoutError[hero])
 - Never use split / interactive / image-right / image-left for the hero
 - yandex-image-search → judge → yandex-image-download OR stock-search → stock-download OR image-generate → slidev-update-slide
 - Body: H1 + 1–2 sentences, no bullets

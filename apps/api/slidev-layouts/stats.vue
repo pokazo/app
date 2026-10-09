@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { assertStatsLayout } from './layout-assert.js'
+
 export type StatItem = {
   value?: string
   label?: string
@@ -15,6 +17,7 @@ const props = defineProps<{
   stats?: StatItem[]
 }>()
 
+assertStatsLayout(props)
 const items = (props.items ?? props.stats ?? []).slice(0, 4)
 
 const paletteClass =

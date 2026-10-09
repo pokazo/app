@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { assertIconLayout } from './layout-assert.js'
+
 const props = defineProps<{
   palette?: string
   kicker?: string
@@ -7,6 +9,7 @@ const props = defineProps<{
   iconHint?: string
 }>()
 
+assertIconLayout(props)
 const badge = (props.iconHint ?? "").replace(/^(carbon|mdi)-/i, "").replace(/-/g, " ").trim()
 
 const paletteClass =

@@ -251,9 +251,16 @@ export async function generateDeck(opts: {
   console.info(`[generate] hero-compose done`);
 
   const base = `/p/${opts.id}/`;
+  const buildAndGate = async () => {
+    await buildSlidev(opts.workDir, base);
+    if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+      const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
+      await assertDeckLayoutsRender(opts.workDir, opts.id);
+    }
+  };
   // Early build of slide 1 so the player can open while the rest compose.
   try {
-    await buildSlidev(opts.workDir, base);
+    await buildAndGate();
     console.info(`[generate] preview build ok (hero)`);
     if (opts.onPreviewReady) {
       await opts.onPreviewReady();
@@ -286,7 +293,7 @@ export async function generateDeck(opts: {
   let md = await guardWorkSlides(opts.workDir, theme);
   let repaired = false;
   try {
-    await buildSlidev(opts.workDir, base);
+    await buildAndGate();
   } catch (err) {
     repaired = true;
     console.info(`[generate] build failed, MCP repair: ${String(err).slice(0, 400)}`);
@@ -299,7 +306,7 @@ export async function generateDeck(opts: {
           system: skill,
           tools: tools as never,
           maxSteps: 24,
-          prompt: `Сборка Slidev упала. Исправь колоду только через tools (MCP update/insert/remove/move, yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
+          prompt: `Сборка Slidev / layout render упала. Исправь колоду только через tools (MCP update/insert/remove/move, yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Если ошибка LayoutError[<layout>] — почини frontmatter/body именно этого слайда (stats/cards ≥2 items, timeline ≥3 steps, image-* local image:, hero valid variant+image when required). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
           onStepFinish: async (step) => {
             const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
             console.info(`[llm] repair step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
@@ -310,7 +317,7 @@ export async function generateDeck(opts: {
       (call) => mcpCalls.push(call),
     );
     md = await guardWorkSlides(opts.workDir, theme);
-    await buildSlidev(opts.workDir, base);
+    await buildAndGate();
   }
 
   // Speech is lazy: generated on first open via POST /api/decks/:id/speech/regenerate

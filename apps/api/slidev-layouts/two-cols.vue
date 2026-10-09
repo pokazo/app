@@ -1,9 +1,18 @@
 <script setup lang="ts">
+import { useSlots } from 'vue'
+import { assertTwoColsLayout } from './layout-assert.js'
+
 const props = defineProps<{
   palette?: string
   kicker?: string
   source?: string
 }>()
+
+const slots = useSlots()
+assertTwoColsLayout({
+  hasLeftSlot: Boolean(slots.left),
+  hasRightSlot: Boolean(slots.right),
+})
 
 const paletteClass =
   props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"

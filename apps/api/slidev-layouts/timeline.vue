@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { assertTimelineLayout } from './layout-assert.js'
+
 export type TimelineStep = {
   phase?: string
   title?: string
@@ -14,6 +16,7 @@ const props = defineProps<{
   steps?: TimelineStep[]
 }>()
 
+assertTimelineLayout(props)
 const steps = (props.steps ?? []).slice(0, 5)
 const doneCount = steps.filter(s => s.state !== 'todo' && s.state !== 'current').length
 const progress = steps.length

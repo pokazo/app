@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { assertCardsLayout } from './layout-assert.js'
+
 export type CardItem = {
   title?: string
   body?: string
@@ -13,6 +15,7 @@ const props = defineProps<{
   cards?: CardItem[]
 }>()
 
+assertCardsLayout(props)
 const items = (props.items ?? props.cards ?? []).filter((it) => it.title?.trim()).slice(0, 4)
 
 const paletteClass =

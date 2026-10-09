@@ -40,7 +40,8 @@ Visual rules:
 - Never treat one stock error as permission to skip photos for the rest of the deck.
 - Slide 1 already has a local hero image. Finish with at least 3 local image: paths total (hero + ≥2 more).
 - Dense facts: prefer concrete numbers, named entities, and source: on stats/timeline/comparison slides. For side-by-side specs use two-cols or a markdown table in default layout — not vague marketing bullets.
-- Icons: carbon-* / mdi-* style icons when visual=icon; no custom Vue SFCs, no <script>.
+- Icons: carbon-* / mdi-* style icons when visual=icon; no custom Vue SFCs, no <script>. iconHint required for layout: icon.
+- Layouts throw LayoutError[<name>] when data cannot be shown (e.g. stats/cards need ≥2 items, timeline ≥3 steps, image-* need local image:, hero needs valid variant). If build/repair reports LayoutError[…], fix that slide's frontmatter/body only — do not rewrite the whole deck; leave slide 1 hero alone unless the error names hero.
 - theme/palette are already set in headmatter — do not change theme or palette.
 - Language: ${lang}.
 - One strong idea per slide; heading short; ≤5 bullets; numbers can be large in content.

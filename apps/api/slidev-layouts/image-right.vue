@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import { assertImageLayout } from './layout-assert.js'
+
 const props = defineProps<{
   palette?: string
 
   image?: string
   kicker?: string
 }>()
+
+assertImageLayout('image-right', props)
 
 function photoSrc(image?: string) {
   if (!image) return ""

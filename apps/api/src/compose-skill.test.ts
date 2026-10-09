@@ -62,6 +62,12 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/outline\.cards → items/i);
     expect(skill).toMatch(/Never use cards:/i);
   });
+
+  it("teaches LayoutError repair reaction", () => {
+    const skill = composeSkill("default", "ru");
+    expect(skill).toMatch(/LayoutError\[/);
+    expect(skill).toMatch(/fix that slide/i);
+  });
 });
 
 describe("outlineUserPrompt", () => {

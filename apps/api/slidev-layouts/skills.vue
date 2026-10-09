@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { assertSkillsLayout } from './layout-assert.js'
+
 export type SkillItem = {
   name?: string
   level?: string
@@ -13,6 +15,7 @@ const props = defineProps<{
   items?: SkillItem[]
 }>()
 
+assertSkillsLayout(props)
 const items = (props.items ?? []).slice(0, 8).map((it) => ({
   name: it.name ?? "",
   level: it.level ?? "",

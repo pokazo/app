@@ -42,6 +42,7 @@ describe("installDeckLayouts", () => {
   it("copies timeline and stats vue layouts into the deck", () => {
     const dir = mkdtempSync(join(tmpdir(), "pokazo-layouts-"));
     installDeckLayouts(dir);
+    expect(existsSync(join(dir, "layouts", "layout-assert.js"))).toBe(true);
     expect(existsSync(join(dir, "layouts", "timeline.vue"))).toBe(true);
     expect(existsSync(join(dir, "layouts", "stats.vue"))).toBe(true);
     expect(existsSync(join(dir, "layouts", "skills.vue"))).toBe(true);
