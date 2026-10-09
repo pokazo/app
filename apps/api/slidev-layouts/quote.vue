@@ -23,7 +23,6 @@ const paletteClass =
         </div>
         <div class="pk-quote__mark" aria-hidden>“</div>
       </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -126,15 +125,6 @@ const paletteClass =
   opacity: 0.22;
   text-align: right;
   user-select: none;
-}
-.pk-source {
-  margin-top: auto;
-  padding-top: 14px;
-  font-size: 13px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
-  overflow-wrap: anywhere;
-  flex: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

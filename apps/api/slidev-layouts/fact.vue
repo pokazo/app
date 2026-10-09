@@ -25,7 +25,6 @@ const paletteClass =
           <span class="pk-fact__glyph">◆</span>
         </div>
       </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -136,15 +135,6 @@ const paletteClass =
   line-height: 1;
   color: var(--pk-accent);
   opacity: 0.9;
-}
-.pk-source {
-  margin-top: auto;
-  padding-top: 16px;
-  font-size: 12px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
-  overflow-wrap: anywhere;
-  flex: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

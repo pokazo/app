@@ -37,7 +37,6 @@ const paletteClass =
           <div class="pk-cards__card-body">{{ it.body }}</div>
         </div>
       </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -70,10 +69,11 @@ const paletteClass =
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 48px 56px 40px;
+  padding: 40px 48px 32px;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  box-sizing: border-box;
 }
 .pk-kicker {
   display: flex;
@@ -142,15 +142,6 @@ const paletteClass =
   font-size: 15px;
   line-height: 1.4;
   color: var(--pk-sub);
-}
-.pk-source {
-  margin-top: 14px;
-  text-align: right;
-  font-size: 12px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
-  overflow-wrap: anywhere;
-  flex: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

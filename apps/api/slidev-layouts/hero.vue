@@ -47,7 +47,6 @@ function photoSrc(image?: string) {
         <div class="pk-hero__body">
           <slot />
         </div>
-        <div v-if="source" class="pk-source">{{ source }}</div>
       </div>
     </div>
   </div>
@@ -198,11 +197,6 @@ function photoSrc(image?: string) {
   max-width: 36ch;
   margin: 0;
 }
-.pk-source {
-  font-size: 13px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
-}
 
 /* --- centered: brand/kicker/body centered; solid plate when photo has baked-in type --- */
 .pk-hero--centered .pk-brick__pane {
@@ -249,9 +243,6 @@ function photoSrc(image?: string) {
 }
 .pk-hero--centered .pk-hero__body :deep(p) {
   max-width: min(36em, 100%);
-}
-.pk-hero--centered .pk-source {
-  margin-top: 20px;
 }
 
 /* --- fullbleed: strong photo, light veil, text bottom-left --- */

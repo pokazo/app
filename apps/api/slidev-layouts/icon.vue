@@ -30,7 +30,6 @@ const paletteClass =
           <slot />
         </div>
       </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -160,13 +159,6 @@ const paletteClass =
 .pk-icon__body :deep([class*="carbon"]),
 .pk-icon__body :deep([class*="mdi"]) {
   display: none;
-}
-.pk-source {
-  margin-top: 16px;
-  text-align: right;
-  font-size: 12px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

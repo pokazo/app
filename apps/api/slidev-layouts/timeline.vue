@@ -50,7 +50,6 @@ const paletteClass =
           </div>
         </div>
       </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -183,14 +182,6 @@ const paletteClass =
   font-size: 14px;
   line-height: 1.5;
   color: var(--pk-sub);
-}
-.pk-source {
-  position: absolute;
-  right: 64px;
-  bottom: 28px;
-  font-size: 12px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
 }
 
 .pk-palette-cream {

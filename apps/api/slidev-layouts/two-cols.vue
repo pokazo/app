@@ -28,7 +28,6 @@ const paletteClass =
           <slot name="right" />
         </div>
       </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -168,16 +167,6 @@ const paletteClass =
   font-size: 18px;
   line-height: 1.45;
   color: var(--pk-sub);
-}
-.pk-source {
-  margin-top: auto;
-  padding-top: 16px;
-  text-align: right;
-  font-size: 12px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
-  overflow-wrap: anywhere;
-  flex: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;

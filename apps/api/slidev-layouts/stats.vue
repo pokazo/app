@@ -40,7 +40,6 @@ const paletteClass =
           <div class="pk-stats__note">{{ it.note }}</div>
         </div>
       </div>
-      <div v-if="source" class="pk-source">{{ source }}</div>
     </div>
   </div>
 </template>
@@ -143,13 +142,6 @@ const paletteClass =
   font-size: 14px;
   color: var(--pk-sub);
   line-height: 1.4;
-}
-.pk-source {
-  margin-top: 14px;
-  text-align: right;
-  font-size: 12px;
-  color: var(--pk-faint);
-  font-family: ui-monospace, monospace;
 }
 
 .pk-palette-cream {
