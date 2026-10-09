@@ -293,12 +293,16 @@ function photoSrc(image?: string) {
   clip-path: polygon(6% 0, 100% 0, 100% 100%, 0 100%);
 }
 .pk-hero--editorial .pk-hero__veil {
-  /* Mute logos/slogans baked into the stock photo along the cut edge */
-  background: linear-gradient(90deg, var(--pk-paper) 0%, rgba(247, 243, 236, 0.15) 28%, transparent 55%);
+  /* Kill readable slogans baked into stock/gen photos on the right pane */
+  background: linear-gradient(
+    90deg,
+    var(--pk-paper) 0%,
+    rgba(25, 27, 30, 0.35) 22%,
+    rgba(25, 27, 30, 0.55) 100%
+  );
 }
-.pk-hero--editorial.pk-palette-ink .pk-hero__veil,
-.pk-hero--editorial.pk-palette-auto .pk-hero__veil {
-  background: linear-gradient(90deg, var(--pk-paper) 0%, rgba(25, 27, 30, 0.2) 28%, transparent 55%);
+.pk-hero--editorial .pk-hero__photo img {
+  filter: saturate(1.05) contrast(1.05);
 }
 .pk-hero--editorial .pk-brick__pane {
   width: 52%;
