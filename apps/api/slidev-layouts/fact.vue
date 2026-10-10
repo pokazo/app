@@ -23,13 +23,9 @@ const paletteClass =
         <span class="pk-kicker__line" />
         <span class="pk-kicker__text">{{ kicker }}</span>
       </div>
-      <div class="pk-fact__row">
-        <div class="pk-fact__body">
-          <slot />
-        </div>
-        <div class="pk-fact__accent" aria-hidden>
-          <span class="pk-fact__glyph">◆</span>
-        </div>
+      <div class="pk-fact__body">
+        <slot />
+        <p v-if="source" class="pk-fact__src">{{ source }}</p>
       </div>
     </div>
   </div>
@@ -42,7 +38,7 @@ const paletteClass =
   --pk-sub: #5c5c5c;
   --pk-accent: #e10600;
   --pk-faint: #9a9a9a;
-  --pk-panel: #f2f2f2;
+  --pk-rule: rgba(0, 0, 0, 0.12);
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -64,7 +60,7 @@ const paletteClass =
   z-index: 1;
   height: 100%;
   width: 100%;
-  padding: 40px 48px 28px;
+  padding: 48px 72px 44px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -74,7 +70,7 @@ const paletteClass =
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   flex: none;
 }
 .pk-kicker__line {
@@ -91,56 +87,73 @@ const paletteClass =
   text-transform: uppercase;
   color: var(--pk-accent);
 }
-.pk-fact__row {
+.pk-fact__body {
   flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(180px, 0.65fr);
-  gap: 36px;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.75fr);
+  column-gap: 48px;
+  row-gap: 16px;
+  align-content: center;
+  align-items: center;
+  position: relative;
 }
-.pk-fact__body {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.pk-fact__body::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  left: calc(1.15 / 1.9 * (100% - 48px) + 24px);
+  width: 1px;
+  background: var(--pk-rule);
+  pointer-events: none;
 }
 .pk-fact__body :deep(h1) {
+  grid-column: 1;
+  grid-row: 1 / span 8;
   margin: 0;
-  font-size: 44px;
-  line-height: 1.14;
+  font-size: 84px;
+  line-height: 1.02;
   font-weight: 800;
-  letter-spacing: -0.03em;
-  max-width: none;
+  letter-spacing: -0.045em;
+  max-width: 9ch;
+  align-self: center;
 }
-.pk-fact__body :deep(p),
-.pk-fact__body :deep(li) {
-  margin: 18px 0 0;
-  font-size: 20px;
+.pk-fact__body :deep(h1 ~ p),
+.pk-fact__body :deep(h1 ~ ul) {
+  grid-column: 2;
+  margin: 0;
+  padding: 0 0 0 8px;
+  list-style: none;
+  font-size: 22px;
   line-height: 1.4;
   color: var(--pk-sub);
-  max-width: none;
+  font-weight: 500;
+  max-width: 22ch;
 }
-.pk-fact__body :deep(ul) {
-  list-style: none;
-  margin: 18px 0 0;
-  padding: 0;
-}
-.pk-fact__accent {
-  background: var(--pk-panel);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 28px;
+.pk-fact__body :deep(h1 ~ ul) {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.04);
+  flex-direction: column;
+  gap: 10px;
 }
-.pk-fact__glyph {
-  font-size: 96px;
-  line-height: 1;
-  color: var(--pk-accent);
-  opacity: 0.9;
+.pk-fact__body :deep(li) {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.4;
+  color: var(--pk-sub);
+  font-weight: 500;
+}
+.pk-fact__src {
+  grid-column: 2;
+  margin: 0;
+  padding: 0 0 0 8px;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pk-faint);
+  font-weight: 600;
+  max-width: 22ch;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;
@@ -148,7 +161,7 @@ const paletteClass =
   --pk-sub: #3d3d3d;
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
-  --pk-panel: #efe8dc;
+  --pk-rule: rgba(0, 0, 0, 0.12);
 }
 .pk-palette-ink,
 .pk-palette-auto {
@@ -157,6 +170,6 @@ const paletteClass =
   --pk-sub: #c5c7ca;
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
-  --pk-panel: #25282d;
+  --pk-rule: rgba(255, 255, 255, 0.18);
 }
 </style>

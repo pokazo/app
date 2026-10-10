@@ -95,9 +95,12 @@ kicker: VOICE
 ---
 layout: fact
 kicker: FACT
+source: Engineering benchmark
 ---
 
 # 3× faster delivery
+
+One metric. Full slide. No competing charts or bullets.
 
 ---
 layout: icon

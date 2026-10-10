@@ -15,7 +15,8 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { chromium } from "/tmp/pokazo-layout-shots/nm/node_modules/playwright-chromium/index.js";
+import playwrightChromium from "/tmp/pokazo-layout-shots/nm/node_modules/playwright-chromium/index.js";
+const { chromium } = playwrightChromium;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const apiRoot = join(__dirname, "..");

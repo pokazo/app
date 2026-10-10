@@ -22,8 +22,8 @@ Visual rules:
   - point C
   - point D
 - For visual quote: layout: quote. Body = quote text (H1 or paragraph) plus attribution as a bullet or short line; optional kicker/source. No emoji.
-- For visual fact: layout: fact. Body = short H1 claim (≤12 words); optional supporting line; optional kicker/source.
-- For visual icon: layout: icon. Put iconHint (carbon-* / mdi-*) in frontmatter. Body = H1 + ≤4 bullets. No emoji.
+- For visual fact: layout: fact. Body = short H1 claim (≤12 words) on the left; optional supporting line on the right; optional kicker/source.
+- For visual icon: layout: icon. Put iconHint (prefer carbon-*) in frontmatter — rendered as real Carbon SVG. Body = H1 + ≤4 bullets. No emoji.
 - For visual cards: layout: cards. Put kicker and frontmatter items (not cards) — 2–4 objects: title, body. Body of the slide is only the H1. Key name is items: (YAML list). Map outline.cards → items:. Never use cards: as the frontmatter key.
 - For visual timeline: layout: timeline. Put kicker, source, and steps (3–5 objects: phase, title, body, state done|current|todo) in frontmatter. Body of the slide is only the H1 title.
 - For visual stats: layout: stats. Put kicker, source, and frontmatter items (not stats) — 2–4 objects: value, label, note. Body is only the H1. Key name is items: (YAML list). Never use stats: as the frontmatter key.

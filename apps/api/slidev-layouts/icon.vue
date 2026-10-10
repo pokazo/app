@@ -1,16 +1,45 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { icons as carbonIcons } from '@iconify-json/carbon'
 import { assertIconLayout } from './layout-assert.js'
 
 const props = defineProps<{
   palette?: string
   kicker?: string
   source?: string
-  /** Outline hint, e.g. carbon-idea — shown as badge if no icon in body */
+  /** Outline hint, e.g. carbon-idea — rendered as Carbon SVG when available */
   iconHint?: string
 }>()
 
 assertIconLayout(props)
-const badge = (props.iconHint ?? "").replace(/^(carbon|mdi)-/i, "").replace(/-/g, " ").trim()
+
+const label = (props.iconHint ?? "").replace(/^(carbon|mdi)-/i, "").replace(/-/g, " ").trim()
+
+type SvgRender = { attributes: Record<string, string>; body: string }
+
+function renderCarbonIcon(name: string, heightPx: string): SvgRender | null {
+  const icon = carbonIcons.icons?.[name]
+  if (!icon?.body) return null
+  const w = icon.width ?? carbonIcons.width ?? 32
+  const h = icon.height ?? carbonIcons.height ?? 32
+  return {
+    attributes: {
+      width: heightPx,
+      height: heightPx,
+      viewBox: `0 0 ${w} ${h}`,
+      xmlns: "http://www.w3.org/2000/svg",
+      fill: "currentColor",
+    },
+    body: icon.body,
+  }
+}
+
+const svg = computed(() => {
+  const hint = (props.iconHint ?? "").trim()
+  const m = hint.match(/^carbon-(.+)$/i)
+  if (!m?.[1]) return null
+  return renderCarbonIcon(m[1], "88px")
+})
 
 const paletteClass =
   props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
@@ -25,9 +54,15 @@ const paletteClass =
         <span class="pk-kicker__text">{{ kicker }}</span>
       </div>
       <div class="pk-icon__row">
-        <div class="pk-icon__badge" aria-hidden>
-          <span class="pk-icon__glyph">{{ badge ? badge.slice(0, 1).toUpperCase() : "◆" }}</span>
-          <span v-if="badge" class="pk-icon__hint">{{ badge }}</span>
+        <div class="pk-icon__mark" aria-hidden>
+          <svg
+            v-if="svg"
+            class="pk-icon__svg"
+            v-bind="svg.attributes"
+            v-html="svg.body"
+          />
+          <span v-else class="pk-icon__fallback">{{ label ? label.slice(0, 1).toUpperCase() : "◇" }}</span>
+          <span v-if="label" class="pk-icon__hint">{{ label }}</span>
         </div>
         <div class="pk-icon__body">
           <slot />
@@ -45,6 +80,7 @@ const paletteClass =
   --pk-accent: #e10600;
   --pk-faint: #9a9a9a;
   --pk-card: #f2f2f2;
+  --pk-rule: rgba(0, 0, 0, 0.1);
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -65,15 +101,16 @@ const paletteClass =
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 48px 56px 40px;
+  padding: 48px 72px 44px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 .pk-kicker {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .pk-kicker__line {
   width: 28px;
@@ -91,49 +128,50 @@ const paletteClass =
 }
 .pk-icon__row {
   display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 40px;
+  grid-template-columns: 200px 1fr;
+  gap: 48px;
   align-items: center;
   flex: 1;
   min-height: 0;
 }
-.pk-icon__badge {
-  width: 160px;
-  height: 160px;
-  border-radius: 28px;
+.pk-icon__mark {
+  width: 200px;
+  min-height: 200px;
+  border: 1px solid var(--pk-rule);
   background: var(--pk-card);
-  border: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.05);
+  gap: 14px;
+  color: var(--pk-accent);
 }
-.pk-icon__glyph {
+.pk-icon__svg {
+  display: block;
+  color: var(--pk-accent);
+}
+.pk-icon__fallback {
   font-size: 56px;
   font-weight: 800;
-  color: var(--pk-accent);
   line-height: 1;
+  color: var(--pk-accent);
 }
 .pk-icon__hint {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--pk-sub);
-  text-align: center;
-  padding: 0 10px;
 }
 .pk-icon__body {
   min-width: 0;
 }
 .pk-icon__body :deep(h1) {
-  margin: 0 0 18px;
-  font-size: 32px;
-  line-height: 1.15;
+  margin: 0 0 22px;
+  font-size: 40px;
+  line-height: 1.12;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
 }
 .pk-icon__body :deep(ul) {
   margin: 0;
@@ -141,13 +179,15 @@ const paletteClass =
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 .pk-icon__body :deep(li) {
   position: relative;
   padding-left: 1.15em;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.4;
+  color: var(--pk-sub);
+  font-weight: 500;
 }
 .pk-icon__body :deep(li)::before {
   content: "";
@@ -170,6 +210,7 @@ const paletteClass =
   --pk-accent: #c45c26;
   --pk-faint: #6b6b6b;
   --pk-card: #efe8dc;
+  --pk-rule: rgba(0, 0, 0, 0.1);
 }
 .pk-palette-ink,
 .pk-palette-auto {
@@ -179,5 +220,6 @@ const paletteClass =
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
   --pk-card: #25282d;
+  --pk-rule: rgba(255, 255, 255, 0.14);
 }
 </style>

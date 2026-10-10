@@ -23,11 +23,13 @@ const paletteClass =
         <span class="pk-kicker__line" />
         <span class="pk-kicker__text">{{ kicker }}</span>
       </div>
-      <div class="pk-quote__row">
-        <div class="pk-quote__body">
-          <slot />
+      <div class="pk-quote__stage">
+        <div class="pk-quote__pull">
+          <span class="pk-quote__rule" aria-hidden />
+          <div class="pk-quote__body">
+            <slot />
+          </div>
         </div>
-        <div class="pk-quote__mark" aria-hidden>“</div>
       </div>
     </div>
   </div>
@@ -61,7 +63,7 @@ const paletteClass =
   z-index: 1;
   height: 100%;
   width: 100%;
-  padding: 40px 48px 28px;
+  padding: 48px 72px 44px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -71,7 +73,7 @@ const paletteClass =
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex: none;
 }
 .pk-kicker__line {
@@ -88,26 +90,39 @@ const paletteClass =
   text-transform: uppercase;
   color: var(--pk-accent);
 }
-.pk-quote__row {
+.pk-quote__stage {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(140px, 0.6fr);
-  gap: 24px;
+  display: flex;
   align-items: center;
+}
+.pk-quote__pull {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  gap: 36px;
+  align-items: stretch;
+  width: min(920px, 100%);
+}
+.pk-quote__rule {
+  display: block;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--pk-accent);
+  min-height: 100%;
 }
 .pk-quote__body {
   min-width: 0;
+  padding: 4px 0;
 }
 .pk-quote__body :deep(h1),
 .pk-quote__body :deep(p),
 .pk-quote__body :deep(blockquote) {
-  margin: 0 0 14px;
-  font-size: 30px;
-  line-height: 1.28;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  max-width: none;
+  margin: 0 0 20px;
+  font-size: 48px;
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  max-width: 18ch;
 }
 .pk-quote__body :deep(ul) {
   list-style: none;
@@ -116,21 +131,13 @@ const paletteClass =
 }
 .pk-quote__body :deep(li) {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--pk-sub);
+  letter-spacing: -0.01em;
 }
 .pk-quote__body :deep(li::before) {
   content: none;
-}
-.pk-quote__mark {
-  font-size: 180px;
-  line-height: 0.85;
-  font-weight: 800;
-  color: var(--pk-accent);
-  opacity: 0.22;
-  text-align: right;
-  user-select: none;
 }
 .pk-palette-cream {
   --pk-paper: #f7f3ec;
