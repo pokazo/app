@@ -281,7 +281,7 @@ export function DeckView() {
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
       {waiting && !err ? <p className="app-note deck-building">{VIEW_WAITING_NOTE}</p> : null}
       {building && meta ? (
-        <p className="app-note deck-building">Собираем остальные слайды… первый уже можно смотреть.</p>
+        <p className="app-note deck-building">Собираем остальные слайды…</p>
       ) : null}
       {speechOpen && id && !building ? (
         <SpeechModal
