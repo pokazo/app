@@ -12,8 +12,16 @@ export function isLocalImagePath(image) {
   return t.startsWith("/") || !t.includes("://");
 }
 
+/** Prefer first non-empty array — `??` treats [] as present and hides aliases. */
+export function preferList(...lists) {
+  for (const list of lists) {
+    if (Array.isArray(list) && list.length) return list;
+  }
+  return [];
+}
+
 export function assertStatsLayout(props) {
-  const raw = props.items ?? props.stats ?? [];
+  const raw = preferList(props.items, props.stats);
   const ok = raw.filter((it) => it?.value?.trim() && it?.label?.trim());
   if (ok.length < 2) {
     throw layoutError("stats", "need ≥2 items with value and label");
@@ -21,7 +29,7 @@ export function assertStatsLayout(props) {
 }
 
 export function assertCardsLayout(props) {
-  const raw = props.items ?? props.cards ?? [];
+  const raw = preferList(props.items, props.cards);
   const ok = raw.filter((it) => it?.title?.trim());
   if (ok.length < 2) {
     throw layoutError("cards", "need ≥2 items with title");
@@ -94,7 +102,7 @@ export function assertStatementLayout(opts) {
 }
 
 export function assertFeaturesLayout(props) {
-  const raw = props.items ?? props.features ?? [];
+  const raw = preferList(props.items, props.features);
   const ok = raw.filter((it) => it?.title?.trim() && it?.iconHint?.trim());
   if (ok.length < 3) {
     throw layoutError("features", "need ≥3 items with title and iconHint");

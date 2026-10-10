@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 
 assertStatsLayout(props)
-const items = (props.items ?? props.stats ?? []).slice(0, 4)
+const items = (props.items?.length ? props.items : props.stats ?? []).slice(0, 4)
 
 const paletteClass =
   props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"

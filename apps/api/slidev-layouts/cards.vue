@@ -16,7 +16,9 @@ const props = defineProps<{
 }>()
 
 assertCardsLayout(props)
-const items = (props.items ?? props.cards ?? []).filter((it) => it.title?.trim()).slice(0, 4)
+const items = (props.items?.length ? props.items : props.cards ?? [])
+  .filter((it) => it.title?.trim())
+  .slice(0, 4)
 
 const paletteClass =
   props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"

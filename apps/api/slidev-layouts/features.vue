@@ -37,7 +37,7 @@ function renderCarbon(name: string, heightPx: string) {
 }
 
 const items = computed(() =>
-  (props.items ?? props.features ?? [])
+  (props.items?.length ? props.items : props.features ?? [])
     .filter((it) => it.title?.trim() && it.iconHint?.trim())
     .slice(0, 3)
     .map((it) => {

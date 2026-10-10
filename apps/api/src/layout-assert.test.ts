@@ -82,6 +82,18 @@ describe("assertStatsLayout", () => {
       }),
     ).not.toThrow();
   });
+
+  it("uses stats: when items is empty array (asList shadow)", () => {
+    expect(() =>
+      assertStatsLayout({
+        items: [],
+        stats: [
+          { value: "1", label: "A" },
+          { value: "2", label: "B" },
+        ],
+      }),
+    ).not.toThrow();
+  });
 });
 
 describe("assertCardsLayout", () => {
@@ -100,6 +112,15 @@ describe("assertCardsLayout", () => {
     ).not.toThrow();
     expect(() =>
       assertCardsLayout({ cards: [{ title: "A" }, { title: "B" }] }),
+    ).not.toThrow();
+  });
+
+  it("uses cards: when items is empty array (assertLayoutsInMarkdown asList)", () => {
+    expect(() =>
+      assertCardsLayout({
+        items: [],
+        cards: [{ title: "A" }, { title: "B" }],
+      }),
     ).not.toThrow();
   });
 });
@@ -214,6 +235,19 @@ describe("assertFeaturesLayout", () => {
     expect(() =>
       assertFeaturesLayout({
         items: [
+          { title: "A", iconHint: "carbon-idea" },
+          { title: "B", iconHint: "carbon-security" },
+          { title: "C", iconHint: "carbon-rocket" },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  it("uses features: when items is empty array (asList shadow)", () => {
+    expect(() =>
+      assertFeaturesLayout({
+        items: [],
+        features: [
           { title: "A", iconHint: "carbon-idea" },
           { title: "B", iconHint: "carbon-security" },
           { title: "C", iconHint: "carbon-rocket" },

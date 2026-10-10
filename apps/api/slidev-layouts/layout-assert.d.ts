@@ -1,5 +1,6 @@
 export function layoutError(name: string, message: string): Error;
 export function isLocalImagePath(image?: string | null): boolean;
+export function preferList<T>(...lists: Array<T[] | null | undefined>): T[];
 
 export function assertStatsLayout(props: {
   items?: Array<{ value?: string; label?: string }> | null;

@@ -45,20 +45,39 @@ export function parseSimpleYaml(yaml: string): Fm {
       const items: Record<string, string>[] = [];
       i++;
       let cur: Record<string, string> | null = null;
+      let lastProp: string | null = null;
       while (i < lines.length) {
         const L = lines[i]!;
         if (/^[A-Za-z0-9_-]+:/.test(L) && !/^\s/.test(L)) break;
-        const itemStart = /^\s*-\s+(?:(\w+):\s*(.*))?$/.exec(L);
+        // `- key: val` or bare `-` / `- ` with props on following indented lines
+        const itemStart =
+          /^\s*-\s+(?:(\w+):\s*(.*))?$/.exec(L) || /^\s*-\s*$/.exec(L);
         if (itemStart) {
           if (cur) items.push(cur);
           cur = {};
-          if (itemStart[1]) cur[itemStart[1]] = stripQuotes(itemStart[2] ?? "");
+          lastProp = null;
+          if (itemStart[1]) {
+            cur[itemStart[1]] = stripQuotes(itemStart[2] ?? "");
+            lastProp = itemStart[1];
+          }
           i++;
           continue;
         }
         const prop = /^\s+(\w+):\s*(.*)$/.exec(L);
         if (prop && cur) {
           cur[prop[1]!] = stripQuotes(prop[2] ?? "");
+          lastProp = prop[1]!;
+          i++;
+          continue;
+        }
+        // Folded / plain multi-line scalars: indented continuation of last prop.
+        // Compose often wraps long body: across lines; without this we stop after
+        // the first card and throw LayoutError[cards] (≥2 titles).
+        const cont = /^\s+(\S.*)$/.exec(L);
+        if (cont && cur && lastProp) {
+          const piece = cont[1]!.trim();
+          const prev = cur[lastProp] ?? "";
+          cur[lastProp] = prev ? `${prev} ${piece}` : piece;
           i++;
           continue;
         }
