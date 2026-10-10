@@ -251,17 +251,6 @@ button.yandex:hover:not(:disabled), a.yandex:hover {
   margin-left: auto;
   margin-right: auto;
 }
-.theme-picker-title {
-  font-weight: 600;
-  font-size: 16px;
-  padding: 0;
-  margin: 0 0 4px;
-}
-.theme-picker-lead {
-  margin: 0 0 12px;
-  color: var(--pk-ink-muted);
-  font-size: 14px;
-}
 .theme-grid {
   display: grid;
   grid-template-columns: 1fr;

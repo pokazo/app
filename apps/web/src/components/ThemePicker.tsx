@@ -3,8 +3,6 @@ import { DECK_THEMES } from "../decks";
 export function ThemePicker(props: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
   return (
     <fieldset className="theme-picker" disabled={props.disabled}>
-      <legend className="theme-picker-title">Оформление</legend>
-      <p className="theme-picker-lead">Цвета и стиль слайдов. Выберите тему или оставьте Авто.</p>
       <div className="theme-grid" role="radiogroup" aria-label="Тема презентации">
         {DECK_THEMES.map((t) => {
           const on = t.id === props.value;
