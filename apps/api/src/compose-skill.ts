@@ -80,6 +80,8 @@ export function outlineUserPrompt(opts: {
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}Составь оглавление презентации.
 
+Сначала через MCP: layout-list / layout-match / layout-get — выбери visual по контракту layout’а. Затем submit_outline.
+
 Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero|cards|quote|fact|icon|two-cols|statement|features|process), imageQuery, iconHint, kicker, source, steps, stats, skills, cards, features, process.
 steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
 stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].

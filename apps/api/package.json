@@ -9,12 +9,14 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "migrate": "tsx src/migrate.ts",
-    "update-layout-shots": "node scripts/update-layout-shots.mjs"
+    "update-layout-shots": "node scripts/update-layout-shots.mjs",
+    "layout-mcp": "tsx src/layout-mcp-server.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.22",
     "@hono/node-server": "^1.14.1",
     "@iconify-json/carbon": "^1.2.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@slidev/cli": "^52.20.1",
     "@slidev/theme-apple-basic": "^0.25.1",
     "@slidev/theme-bricks": "^0.25.0",

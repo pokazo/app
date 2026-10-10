@@ -1,28 +1,19 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject, generateText } from "ai";
+import { generateText } from "ai";
 import { join } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { config } from "./env.js";
 import { buildSlidev, installDeckLayouts, scaffoldMarkdown, writeSlides } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp, type McpCallLog } from "./slidev-mcp.js";
-import { Outline } from "./outline.js";
-import {
-  composeSkill,
-  composeUserPrompt,
-  outlineRevisePrompt,
-  outlineUserPrompt,
-} from "./compose-skill.js";
+import { composeSkill, composeUserPrompt } from "./compose-skill.js";
 import { heroMaxSteps, heroSkill, heroUserPrompt } from "./hero-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
 import { createYandexImageTools, type YandexToolAttribution } from "./assets-yandex-tools.js";
 import { composeMaxSteps, mergeComposeTools, pickHeroTools } from "./generate-helpers.js";
-import {
-  formatOutlinePlanIssues,
-  refineOutlineUntilValid,
-  validateOutlinePlan,
-} from "./outline-plan.js";
+import { validateOutlinePlan } from "./outline-plan.js";
+import { generateOutlineWithLayoutMcp } from "./outline-layout-agent.js";
 import { runTopicResearch } from "./research.js";
 
 function model(id: string) {
@@ -137,65 +128,31 @@ export async function generateDeck(opts: {
       `chars=${research.markdown.length}`,
   );
 
-  const firstOutline = await generateObject({
+  console.info(`[generate] outline via layout MCP start`);
+  const outlined = await generateOutlineWithLayoutMcp({
     model: model(config.outlineModel),
-    schema: Outline,
-    prompt: outlineUserPrompt({
-      topic: opts.topic,
-      locale: opts.locale,
-      audience: opts.audience,
-      slideCount: opts.slideCount,
-      researchMarkdown: research.markdown,
-    }),
+    reviseModel: model(config.outlineModel),
+    topic: opts.topic,
+    locale: opts.locale,
+    audience: opts.audience,
+    slideCount: opts.slideCount,
+    researchMarkdown: research.markdown,
+    onMcpCall: (call) => mcpCalls.push(call),
   });
   console.info(
-    `[generate] outline title="${firstOutline.object.title}" slides=${firstOutline.object.slides.length} ` +
-      `usage=${firstOutline.usage.promptTokens}/${firstOutline.usage.completionTokens}`,
+    `[generate] outline via=${outlined.via} title="${outlined.outline.title}" slides=${outlined.outline.slides.length} ` +
+      `layoutMcpCalls=${outlined.mcpCalls.length}`,
   );
 
-  const refined = await refineOutlineUntilValid({
-    initial: firstOutline.object,
-    slideCount: opts.slideCount,
-    maxAttempts: 3,
-    revise: async (current, issues) => {
-      const reason = formatOutlinePlanIssues(issues);
-      console.info(`[generate] outline plan failed tests, revising:\n${reason}`);
-      const revised = await generateObject({
-        model: model(config.outlineModel),
-        schema: Outline,
-        prompt: outlineRevisePrompt({
-          topic: opts.topic,
-          locale: opts.locale,
-          audience: opts.audience,
-          slideCount: opts.slideCount,
-          previous: current,
-          issues: reason,
-          researchMarkdown: research.markdown,
-        }),
-      });
-      console.info(
-        `[generate] outline revise title="${revised.object.title}" slides=${revised.object.slides.length} ` +
-          `usage=${revised.usage.promptTokens}/${revised.usage.completionTokens}`,
-      );
-      return revised.object;
-    },
-  });
-
-  if (refined.issues.length > 0) {
-    const reason = formatOutlinePlanIssues(refined.issues);
-    console.error(`[generate] outline plan still invalid after ${refined.attempts} attempts:\n${reason}`);
-    throw new Error(`Outline plan failed validation:\n${reason}`);
-  }
-  console.info(`[generate] outline plan ok after ${refined.attempts} attempt(s)`);
-
-  const outline = { object: refined.outline };
+  const outline = { object: outlined.outline };
   await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(outline.object, null, 2));
   await writeFile(
     join(opts.workDir, "outline-plan-check.json"),
     JSON.stringify(
       {
-        attempts: refined.attempts,
+        via: outlined.via,
         issues: validateOutlinePlan(outline.object, { slideCount: opts.slideCount }),
+        layoutMcpCalls: outlined.mcpCalls.length,
       },
       null,
       2,
