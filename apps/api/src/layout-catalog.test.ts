@@ -16,8 +16,16 @@ describe("layout catalog", () => {
     expect(photo.some((r) => r.id === "image-right")).toBe(true);
   });
 
-  it("layout-get returns full entry", () => {
-    expect(layoutGet("features").outlineFields).toMatch(/iconHint/);
+  it("layout-get returns full entry with Carbon iconHints allowlist", () => {
+    const features = layoutGet("features");
+    expect(features.outlineFields).toMatch(/iconHint/);
+    expect(features.iconHints?.length).toBeGreaterThan(20);
+    expect(features.iconHints).toContain("carbon-money");
+    expect(features.iconHints).toContain("carbon-user-multiple");
+    expect(features.iconHints).not.toContain("carbon-people");
+    expect(layoutGet("process").iconHints).toEqual(features.iconHints);
+    expect(layoutGet("icon").iconHints).toEqual(features.iconHints);
+    expect(features.outlineFields).toMatch(/carbon-money/);
   });
 
   it("layout-get throws on unknown", () => {

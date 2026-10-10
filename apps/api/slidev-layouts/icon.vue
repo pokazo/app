@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { icons as carbonIcons } from '@iconify-json/carbon'
-import { assertIconLayout } from './layout-assert.js'
+import { assertIconLayout, renderCarbonSvg, resolveCarbonIconName } from './layout-assert.js'
 
 const props = defineProps<{
   palette?: string
@@ -13,33 +12,12 @@ const props = defineProps<{
 
 assertIconLayout(props)
 
-const label = (props.iconHint ?? "").replace(/^(carbon|mdi)-/i, "").replace(/-/g, " ").trim()
+const label = (resolveCarbonIconName(props.iconHint) ?? props.iconHint ?? "")
+  .replace(/^(carbon|mdi)-/i, "")
+  .replace(/-/g, " ")
+  .trim()
 
-type SvgRender = { attributes: Record<string, string>; body: string }
-
-function renderCarbonIcon(name: string, heightPx: string): SvgRender | null {
-  const icon = carbonIcons.icons?.[name]
-  if (!icon?.body) return null
-  const w = icon.width ?? carbonIcons.width ?? 32
-  const h = icon.height ?? carbonIcons.height ?? 32
-  return {
-    attributes: {
-      width: heightPx,
-      height: heightPx,
-      viewBox: `0 0 ${w} ${h}`,
-      xmlns: "http://www.w3.org/2000/svg",
-      fill: "currentColor",
-    },
-    body: icon.body,
-  }
-}
-
-const svg = computed(() => {
-  const hint = (props.iconHint ?? "").trim()
-  const m = hint.match(/^carbon-(.+)$/i)
-  if (!m?.[1]) return null
-  return renderCarbonIcon(m[1], "88px")
-})
+const svg = computed(() => renderCarbonSvg(props.iconHint, "88px"))
 
 const paletteClass =
   props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"

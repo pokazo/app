@@ -63,6 +63,22 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/Never use cards:/i);
   });
 
+  it("lists Carbon iconHint allowlist so LLM does not invent names", () => {
+    const skill = composeSkill("default", "ru");
+    expect(skill).toMatch(/carbon-money/);
+    expect(skill).toMatch(/carbon-user-multiple/);
+    expect(skill).toMatch(/carbon-security/);
+    expect(skill).toMatch(/Never invent|allowlist/i);
+    const outline = outlineUserPrompt({
+      topic: "Any topic",
+      locale: "ru",
+      audience: "investors",
+      slideCount: 8,
+    });
+    expect(outline).toMatch(/carbon-money/);
+    expect(outline).toMatch(/ТОЛЬКО из/i);
+  });
+
   it("teaches LayoutError repair reaction", () => {
     const skill = composeSkill("default", "ru");
     expect(skill).toMatch(/LayoutError\[/);

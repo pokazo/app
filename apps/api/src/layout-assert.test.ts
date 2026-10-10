@@ -13,8 +13,13 @@ import {
   assertStatsLayout,
   assertTimelineLayout,
   assertTwoColsLayout,
+  CARBON_LAYOUT_ICON_NAMES,
+  isLayoutCarbonIcon,
   isLocalImagePath,
+  layoutCarbonIconHints,
   layoutError,
+  renderCarbonSvg,
+  resolveCarbonIconName,
 } from "../slidev-layouts/layout-assert.js";
 
 describe("layoutError", () => {
@@ -156,13 +161,76 @@ describe("assertTimelineLayout", () => {
   });
 });
 
+describe("CARBON_LAYOUT_ICON_NAMES allowlist", () => {
+  it("every allowlist name exists in @iconify-json/carbon", () => {
+    for (const name of CARBON_LAYOUT_ICON_NAMES) {
+      expect(resolveCarbonIconName(name), name).toBe(name);
+      expect(isLayoutCarbonIcon(`carbon-${name}`), name).toBe(true);
+    }
+    expect(layoutCarbonIconHints()[0]).toBe("carbon-activity");
+  });
+
+  it("rejects invented carbon-* names not on the allowlist", () => {
+    expect(isLayoutCarbonIcon("carbon-people")).toBe(false);
+    expect(isLayoutCarbonIcon("carbon-shield-check")).toBe(false);
+    expect(isLayoutCarbonIcon("carbon-handshake")).toBe(false);
+    expect(isLayoutCarbonIcon("carbon-money")).toBe(true);
+    expect(isLayoutCarbonIcon("carbon-user-multiple")).toBe(true);
+    expect(isLayoutCarbonIcon("carbon-security")).toBe(true);
+  });
+});
+
+describe("resolveCarbonIconName", () => {
+  it("resolves carbon-* and bare names that exist in Carbon", () => {
+    expect(resolveCarbonIconName("carbon-money")).toBe("money");
+    expect(resolveCarbonIconName("money")).toBe("money");
+    expect(resolveCarbonIconName("Carbon-Money")).toBe("money");
+    expect(resolveCarbonIconName("partnership")).toBe("partnership");
+    expect(resolveCarbonIconName("debug")).toBe("debug");
+  });
+
+  it("returns null for missing / wrong-set hints (diamond fallback bug)", () => {
+    expect(resolveCarbonIconName("carbon-handshake")).toBeNull();
+    expect(resolveCarbonIconName("carbon-shield")).toBeNull();
+    expect(resolveCarbonIconName("network")).toBeNull();
+    expect(resolveCarbonIconName("mdi-nonexistent-glyph")).toBeNull();
+    expect(resolveCarbonIconName("")).toBeNull();
+    expect(resolveCarbonIconName("  ")).toBeNull();
+  });
+
+  it("strips mdi- and resolves when the bare name exists in Carbon", () => {
+    expect(resolveCarbonIconName("mdi-account")).toBe("account");
+  });
+});
+
+describe("renderCarbonSvg", () => {
+  it("renders SVG for bare resolvable hint (LLM omitted carbon- prefix)", () => {
+    const svg = renderCarbonSvg("money", "40px");
+    expect(svg).not.toBeNull();
+    expect(svg?.attributes.height).toBe("40px");
+    expect(svg?.body).toMatch(/path|circle|rect/i);
+  });
+
+  it("returns null for invented names so UI would show ◆ without assert", () => {
+    expect(renderCarbonSvg("carbon-handshake", "40px")).toBeNull();
+    expect(renderCarbonSvg("network", "40px")).toBeNull();
+  });
+});
+
 describe("assertIconLayout", () => {
   it("throws LayoutError[icon] without iconHint", () => {
     expect(() => assertIconLayout({})).toThrow(/LayoutError\[icon\]/);
     expect(() => assertIconLayout({ iconHint: "  " })).toThrow(/LayoutError\[icon\]/);
   });
+  it("throws LayoutError[icon] when iconHint does not resolve in Carbon", () => {
+    expect(() => assertIconLayout({ iconHint: "carbon-handshake" })).toThrow(
+      /LayoutError\[icon\]/,
+    );
+    expect(() => assertIconLayout({ iconHint: "network" })).toThrow(/LayoutError\[icon\]/);
+  });
   it("passes with iconHint", () => {
     expect(() => assertIconLayout({ iconHint: "carbon-idea" })).not.toThrow();
+    expect(() => assertIconLayout({ iconHint: "idea" })).not.toThrow();
   });
 });
 
@@ -231,6 +299,17 @@ describe("assertFeaturesLayout", () => {
       }),
     ).toThrow(/LayoutError\[features\]/);
   });
+  it("throws when any feature iconHint is outside the allowlist", () => {
+    expect(() =>
+      assertFeaturesLayout({
+        items: [
+          { title: "A", iconHint: "carbon-money" },
+          { title: "B", iconHint: "carbon-people" },
+          { title: "C", iconHint: "carbon-shield-check" },
+        ],
+      }),
+    ).toThrow(/LayoutError\[features\]/);
+  });
   it("passes with 3 items", () => {
     expect(() =>
       assertFeaturesLayout({
@@ -238,6 +317,17 @@ describe("assertFeaturesLayout", () => {
           { title: "A", iconHint: "carbon-idea" },
           { title: "B", iconHint: "carbon-security" },
           { title: "C", iconHint: "carbon-rocket" },
+        ],
+      }),
+    ).not.toThrow();
+  });
+  it("passes with bare Carbon names (LLM omitted carbon- prefix)", () => {
+    expect(() =>
+      assertFeaturesLayout({
+        items: [
+          { title: "Экономия", iconHint: "money" },
+          { title: "Прямой контакт", iconHint: "partnership" },
+          { title: "Надежность", iconHint: "security" },
         ],
       }),
     ).not.toThrow();
@@ -269,6 +359,17 @@ describe("assertProcessLayout", () => {
       }),
     ).toThrow(/LayoutError\[process\]/);
   });
+  it("throws when step iconHints do not resolve", () => {
+    expect(() =>
+      assertProcessLayout({
+        steps: [
+          { title: "A", iconHint: "request" },
+          { title: "B", iconHint: "server" },
+          { title: "C", iconHint: "confirm" },
+        ],
+      }),
+    ).toThrow(/LayoutError\[process\]/);
+  });
   it("passes with 3 steps", () => {
     expect(() =>
       assertProcessLayout({
@@ -276,6 +377,17 @@ describe("assertProcessLayout", () => {
           { title: "A", iconHint: "carbon-document" },
           { title: "B", iconHint: "carbon-list" },
           { title: "C", iconHint: "carbon-checkmark" },
+        ],
+      }),
+    ).not.toThrow();
+  });
+  it("passes with bare resolvable step hints", () => {
+    expect(() =>
+      assertProcessLayout({
+        steps: [
+          { title: "A", iconHint: "document" },
+          { title: "B", iconHint: "list" },
+          { title: "C", iconHint: "checkmark" },
         ],
       }),
     ).not.toThrow();

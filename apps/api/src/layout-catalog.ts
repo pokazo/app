@@ -1,5 +1,10 @@
 /** Source-of-truth descriptions for outline/compose layout selection (MCP). */
 
+import { layoutCarbonIconHints } from "../slidev-layouts/layout-assert.js";
+
+const ICON_HINTS = layoutCarbonIconHints();
+const ICON_HINTS_FIELD = `iconHint ONLY from: ${ICON_HINTS.join(", ")}`;
+
 export type LayoutCatalogEntry = {
   id: string;
   summary: string;
@@ -11,6 +16,8 @@ export type LayoutCatalogEntry = {
   displays: string;
   example: string;
   tags: string[];
+  /** Allowed carbon-* iconHints for icon|features|process */
+  iconHints?: string[];
 };
 
 export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
@@ -102,13 +109,14 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     id: "icon",
     summary: "Carbon icon badge + title + short bullets",
     whenToUse: "One concept/idea with iconHint and ≤4 bullets",
-    antiPatterns: "Missing iconHint; emoji",
-    outlineFields: "visual=icon; iconHint carbon-*; points≥1",
+    antiPatterns: "Missing iconHint; invented names; emoji",
+    outlineFields: `visual=icon; ${ICON_HINTS_FIELD}; points≥1`,
     frontmatter: "layout: icon; iconHint: carbon-idea; kicker?",
     body: "H1 + bullets",
     displays: "Real Carbon SVG in frame + copy",
     example: '{ "visual": "icon", "heading": "Clear idea", "iconHint": "carbon-idea", "points": ["Short bullets"], "kicker": "IDEA" }',
     tags: ["concept", "icon"],
+    iconHints: ICON_HINTS,
   },
   {
     id: "cards",
@@ -126,14 +134,15 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     id: "features",
     summary: "Exactly 3 icon columns",
     whenToUse: "Three pillars/benefits each with carbon iconHint",
-    antiPatterns: "2 or 4 items; cards without icons",
-    outlineFields: "visual=features; features[{title,body,iconHint}] length 3",
+    antiPatterns: "2 or 4 items; cards without icons; iconHint outside allowlist",
+    outlineFields: `visual=features; features[{title,body,iconHint}] length 3; ${ICON_HINTS_FIELD}`,
     frontmatter: "layout: features; items: …",
     body: "H1 only",
     displays: "Title + rule + 3 icon/title/body columns",
     example:
       '{ "visual": "features", "heading": "Three pillars", "features": [{"title":"Clarity","body":"…","iconHint":"carbon-idea"},{"title":"Trust","body":"…","iconHint":"carbon-security"},{"title":"Pace","body":"…","iconHint":"carbon-rocket"}] }',
     tags: ["features", "icon", "grid"],
+    iconHints: ICON_HINTS,
   },
   {
     id: "timeline",
@@ -152,14 +161,15 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     id: "process",
     summary: "Horizontal icon circles + arrows",
     whenToUse: "Pipeline / how-we-work flow 3–5 short step titles",
-    antiPatterns: "Dated roadmap with bodies (use timeline)",
-    outlineFields: "visual=process; process[{title,iconHint}] 3–5",
+    antiPatterns: "Dated roadmap with bodies (use timeline); invented iconHint",
+    outlineFields: `visual=process; process[{title,iconHint}] 3–5; ${ICON_HINTS_FIELD}`,
     frontmatter: "layout: process; steps: (from process)",
     body: "H1 only",
     displays: "Centered title + circle icons with arrows",
     example:
       '{ "visual": "process", "heading": "How we deliver", "process": [{"title":"Brief","iconHint":"carbon-document"},{"title":"Compose","iconHint":"carbon-paint-brush"},{"title":"Ship","iconHint":"carbon-checkmark"}] }',
     tags: ["steps", "flow", "icon"],
+    iconHints: ICON_HINTS,
   },
   {
     id: "stats",

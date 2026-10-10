@@ -88,7 +88,7 @@ function richEight(): OutlineT {
         intent: "icon",
         visual: "icon",
         ...base,
-        iconHint: "sports, park",
+        iconHint: "carbon-activity",
       },
       {
         heading: "Дальше",

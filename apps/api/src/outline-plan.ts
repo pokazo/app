@@ -1,3 +1,4 @@
+import { isLayoutCarbonIcon } from "../slidev-layouts/layout-assert.js";
 import type { OutlineT, OutlineSlide } from "./outline.js";
 
 export type OutlinePlanIssue = {
@@ -88,14 +89,14 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
 
   if (visual === "features") {
     const features = (slide.features ?? []).filter(
-      (c) => c.title?.trim() && c.iconHint?.trim(),
+      (c) => c.title?.trim() && isLayoutCarbonIcon(c.iconHint),
     );
     if (features.length < 3) {
       return [
         {
           slide: index,
           code: "empty_slide",
-          message: `${label}: features пустой — нужно ≥3 items с title и iconHint (сейчас ${features.length})`,
+          message: `${label}: features пустой — нужно ≥3 items с title и iconHint из layout allowlist (сейчас ${features.length})`,
         },
       ];
     }
@@ -104,14 +105,14 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
 
   if (visual === "process") {
     const process = (slide.process ?? []).filter(
-      (c) => c.title?.trim() && c.iconHint?.trim(),
+      (c) => c.title?.trim() && isLayoutCarbonIcon(c.iconHint),
     );
     if (process.length < 3) {
       return [
         {
           slide: index,
           code: "empty_slide",
-          message: `${label}: process пустой — нужно ≥3 steps с title и iconHint (сейчас ${process.length})`,
+          message: `${label}: process пустой — нужно ≥3 steps с title и iconHint из layout allowlist (сейчас ${process.length})`,
         },
       ];
     }
@@ -119,8 +120,14 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
   }
 
   if (visual === "icon") {
-    if (!slide.iconHint?.trim()) {
-      return [{ slide: index, code: "empty_slide", message: `${label}: visual=icon без iconHint` }];
+    if (!isLayoutCarbonIcon(slide.iconHint)) {
+      return [
+        {
+          slide: index,
+          code: "empty_slide",
+          message: `${label}: visual=icon — iconHint должен быть из layout Carbon allowlist`,
+        },
+      ];
     }
     if (points.length < 1) {
       return [{ slide: index, code: "empty_slide", message: `${label}: icon-слайд без points` }];
@@ -214,12 +221,12 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
     ];
   }
 
-  if (visual === "icon" && !slide.iconHint?.trim()) {
+  if (visual === "icon" && !isLayoutCarbonIcon(slide.iconHint)) {
     return [
       {
         slide: index,
         code: "text_only",
-        message: `${label}: visual=icon без iconHint — останется текстовый список`,
+        message: `${label}: visual=icon без iconHint из allowlist — останется текстовый список`,
       },
     ];
   }
@@ -266,26 +273,28 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
 
   if (
     visual === "features" &&
-    (slide.features ?? []).filter((c) => c.title?.trim() && c.iconHint?.trim()).length < 3
+    (slide.features ?? []).filter((c) => c.title?.trim() && isLayoutCarbonIcon(c.iconHint)).length <
+      3
   ) {
     return [
       {
         slide: index,
         code: "text_only",
-        message: `${label}: features без ≥3 items — останется заголовок`,
+        message: `${label}: features без ≥3 items с iconHint из allowlist — останется заголовок`,
       },
     ];
   }
 
   if (
     visual === "process" &&
-    (slide.process ?? []).filter((c) => c.title?.trim() && c.iconHint?.trim()).length < 3
+    (slide.process ?? []).filter((c) => c.title?.trim() && isLayoutCarbonIcon(c.iconHint)).length <
+      3
   ) {
     return [
       {
         slide: index,
         code: "text_only",
-        message: `${label}: process без ≥3 steps — останется заголовок`,
+        message: `${label}: process без ≥3 steps с iconHint из allowlist — останется заголовок`,
       },
     ];
   }

@@ -2,6 +2,18 @@ export function layoutError(name: string, message: string): Error;
 export function isLocalImagePath(image?: string | null): boolean;
 export function preferList<T>(...lists: Array<T[] | null | undefined>): T[];
 
+export const CARBON_LAYOUT_ICON_NAMES: readonly string[];
+export function layoutCarbonIconHints(): string[];
+export function resolveCarbonIconName(hint?: string | null): string | null;
+export function isLayoutCarbonIcon(hint?: string | null): boolean;
+export function renderCarbonSvg(
+  hint: string | null | undefined,
+  heightPx: string,
+): {
+  attributes: Record<string, string>;
+  body: string;
+} | null;
+
 export function assertStatsLayout(props: {
   items?: Array<{ value?: string; label?: string }> | null;
   stats?: Array<{ value?: string; label?: string }> | null;

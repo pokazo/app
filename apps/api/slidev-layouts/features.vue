@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { icons as carbonIcons } from '@iconify-json/carbon'
-import { assertFeaturesLayout } from './layout-assert.js'
+import { assertFeaturesLayout, isLayoutCarbonIcon, renderCarbonSvg } from './layout-assert.js'
 
 export type FeatureItem = {
   title?: string
@@ -19,37 +18,15 @@ const props = defineProps<{
 
 assertFeaturesLayout(props)
 
-function renderCarbon(name: string, heightPx: string) {
-  const icon = carbonIcons.icons?.[name]
-  if (!icon?.body) return null
-  const w = icon.width ?? carbonIcons.width ?? 32
-  const h = icon.height ?? carbonIcons.height ?? 32
-  return {
-    attributes: {
-      width: heightPx,
-      height: heightPx,
-      viewBox: `0 0 ${w} ${h}`,
-      xmlns: "http://www.w3.org/2000/svg",
-      fill: "currentColor",
-    },
-    body: icon.body,
-  }
-}
-
 const items = computed(() =>
   (props.items?.length ? props.items : props.features ?? [])
-    .filter((it) => it.title?.trim() && it.iconHint?.trim())
+    .filter((it) => it.title?.trim() && isLayoutCarbonIcon(it.iconHint))
     .slice(0, 3)
-    .map((it) => {
-      const hint = (it.iconHint ?? "").trim()
-      const m = hint.match(/^carbon-(.+)$/i)
-      const svg = m?.[1] ? renderCarbon(m[1], "40px") : null
-      return {
-        title: it.title ?? "",
-        body: it.body ?? "",
-        svg,
-      }
-    }),
+    .map((it) => ({
+      title: it.title ?? "",
+      body: it.body ?? "",
+      svg: renderCarbonSvg(it.iconHint, "40px"),
+    })),
 )
 
 const paletteClass =

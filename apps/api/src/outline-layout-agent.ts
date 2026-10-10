@@ -19,9 +19,10 @@ You have MCP tools for layouts:
 Rules:
 1. Before assigning visual on slides, call layout-list or layout-match (and layout-get for unfamiliar ids).
 2. Prefer variety; honor quotas in the user prompt (photos, structured payload, no text-only visuals).
-3. When ready, call submit_outline with the full outline object (title + slides).
-4. If submit_outline returns issues, fix and submit_outline again.
-5. Do not invent layout ids outside the catalog.`;
+3. For visual=icon|features|process: every iconHint MUST be copied from that layout's iconHints allowlist (layout-get). Never invent Carbon names.
+4. When ready, call submit_outline with the full outline object (title + slides).
+5. If submit_outline returns issues, fix and submit_outline again.
+6. Do not invent layout ids outside the catalog.`;
 
 function skipOutlinePlan(): boolean {
   return process.env.SKIP_OUTLINE_PLAN === "1";

@@ -1,3 +1,7 @@
+import { layoutCarbonIconHints } from "../slidev-layouts/layout-assert.js";
+
+const LAYOUT_ICON_HINTS = layoutCarbonIconHints().join(", ");
+
 export function composeSkill(theme: string, locale: string): string {
   const lang = locale === "ru" ? "Russian" : locale;
   return `You compose a Slidev deck ONLY through tools. Never dump or rewrite the whole slides.md as text.
@@ -23,14 +27,14 @@ Visual rules:
   - point D
 - For visual quote: layout: quote. Body = quote text (H1 or paragraph) plus attribution as a bullet or short line; optional kicker/source. No emoji.
 - For visual fact: layout: fact. Body = short H1 claim (≤12 words) on the left; optional supporting line on the right; optional kicker/source.
-- For visual icon: layout: icon. Put iconHint (prefer carbon-*) in frontmatter — rendered as real Carbon SVG. Body = H1 + ≤4 bullets. No emoji.
+- For visual icon: layout: icon. Put iconHint from allowlist only (${LAYOUT_ICON_HINTS}). Body = H1 + ≤4 bullets. No emoji. Never invent names.
 - For visual cards: layout: cards. Put kicker and frontmatter items (not cards) — 2–4 objects: title, body. Body of the slide is only the H1. Key name is items: (YAML list). Map outline.cards → items:. Never use cards: as the frontmatter key.
 - For visual timeline: layout: timeline. Put kicker, source, and steps (3–5 objects: phase, title, body, state done|current|todo) in frontmatter. Body of the slide is only the H1 title.
 - For visual stats: layout: stats. Put kicker, source, and frontmatter items (not stats) — 2–4 objects: value, label, note. Body is only the H1. Key name is items: (YAML list). Never use stats: as the frontmatter key.
 - For visual skills: layout: skills. Put kicker and items (name, level, pct 0–100) in frontmatter. Body is only the H1.
 - For visual statement: layout: statement. Body = bold H1 + short supporting line (bottom-anchored). Optional kicker. Prefer dark/ink closing or manifesto slides.
-- For visual features: layout: features. Put kicker and items (exactly 3): title, body, iconHint (carbon-*). Body is only the H1. Map outline.features → items:.
-- For visual process: layout: process. Put kicker and steps (3–5): title, iconHint (carbon-*). Body is only the H1. Map outline.process → steps:.
+- For visual features: layout: features. Put kicker and items (exactly 3): title, body, iconHint — ONLY from allowlist (${LAYOUT_ICON_HINTS}). Body is only the H1. Map outline.features → items:. Never invent icon names outside the list.
+- For visual process: layout: process. Put kicker and steps (3–5): title, iconHint — same allowlist. Body is only the H1. Map outline.process → steps:.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
 - Photo slides (visual image-right, image-left, and any remaining slide with a non-empty imageQuery — NOT slide 1):
   1) yandex-image-search (Russian/natural query from imageQuery when locale is Russian; orientation horizontal)
@@ -43,7 +47,7 @@ Visual rules:
 - Never treat one stock error as permission to skip photos for the rest of the deck.
 - Slide 1 already has a local hero image. Finish with at least 3 local image: paths total (hero + ≥2 more).
 - Dense facts: prefer concrete numbers, named entities, and source: on stats/timeline/comparison slides. For side-by-side specs use two-cols or a markdown table in default layout — not vague marketing bullets.
-- Icons: carbon-* / mdi-* style icons when visual=icon; no custom Vue SFCs, no <script>. iconHint required for layout: icon.
+- Icons: iconHint for icon|features|process MUST be copied from the allowlist above (or layout-get iconHints). No custom Vue SFCs, no <script>.
 - Layouts throw LayoutError[<name>] when data cannot be shown (e.g. stats/cards need ≥2 items, timeline ≥3 steps, image-* need local image:, hero needs valid variant). If build/repair reports LayoutError[…], fix that slide's frontmatter/body only — do not rewrite the whole deck; leave slide 1 hero alone unless the error names hero.
 - theme/palette are already set in headmatter — do not change theme or palette.
 - Language: ${lang}.
@@ -87,8 +91,9 @@ steps — массив {phase,title,body,state:done|current|todo} только �
 stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].
 skills — массив {name,level,pct} только для visual=skills, иначе [].
 cards — массив {title,body} только для visual=cards (2–4 шт, feature-grid), иначе [].
-features — массив {title,body,iconHint} только для visual=features (ровно 3), иначе [].
-process — массив {title,iconHint} только для visual=process (3–5 шт), иначе [].
+features — массив {title,body,iconHint} только для visual=features (ровно 3), иначе []. iconHint ТОЛЬКО из: ${LAYOUT_ICON_HINTS}.
+process — массив {title,iconHint} только для visual=process (3–5 шт), иначе []. iconHint из того же allowlist.
+Для visual=icon поле iconHint — из того же allowlist.
 kicker/source — короткие подписи или "". Для stats/timeline с цифрами source обязателен (откуда факт), иначе "".
 imageQuery — поисковый запрос под РЕАЛЬНЫЙ объект темы (конкретная модель/сцена, 4–8 слов); для locale=ru — на русском (для Yandex Images); иначе на языке темы / английском; иначе "".
 
@@ -127,7 +132,8 @@ ${opts.issues}
 Правила (обязательно устранить все ошибки):
 - Не оставляй пустых слайдов (heading + payload).
 - Не оставляй слайдов только с текстом: нельзя none|default|center|section|intro|end.
-- Для image/hero/cover нужен imageQuery; для icon — iconHint; timeline — ≥3 steps; stats — ≥2; skills — ≥2; cards — ≥2; features — 3; process — ≥3.
+- Для image/hero/cover нужен imageQuery; для icon — iconHint из allowlist; timeline — ≥3 steps; stats — ≥2; skills — ≥2; cards — ≥2; features — 3; process — ≥3.
+- iconHint для icon|features|process — только из: ${LAYOUT_ICON_HINTS}.
 - Добавь source на слайды stats/timeline с цифрами.
 - Факты и source бери из Research brief выше, не выдумывай.
 
@@ -149,8 +155,9 @@ For visual=stats: map outline.stats → frontmatter items: (never stats:). Body 
 For visual=cards: map outline.cards → frontmatter items: (never cards:). Body = H1 only. Optional kicker.
 For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji. Use for comparisons when useful.
 For visual=quote|fact|icon|statement: use matching layout; icon needs iconHint; fact = short H1 claim; quote = quote + attribution; statement = bottom-anchored H1 + line.
-For visual=features: map outline.features → frontmatter items: (title, body, iconHint). Body = H1 only.
-For visual=process: map outline.process → frontmatter steps: (title, iconHint). Body = H1 only.
+For visual=features: map outline.features → frontmatter items: (title, body, iconHint from allowlist). Body = H1 only.
+For visual=process: map outline.process → frontmatter steps: (title, iconHint from allowlist). Body = H1 only.
+iconHint allowlist: ${LAYOUT_ICON_HINTS}.
 Hero already has one local image. At least 3 local image: paths total when finished.
 Do not skip remaining photos after one stock error — try Yandex, then Unsplash (retry once), then generate, then continue.
 outline:
