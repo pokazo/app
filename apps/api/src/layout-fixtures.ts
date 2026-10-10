@@ -20,6 +20,9 @@ export const LAYOUT_SHOT_ORDER = [
   "timeline",
   "stats",
   "skills",
+  "statement",
+  "features",
+  "process",
 ] as const;
 
 export type LayoutShotName = (typeof LAYOUT_SHOT_ORDER)[number];
@@ -172,6 +175,50 @@ items:
 ---
 
 # Skills title
+
+---
+layout: statement
+kicker: CLOSE
+---
+
+# Ship the sharp idea
+
+Leave one clear takeaway — nothing competing for attention.
+
+---
+layout: features
+kicker: PILLARS
+items:
+  - title: Clarity
+    body: One idea per slide, short labels, no filler.
+    iconHint: carbon-idea
+  - title: Trust
+    body: Named sources and concrete numbers.
+    iconHint: carbon-security
+  - title: Pace
+    body: Fast scanning through hierarchy and space.
+    iconHint: carbon-rocket
+---
+
+# Three pillars
+
+---
+layout: process
+kicker: FLOW
+steps:
+  - title: Brief
+    iconHint: carbon-document
+  - title: Outline
+    iconHint: carbon-list
+  - title: Compose
+    iconHint: carbon-paint-brush
+  - title: Review
+    iconHint: carbon-view
+  - title: Ship
+    iconHint: carbon-checkmark
+---
+
+# How we deliver
 `;
 }
 
@@ -304,6 +351,41 @@ items:
 ---
 
 # Broken skills
+`,
+  ),
+  statement: deckWithSlide(
+    "Bad statement",
+    `---
+layout: statement
+---
+
+no heading
+`,
+  ),
+  features: deckWithSlide(
+    "Bad features",
+    `---
+layout: features
+items:
+  - title: Only
+    iconHint: carbon-idea
+---
+
+# Broken features
+`,
+  ),
+  process: deckWithSlide(
+    "Bad process",
+    `---
+layout: process
+steps:
+  - title: A
+    iconHint: carbon-idea
+  - title: B
+    iconHint: carbon-idea
+---
+
+# Broken process
 `,
   ),
 };

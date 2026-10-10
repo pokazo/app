@@ -33,7 +33,17 @@ export function assertHeroLayout(props: {
 
 export function assertQuoteLayout(opts: { hasBodySlot: boolean }): void;
 export function assertFactLayout(opts: { hasBodySlot: boolean }): void;
+export function assertStatementLayout(opts: { hasBodySlot: boolean }): void;
 export function assertTwoColsLayout(opts: {
   hasLeftSlot: boolean;
   hasRightSlot: boolean;
+}): void;
+
+export function assertFeaturesLayout(props: {
+  items?: Array<{ title?: string; iconHint?: string }> | null;
+  features?: Array<{ title?: string; iconHint?: string }> | null;
+}): void;
+
+export function assertProcessLayout(props: {
+  steps?: Array<{ title?: string; iconHint?: string }> | null;
 }): void;

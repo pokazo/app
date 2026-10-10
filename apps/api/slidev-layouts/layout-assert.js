@@ -86,3 +86,24 @@ export function assertTwoColsLayout(opts) {
     throw layoutError("two-cols", "both ::left:: and ::right:: slots are required");
   }
 }
+
+export function assertStatementLayout(opts) {
+  if (!opts.hasBodySlot) {
+    throw layoutError("statement", "body/slot content is required");
+  }
+}
+
+export function assertFeaturesLayout(props) {
+  const raw = props.items ?? props.features ?? [];
+  const ok = raw.filter((it) => it?.title?.trim() && it?.iconHint?.trim());
+  if (ok.length < 3) {
+    throw layoutError("features", "need ≥3 items with title and iconHint");
+  }
+}
+
+export function assertProcessLayout(props) {
+  const ok = (props.steps ?? []).filter((it) => it?.title?.trim() && it?.iconHint?.trim());
+  if (ok.length < 3) {
+    throw layoutError("process", "need ≥3 steps with title and iconHint");
+  }
+}

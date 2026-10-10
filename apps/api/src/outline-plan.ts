@@ -86,6 +86,38 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
     return [];
   }
 
+  if (visual === "features") {
+    const features = (slide.features ?? []).filter(
+      (c) => c.title?.trim() && c.iconHint?.trim(),
+    );
+    if (features.length < 3) {
+      return [
+        {
+          slide: index,
+          code: "empty_slide",
+          message: `${label}: features пустой — нужно ≥3 items с title и iconHint (сейчас ${features.length})`,
+        },
+      ];
+    }
+    return [];
+  }
+
+  if (visual === "process") {
+    const process = (slide.process ?? []).filter(
+      (c) => c.title?.trim() && c.iconHint?.trim(),
+    );
+    if (process.length < 3) {
+      return [
+        {
+          slide: index,
+          code: "empty_slide",
+          message: `${label}: process пустой — нужно ≥3 steps с title и iconHint (сейчас ${process.length})`,
+        },
+      ];
+    }
+    return [];
+  }
+
   if (visual === "icon") {
     if (!slide.iconHint?.trim()) {
       return [{ slide: index, code: "empty_slide", message: `${label}: visual=icon без iconHint` }];
@@ -137,7 +169,7 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
     return [];
   }
 
-  if (visual === "quote" || visual === "fact") {
+  if (visual === "quote" || visual === "fact" || visual === "statement") {
     if (points.length < 1 && heading.length < 12) {
       return [
         {
@@ -167,7 +199,7 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
       {
         slide: index,
         code: "text_only",
-        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards с заполненным payload`,
+        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process с заполненным payload`,
       },
     ];
   }
@@ -228,6 +260,32 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
         slide: index,
         code: "text_only",
         message: `${label}: cards без cards[] — останется заголовок`,
+      },
+    ];
+  }
+
+  if (
+    visual === "features" &&
+    (slide.features ?? []).filter((c) => c.title?.trim() && c.iconHint?.trim()).length < 3
+  ) {
+    return [
+      {
+        slide: index,
+        code: "text_only",
+        message: `${label}: features без ≥3 items — останется заголовок`,
+      },
+    ];
+  }
+
+  if (
+    visual === "process" &&
+    (slide.process ?? []).filter((c) => c.title?.trim() && c.iconHint?.trim()).length < 3
+  ) {
+    return [
+      {
+        slide: index,
+        code: "text_only",
+        message: `${label}: process без ≥3 steps — останется заголовок`,
       },
     ];
   }

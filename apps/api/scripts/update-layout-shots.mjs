@@ -36,6 +36,9 @@ const names = [
   "timeline",
   "stats",
   "skills",
+  "statement",
+  "features",
+  "process",
 ];
 
 if (!existsSync(join(nm, ".bin/slidev"))) {
@@ -58,6 +61,9 @@ for (const name of [
   "fact.vue",
   "icon.vue",
   "cards.vue",
+  "statement.vue",
+  "features.vue",
+  "process.vue",
 ]) {
   copyFileSync(join(apiRoot, "slidev-layouts", name), join(deck, "layouts", name));
 }

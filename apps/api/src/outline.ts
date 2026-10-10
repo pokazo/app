@@ -19,6 +19,9 @@ export const OutlineVisual = z.enum([
   "stats",
   "skills",
   "hero",
+  "statement",
+  "features",
+  "process",
 ]);
 
 export const TimelineStep = z.object({
@@ -45,6 +48,17 @@ export const CardItem = z.object({
   body: z.string(),
 });
 
+export const FeatureItem = z.object({
+  title: z.string(),
+  body: z.string(),
+  iconHint: z.string(),
+});
+
+export const ProcessStep = z.object({
+  title: z.string(),
+  iconHint: z.string(),
+});
+
 export const OutlineSlide = z.object({
   heading: z.string(),
   points: z.array(z.string()).max(5),
@@ -61,6 +75,10 @@ export const OutlineSlide = z.object({
   skills: z.array(SkillItem).max(8),
   /** Feature cards when visual is cards; mapped to frontmatter items. */
   cards: z.array(CardItem).max(4),
+  /** Icon columns when visual is features; mapped to frontmatter items. */
+  features: z.array(FeatureItem).max(3),
+  /** Horizontal flow when visual is process. */
+  process: z.array(ProcessStep).max(5),
 });
 
 export const Outline = z.object({

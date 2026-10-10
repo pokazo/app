@@ -15,6 +15,8 @@ const base = {
   stats: [] as const,
   skills: [] as const,
   cards: [] as const,
+  features: [] as const,
+  process: [] as const,
 };
 
 function richEight(): OutlineT {

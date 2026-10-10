@@ -1,11 +1,14 @@
 import {
   assertCardsLayout,
   assertFactLayout,
+  assertFeaturesLayout,
   assertHeroLayout,
   assertIconLayout,
   assertImageLayout,
+  assertProcessLayout,
   assertQuoteLayout,
   assertSkillsLayout,
+  assertStatementLayout,
   assertStatsLayout,
   assertTimelineLayout,
   assertTwoColsLayout,
@@ -137,6 +140,18 @@ export function assertLayoutsInMarkdown(md: string): void {
         break;
       case "fact":
         assertFactLayout({ hasBodySlot: /(?:^|\n)#\s+\S/.test(body) });
+        break;
+      case "statement":
+        assertStatementLayout({ hasBodySlot: /(?:^|\n)#\s+\S/.test(body) });
+        break;
+      case "features":
+        assertFeaturesLayout({
+          items: asList(fm.items),
+          features: asList(fm.features),
+        });
+        break;
+      case "process":
+        assertProcessLayout({ steps: asList(fm.steps) });
         break;
       case "two-cols":
         assertTwoColsLayout({

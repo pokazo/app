@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   assertCardsLayout,
   assertFactLayout,
+  assertFeaturesLayout,
   assertHeroLayout,
   assertIconLayout,
   assertImageLayout,
+  assertProcessLayout,
   assertQuoteLayout,
   assertSkillsLayout,
+  assertStatementLayout,
   assertStatsLayout,
   assertTimelineLayout,
   assertTwoColsLayout,
@@ -28,6 +31,9 @@ describe("layoutError", () => {
       "timeline",
       "stats",
       "skills",
+      "statement",
+      "features",
+      "process",
     ]) {
       expect(layoutError(name, "x").message).toBe(`LayoutError[${name}]: x`);
     }
@@ -179,14 +185,66 @@ describe("assertHeroLayout", () => {
   });
 });
 
-describe("assertQuoteLayout / assertFactLayout", () => {
-  it("throws LayoutError[quote] / [fact] without body slot", () => {
+describe("assertQuoteLayout / assertFactLayout / assertStatementLayout", () => {
+  it("throws LayoutError[quote] / [fact] / [statement] without body slot", () => {
     expect(() => assertQuoteLayout({ hasBodySlot: false })).toThrow(/LayoutError\[quote\]/);
     expect(() => assertFactLayout({ hasBodySlot: false })).toThrow(/LayoutError\[fact\]/);
+    expect(() => assertStatementLayout({ hasBodySlot: false })).toThrow(/LayoutError\[statement\]/);
   });
   it("passes with body slot", () => {
     expect(() => assertQuoteLayout({ hasBodySlot: true })).not.toThrow();
     expect(() => assertFactLayout({ hasBodySlot: true })).not.toThrow();
+    expect(() => assertStatementLayout({ hasBodySlot: true })).not.toThrow();
+  });
+});
+
+describe("assertFeaturesLayout", () => {
+  it("throws LayoutError[features] without ≥3 titled icon items", () => {
+    expect(() => assertFeaturesLayout({ items: [] })).toThrow(/LayoutError\[features\]/);
+    expect(() =>
+      assertFeaturesLayout({
+        items: [
+          { title: "A", iconHint: "carbon-idea" },
+          { title: "B", iconHint: "carbon-idea" },
+        ],
+      }),
+    ).toThrow(/LayoutError\[features\]/);
+  });
+  it("passes with 3 items", () => {
+    expect(() =>
+      assertFeaturesLayout({
+        items: [
+          { title: "A", iconHint: "carbon-idea" },
+          { title: "B", iconHint: "carbon-security" },
+          { title: "C", iconHint: "carbon-rocket" },
+        ],
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe("assertProcessLayout", () => {
+  it("throws LayoutError[process] without ≥3 steps", () => {
+    expect(() => assertProcessLayout({ steps: [] })).toThrow(/LayoutError\[process\]/);
+    expect(() =>
+      assertProcessLayout({
+        steps: [
+          { title: "A", iconHint: "carbon-idea" },
+          { title: "B", iconHint: "carbon-idea" },
+        ],
+      }),
+    ).toThrow(/LayoutError\[process\]/);
+  });
+  it("passes with 3 steps", () => {
+    expect(() =>
+      assertProcessLayout({
+        steps: [
+          { title: "A", iconHint: "carbon-document" },
+          { title: "B", iconHint: "carbon-list" },
+          { title: "C", iconHint: "carbon-checkmark" },
+        ],
+      }),
+    ).not.toThrow();
   });
 });
 

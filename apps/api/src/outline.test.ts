@@ -10,6 +10,8 @@ const emptyVisual = {
   stats: [] as const,
   skills: [] as const,
   cards: [] as const,
+  features: [] as const,
+  process: [] as const,
 };
 
 describe("Outline schema", () => {
