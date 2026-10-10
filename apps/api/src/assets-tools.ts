@@ -54,7 +54,10 @@ export function createStockTools(
       parameters: z.object({
         query: z.string().describe("English search query, e.g. modern glass office atrium"),
         orientation: z.enum(["landscape", "portrait", "squarish"]).optional(),
-        count: z.number().int().min(1).max(5).optional(),
+        count: z.preprocess(
+          (v) => (typeof v === "number" ? Math.min(5, Math.max(1, Math.trunc(v))) : v),
+          z.number().int().min(1).max(5).optional(),
+        ),
       }),
       execute: async ({ query, orientation, count }) => {
         if (!configured) {
@@ -104,20 +107,27 @@ export function createStockTools(
         const attribution: StockAttribution = hit
           ? { photographer: hit.photographer, attributionUrl: hit.attributionUrl }
           : { photographer: "Unknown", attributionUrl: "https://unsplash.com" };
-        const result = await download({
-          workDir,
-          url: downloadUrl,
-          filename,
-          attribution,
-        });
-        const entry: StockToolAttribution = {
-          ...result.attribution,
-          id,
-          path: result.path,
-          source: "unsplash",
-        };
-        opts.onAttribution?.(entry);
-        return { path: result.path, attribution: result.attribution, source: "unsplash" as const };
+        try {
+          const result = await download({
+            workDir,
+            url: downloadUrl,
+            filename,
+            attribution,
+          });
+          const entry: StockToolAttribution = {
+            ...result.attribution,
+            id,
+            path: result.path,
+            source: "unsplash",
+          };
+          opts.onAttribution?.(entry);
+          return { path: result.path, attribution: result.attribution, source: "unsplash" as const };
+        } catch (err) {
+          return {
+            error: err instanceof Error ? err.message : String(err),
+            hint: "retry another id once, else image-generate",
+          };
+        }
       },
     }),
   };

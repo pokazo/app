@@ -23,6 +23,10 @@ Rules:
 4. If submit_outline returns issues, fix and submit_outline again.
 5. Do not invent layout ids outside the catalog.`;
 
+function skipOutlinePlan(): boolean {
+  return process.env.SKIP_OUTLINE_PLAN === "1";
+}
+
 export function createSubmitOutlineTool(opts: {
   slideCount: number;
   onAccepted: (outline: OutlineT) => void;
@@ -34,12 +38,14 @@ export function createSubmitOutlineTool(opts: {
     execute: async (raw) => {
       try {
         const outline = Outline.parse(raw);
-        const issues = validateOutlinePlan(outline, { slideCount: opts.slideCount });
-        if (issues.length) {
-          return {
-            ok: false,
-            issues: formatOutlinePlanIssues(issues),
-          };
+        if (!skipOutlinePlan()) {
+          const issues = validateOutlinePlan(outline, { slideCount: opts.slideCount });
+          if (issues.length) {
+            return {
+              ok: false,
+              issues: formatOutlinePlanIssues(issues),
+            };
+          }
         }
         opts.onAccepted(outline);
         return { ok: true, slides: outline.slides.length, title: outline.title };
@@ -119,6 +125,9 @@ export async function generateOutlineWithLayoutMcp(opts: {
       researchMarkdown: opts.researchMarkdown,
     }),
   });
+  if (skipOutlinePlan()) {
+    return { outline: first.object, via: "generateObject_fallback", mcpCalls };
+  }
   const refined = await refineOutlineUntilValid({
     initial: first.object,
     slideCount: opts.slideCount,

@@ -17,13 +17,14 @@ server.registerTool(
   "layout-list",
   {
     description:
-      "List Pokazo Slidev layouts with summary, whenToUse, and outlineFields. Optional tag filter (photo, kpi, steps, features, voice, close, …).",
+      "List Pokazo Slidev layouts with summary, whenToUse, and outlineFields. Pass tag to filter (photo, kpi, steps, features, voice, close, …) or empty string for all.",
     inputSchema: {
-      tag: z.string().optional().describe("Optional tag filter"),
+      // Required (no .optional/.default): OpenAI/Azure strict tools need every properties key in `required`.
+      tag: z.string().describe("Tag filter; use empty string for all layouts"),
     },
   },
   async ({ tag }) => {
-    const rows = layoutList(tag);
+    const rows = layoutList(tag.trim() || undefined);
     return {
       content: [{ type: "text" as const, text: JSON.stringify(rows, null, 2) }],
     };
@@ -61,14 +62,21 @@ server.registerTool(
       "Rank layout candidates for a slide intent. Returns top ids with scores/reasons — pick one and fill its outlineFields (use layout-get for details).",
     inputSchema: {
       intent: z.string().describe("Slide intent / what the slide should communicate"),
-      hasNumbers: z.boolean().optional(),
-      hasSteps: z.boolean().optional(),
-      wantsPhoto: z.boolean().optional(),
-      featureCount: z.number().optional().describe("How many feature-like items if any"),
+      // Required booleans/numbers (no .optional): OpenAI/Azure strict tool schemas.
+      hasNumbers: z.boolean().describe("True if the slide is about metrics/KPIs"),
+      hasSteps: z.boolean().describe("True if the slide is a sequence/pipeline"),
+      wantsPhoto: z.boolean().describe("True if a photo layout is preferred"),
+      featureCount: z.number().describe("Feature-like item count; 0 if unknown"),
     },
   },
   async (args) => {
-    const hits = layoutMatch(args);
+    const hits = layoutMatch({
+      intent: args.intent,
+      hasNumbers: args.hasNumbers || undefined,
+      hasSteps: args.hasSteps || undefined,
+      wantsPhoto: args.wantsPhoto || undefined,
+      featureCount: args.featureCount > 0 ? args.featureCount : undefined,
+    });
     return {
       content: [{ type: "text" as const, text: JSON.stringify(hits, null, 2) }],
     };

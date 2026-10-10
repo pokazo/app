@@ -20,7 +20,13 @@ describe("layout MCP stdio", () => {
         const match = t["layout-match"] as ExecTool;
         const listed = await list.execute({ tag: "kpi" }, {});
         const matched = await match.execute(
-          { intent: "pipeline how we work", hasSteps: true },
+          {
+            intent: "pipeline how we work",
+            hasNumbers: false,
+            hasSteps: true,
+            wantsPhoto: false,
+            featureCount: 0,
+          },
           {},
         );
         return { listed, matched };
