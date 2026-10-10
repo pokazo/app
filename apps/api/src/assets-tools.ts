@@ -6,6 +6,7 @@ import {
   type StockAttribution,
   type StockHit,
 } from "./assets-stock.js";
+import { timedTool } from "./timing.js";
 
 export type StockToolAttribution = StockAttribution & {
   id?: string;
@@ -50,7 +51,7 @@ export function createStockTools(
   return {
     "stock-search": tool({
       description:
-        "SECOND photo search after yandex-image-search. Search Unsplash stock photos (English query). Prefer landscape. Returns ids plus description/altDescription so you can judge subject relevance. Use when Yandex was empty, wrong subject, or errored. If Unsplash hits are empty OR clearly the wrong subject, do NOT download — call image-generate instead. Otherwise stock-download with the matching id. Empty/error: retry once with a simpler English query, then generate. Do not skip photos for the rest of the deck.",
+        "SECOND photo search after yandex-image-search. Search Unsplash stock photos (English query). Prefer landscape. Returns ids plus description/altDescription so you can judge subject relevance. Use when Yandex was empty, wrong subject, or errored. If Unsplash hits are empty OR clearly the wrong subject OR timeout/error, do NOT retry stock-search — call image-generate instead. Otherwise stock-download with the matching id. Do not skip photos for the rest of the deck.",
       parameters: z.object({
         query: z.string().describe("English search query, e.g. modern glass office atrium"),
         orientation: z.enum(["landscape", "portrait", "squarish"]).optional(),
@@ -59,33 +60,36 @@ export function createStockTools(
           z.number().int().min(1).max(5).optional(),
         ),
       }),
-      execute: async ({ query, orientation, count }) => {
-        if (!configured) {
-          return { error: "UNSPLASH_ACCESS_KEY not configured — use image-generate or icon/two-cols/quote instead" };
-        }
-        try {
-          const hits = await search({
-            accessKey: opts.accessKey,
-            query,
-            orientation,
-            count,
-          });
-          for (const h of hits) cache.set(h.id, h);
-          return hits.map((h) => ({
-            id: h.id,
-            thumb: h.thumb,
-            width: h.width,
-            height: h.height,
-            photographer: h.photographer,
-            attributionUrl: h.attributionUrl,
-            description: h.description,
-            altDescription: h.altDescription,
-          }));
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          return { error: message, hint: "retry simpler query once, then image-generate" };
-        }
-      },
+      execute: async ({ query, orientation, count }) =>
+        timedTool("stock-search", async () => {
+          if (!configured) {
+            return {
+              error: "UNSPLASH_ACCESS_KEY not configured — use image-generate or icon/two-cols/quote instead",
+            };
+          }
+          try {
+            const hits = await search({
+              accessKey: opts.accessKey,
+              query,
+              orientation,
+              count,
+            });
+            for (const h of hits) cache.set(h.id, h);
+            return hits.map((h) => ({
+              id: h.id,
+              thumb: h.thumb,
+              width: h.width,
+              height: h.height,
+              photographer: h.photographer,
+              attributionUrl: h.attributionUrl,
+              description: h.description,
+              altDescription: h.altDescription,
+            }));
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return { error: message, hint: "retry simpler query once, then image-generate" };
+          }
+        }, { query: String(query).slice(0, 80) }),
     }),
     "stock-download": tool({
       description:
@@ -95,40 +99,41 @@ export function createStockTools(
         url: z.string().url().optional(),
         filename: z.string().describe("basename only, e.g. slide-3.jpg"),
       }),
-      execute: async ({ id, url, filename }) => {
-        if (!configured) {
-          return { error: "UNSPLASH_ACCESS_KEY not configured — skip photos" };
-        }
-        let hit: StockHit | undefined = id ? cache.get(id) : undefined;
-        const downloadUrl = hit?.url ?? url;
-        if (!downloadUrl) {
-          return { error: "provide id from stock-search or url" };
-        }
-        const attribution: StockAttribution = hit
-          ? { photographer: hit.photographer, attributionUrl: hit.attributionUrl }
-          : { photographer: "Unknown", attributionUrl: "https://unsplash.com" };
-        try {
-          const result = await download({
-            workDir,
-            url: downloadUrl,
-            filename,
-            attribution,
-          });
-          const entry: StockToolAttribution = {
-            ...result.attribution,
-            id,
-            path: result.path,
-            source: "unsplash",
-          };
-          opts.onAttribution?.(entry);
-          return { path: result.path, attribution: result.attribution, source: "unsplash" as const };
-        } catch (err) {
-          return {
-            error: err instanceof Error ? err.message : String(err),
-            hint: "retry another id once, else image-generate",
-          };
-        }
-      },
+      execute: async ({ id, url, filename }) =>
+        timedTool("stock-download", async () => {
+          if (!configured) {
+            return { error: "UNSPLASH_ACCESS_KEY not configured — skip photos" };
+          }
+          const hit: StockHit | undefined = id ? cache.get(id) : undefined;
+          const downloadUrl = hit?.url ?? url;
+          if (!downloadUrl) {
+            return { error: "provide id from stock-search or url" };
+          }
+          const attribution: StockAttribution = hit
+            ? { photographer: hit.photographer, attributionUrl: hit.attributionUrl }
+            : { photographer: "Unknown", attributionUrl: "https://unsplash.com" };
+          try {
+            const result = await download({
+              workDir,
+              url: downloadUrl,
+              filename,
+              attribution,
+            });
+            const entry: StockToolAttribution = {
+              ...result.attribution,
+              id,
+              path: result.path,
+              source: "unsplash",
+            };
+            opts.onAttribution?.(entry);
+            return { path: result.path, attribution: result.attribution, source: "unsplash" as const };
+          } catch (err) {
+            return {
+              error: err instanceof Error ? err.message : String(err),
+              hint: "retry another id once, else image-generate",
+            };
+          }
+        }, { filename }),
     }),
   };
 }

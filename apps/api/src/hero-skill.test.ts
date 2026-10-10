@@ -22,7 +22,10 @@ describe("heroSkill", () => {
     expect(skill).toMatch(/stock-search/);
     expect(skill).toMatch(/image-generate/);
     expect(skill).toMatch(/yandex-image-search[\s\S]*stock-search/i);
+    expect(skill).toMatch(/suggestedId|IMMEDIATELY yandex-image-download/i);
+    expect(skill).toMatch(/Do NOT call yandex-image-search more than once/i);
     expect(skill).toMatch(/slidev-update-slide/);
+    expect(skill).toMatch(/Do NOT call slidev-get-info/i);
     expect(skill).toMatch(/Do NOT insert/i);
     expect(skill).toMatch(/variant:/);
     expect(skill).toMatch(/Russian/);
@@ -63,7 +66,7 @@ describe("heroUserPrompt", () => {
 
 describe("heroMaxSteps", () => {
   it("is enough for search + download + update", () => {
-    expect(heroMaxSteps()).toBeGreaterThanOrEqual(12);
-    expect(heroMaxSteps()).toBeLessThanOrEqual(24);
+    expect(heroMaxSteps()).toBeGreaterThanOrEqual(8);
+    expect(heroMaxSteps()).toBeLessThanOrEqual(12);
   });
 });

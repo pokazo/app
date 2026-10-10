@@ -13,8 +13,79 @@ export type YandexImageHit = {
   domain: string;
 };
 
+/** CDN / aggregator hosts — prefer real site domains for download. */
+const YANDEX_CDN_DOMAINS = [
+  "avatars.mds.yandex.net",
+  "yandex.ru",
+  "yandex.net",
+  "ya.ru",
+  "images-wixmp-",
+  "static.tildacdn.com",
+  "img.freepik.com",
+];
+
 function withTimeout(ms: number): AbortSignal {
   return AbortSignal.timeout(ms);
+}
+
+export function isYandexCdnDomain(domain: string): boolean {
+  const d = domain.toLowerCase();
+  return YANDEX_CDN_DOMAINS.some((cdn) => d === cdn || d.endsWith(`.${cdn}`) || d.includes(cdn));
+}
+
+/** Build a human label when upstream title is empty (common for Yandex Images API). */
+export function enrichYandexHit(hit: YandexImageHit): YandexImageHit {
+  if (hit.title?.trim()) return hit;
+  let fromPath = "";
+  try {
+    const u = new URL(hit.pageUrl);
+    fromPath = decodeURIComponent(u.pathname)
+      .split("/")
+      .filter((p) => p && !/^\d+$/.test(p))
+      .slice(-3)
+      .join(" ")
+      .replace(/[-_]+/g, " ")
+      .trim();
+  } catch {
+    /* ignore bad pageUrl */
+  }
+  const host = hit.domain || (() => {
+    try {
+      return new URL(hit.pageUrl).hostname;
+    } catch {
+      return "";
+    }
+  })();
+  const title = [fromPath, host].filter(Boolean).join(" — ").slice(0, 160);
+  return { ...hit, title: title || host || "yandex-image" };
+}
+
+/** Prefer a non-CDN topical hit for immediate yandex-image-download. */
+export function suggestYandexDownloadId(hits: YandexImageHit[]): string | undefined {
+  if (!hits.length) return undefined;
+  const ranked = [...hits].sort((a, b) => {
+    const aCdn = isYandexCdnDomain(a.domain) ? 1 : 0;
+    const bCdn = isYandexCdnDomain(b.domain) ? 1 : 0;
+    if (aCdn !== bCdn) return aCdn - bCdn;
+    const aSite = (() => {
+      try {
+        return new URL(a.pageUrl).hostname;
+      } catch {
+        return a.domain;
+      }
+    })();
+    const bSite = (() => {
+      try {
+        return new URL(b.pageUrl).hostname;
+      } catch {
+        return b.domain;
+      }
+    })();
+    const aSiteCdn = isYandexCdnDomain(aSite) ? 1 : 0;
+    const bSiteCdn = isYandexCdnDomain(bSite) ? 1 : 0;
+    return aSiteCdn - bSiteCdn;
+  });
+  return ranked[0]?.id;
 }
 
 export async function searchYandexImages(opts: {
@@ -42,7 +113,8 @@ export async function searchYandexImages(opts: {
     throw new Error(`yandex-images search ${res.status}: ${text.slice(0, 200)}`);
   }
   const data = (await res.json()) as { hits?: YandexImageHit[] };
-  return Array.isArray(data.hits) ? data.hits : [];
+  const raw = Array.isArray(data.hits) ? data.hits : [];
+  return raw.map(enrichYandexHit);
 }
 
 export async function downloadYandexImageToPublic(opts: {

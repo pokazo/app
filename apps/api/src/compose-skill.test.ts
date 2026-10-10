@@ -20,6 +20,8 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/layout: skills/);
     expect(skill).toMatch(/finished hero/i);
     expect(skill).toMatch(/Never dump|ONLY through (MCP|tools)/i);
+    expect(skill).toMatch(/Do NOT start with slidev-get-info/i);
+    expect(skill).toMatch(/Do NOT call slidev-get-slide on every slide/i);
   });
 
   it("requires stock with relevance judgment and image-generate fallback", () => {
@@ -29,7 +31,7 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/description\/altDescription|wrong subject/i);
     expect(skill).toMatch(/gpt-image-1-mini|low quality/i);
     expect(skill).toMatch(/image: \/slide-/);
-    expect(skill).toMatch(/retry once with a simpler English query/i);
+    expect(skill).toMatch(/At most ONE yandex-image-search and ONE stock-search/i);
     expect(skill).not.toMatch(/If stock tools return an error, fall back/i);
     expect(skill).toMatch(/Slide 1 is already a finished hero/i);
     expect(skill).toMatch(/at least 3 local image: paths total/i);
@@ -41,6 +43,7 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/yandex-image-search/);
     expect(skill).toMatch(/yandex-image-download/);
     expect(skill).toMatch(/yandex-image-search[\s\S]*stock-search[\s\S]*image-generate/i);
+    expect(skill).toMatch(/suggestedId|IMMEDIATELY yandex-image-download/i);
     expect(skill).toMatch(/title\/domain\/pageUrl|wrong subject/i);
   });
 
@@ -159,7 +162,7 @@ describe("composeUserPrompt", () => {
     expect(prompt).toMatch(/yandex-image-search/);
     expect(prompt).toMatch(/stock-search/);
     expect(prompt).toMatch(/image-generate/);
-    expect(prompt).toMatch(/wrong subject/i);
+    expect(prompt).toMatch(/suggestedId|empty\/wrong\/error/i);
     expect(prompt).toMatch(/At least 3/i);
     expect(prompt).toMatch(/Slide 1 \(hero\) уже готов/i);
     expect(prompt).toMatch(/outline\.cards → frontmatter items/i);

@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { composeMaxSteps, mergeComposeTools, pickHeroTools } from "./generate-helpers.js";
+import {
+  composeMaxSteps,
+  mergeComposeTools,
+  pickHeroTools,
+  stripComposeInspectTools,
+} from "./generate-helpers.js";
 
 describe("composeMaxSteps", () => {
-  it("scales with slide count and caps", () => {
-    expect(composeMaxSteps(6)).toBeGreaterThanOrEqual(30);
-    expect(composeMaxSteps(16)).toBeLessThanOrEqual(72);
+  it("scales with slide count and caps leaner", () => {
+    expect(composeMaxSteps(6)).toBe(30);
+    expect(composeMaxSteps(8)).toBe(38);
+    expect(composeMaxSteps(16)).toBeLessThanOrEqual(48);
   });
 });
 
@@ -27,21 +33,48 @@ describe("mergeComposeTools", () => {
   });
 });
 
+describe("stripComposeInspectTools", () => {
+  it("stubs get-info/get-slide execute and keeps list/insert", async () => {
+    const picked = stripComposeInspectTools({
+      "slidev-get-info": {
+        description: "info",
+        execute: async () => ({ ok: true }),
+      },
+      "slidev-get-slide": {
+        description: "slide",
+        execute: async () => ({ ok: true }),
+      },
+      "slidev-list-slides": { description: "list", execute: async () => ({ n: 1 }) },
+      "slidev-insert-slide": 4,
+    });
+    expect(picked["slidev-list-slides"]).toBeTruthy();
+    expect(picked["slidev-insert-slide"]).toBe(4);
+    const info = picked["slidev-get-info"] as {
+      execute: () => Promise<{ error?: string }>;
+      description: string;
+    };
+    const out = await info.execute();
+    expect(out.error).toMatch(/inspect disabled/i);
+    expect(info.description).toMatch(/DISABLED/i);
+  });
+});
+
 describe("pickHeroTools", () => {
-  it("keeps update + assets and drops insert/remove/move", () => {
+  it("keeps update + assets and drops inspect/insert/remove/move", () => {
     const picked = pickHeroTools({
       "slidev-update-slide": 1,
       "slidev-insert-slide": 2,
       "slidev-remove-slide": 3,
       "slidev-move-slide": 4,
       "slidev-list-slides": 5,
+      "slidev-get-info": 9,
+      "slidev-get-slide": 10,
       "yandex-image-search": 8,
       "stock-search": 6,
       "image-generate": 7,
     });
     expect(Object.keys(picked).sort()).toEqual([
       "image-generate",
-      "slidev-list-slides",
       "slidev-update-slide",
       "stock-search",
       "yandex-image-search",

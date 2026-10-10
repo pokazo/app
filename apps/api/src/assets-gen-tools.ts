@@ -5,6 +5,7 @@ import {
   generateOpenAiImageToPublic,
   type ImageGenAttribution,
 } from "./assets-openai-image.js";
+import { timedTool } from "./timing.js";
 
 export type GenToolAttribution = ImageGenAttribution & { path: string };
 
@@ -53,26 +54,27 @@ export function createImageGenTools(
           ),
         filename: z.string().describe("basename only, e.g. slide-3-gen.png"),
       }),
-      execute: async ({ prompt, filename }) => {
-        if (!configured) {
-          return { error: "OPENAI_API_KEY not configured — skip generate or use non-photo layouts" };
-        }
-        try {
-          const result = await generate({
-            workDir,
-            prompt,
-            filename,
-            apiKey: opts.apiKey,
-            model,
-          });
-          const entry: GenToolAttribution = { ...result.attribution, path: result.path };
-          opts.onAttribution?.(entry);
-          return { path: result.path, attribution: result.attribution };
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          return { error: message };
-        }
-      },
+      execute: async ({ prompt, filename }) =>
+        timedTool("image-generate", async () => {
+          if (!configured) {
+            return { error: "OPENAI_API_KEY not configured — skip generate or use non-photo layouts" };
+          }
+          try {
+            const result = await generate({
+              workDir,
+              prompt,
+              filename,
+              apiKey: opts.apiKey,
+              model,
+            });
+            const entry: GenToolAttribution = { ...result.attribution, path: result.path };
+            opts.onAttribution?.(entry);
+            return { path: result.path, attribution: result.attribution };
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return { error: message };
+          }
+        }, { filename, prompt: String(prompt).slice(0, 60) }),
     }),
   };
 }

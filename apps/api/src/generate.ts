@@ -11,10 +11,16 @@ import { heroMaxSteps, heroSkill, heroUserPrompt } from "./hero-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
 import { createYandexImageTools, type YandexToolAttribution } from "./assets-yandex-tools.js";
-import { composeMaxSteps, mergeComposeTools, pickHeroTools } from "./generate-helpers.js";
+import {
+  composeMaxSteps,
+  mergeComposeTools,
+  pickHeroTools,
+  stripComposeInspectTools,
+} from "./generate-helpers.js";
 import { validateOutlinePlan } from "./outline-plan.js";
 import { generateOutlineWithLayoutMcp } from "./outline-layout-agent.js";
 import { runTopicResearch } from "./research.js";
+import { createPhaseTimer } from "./timing.js";
 
 function model(id: string) {
   const openai = createOpenAI({
@@ -93,6 +99,8 @@ export async function generateDeck(opts: {
   const mcpCalls: McpCallLog[] = [];
   const attributions: Array<StockToolAttribution | GenToolAttribution | YandexToolAttribution> = [];
   const llm: unknown[] = [];
+  const timer = createPhaseTimer(`deck=${opts.id}`);
+  const stepTimers = new Map<"hero" | "compose" | "repair", number>();
 
   await mkdir(join(opts.workDir, "public"), { recursive: true });
   installDeckLayouts(opts.workDir);
@@ -123,6 +131,7 @@ export async function generateDeck(opts: {
       2,
     ),
   );
+  timer.mark("research");
   console.info(
     `[generate] research done used=${research.used} searchCalls=${research.searchCalls} ` +
       `chars=${research.markdown.length}`,
@@ -139,6 +148,7 @@ export async function generateDeck(opts: {
     researchMarkdown: research.markdown,
     onMcpCall: (call) => mcpCalls.push(call),
   });
+  timer.mark("outline");
   console.info(
     `[generate] outline via=${outlined.via} title="${outlined.outline.title}" slides=${outlined.outline.slides.length} ` +
       `layoutMcpCalls=${outlined.mcpCalls.length}`,
@@ -181,6 +191,7 @@ export async function generateDeck(opts: {
   });
 
   console.info(`[generate] hero-compose start`);
+  stepTimers.set("hero", Date.now());
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
@@ -197,7 +208,12 @@ export async function generateDeck(opts: {
         }),
         onStepFinish: async (step) => {
           const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-          console.info(`[llm] hero step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
+          const prev = stepTimers.get("hero") ?? Date.now();
+          const ms = Date.now() - prev;
+          stepTimers.set("hero", Date.now());
+          console.info(
+            `[llm] hero step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+          );
         },
       });
       llm.push(summarizeGenerate("hero", result));
@@ -205,19 +221,27 @@ export async function generateDeck(opts: {
     (call) => mcpCalls.push(call),
   );
   await guardWorkSlides(opts.workDir, theme);
+  timer.mark("hero");
   console.info(`[generate] hero-compose done`);
 
   const base = `/p/${opts.id}/`;
-  const buildAndGate = async () => {
+  const buildAndGate = async (label: string) => {
+    const t0 = Date.now();
     await buildSlidev(opts.workDir, base);
+    const buildMs = Date.now() - t0;
+    let gateMs = 0;
     if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+      const g0 = Date.now();
       const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
       await assertDeckLayoutsRender(opts.workDir, opts.id);
+      gateMs = Date.now() - g0;
     }
+    console.info(`[timing] ${label} build=${buildMs}ms gate=${gateMs}ms`);
   };
   // Early build of slide 1 so the player can open while the rest compose.
   try {
-    await buildAndGate();
+    await buildAndGate("preview");
+    timer.mark("preview");
     console.info(`[generate] preview build ok (hero)`);
     if (opts.onPreviewReady) {
       await opts.onPreviewReady();
@@ -227,10 +251,13 @@ export async function generateDeck(opts: {
     console.warn(`[generate] preview build skipped: ${String(err).slice(0, 300)}`);
   }
 
+  stepTimers.set("compose", Date.now());
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
-      const tools = mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools);
+      const tools = stripComposeInspectTools(
+        mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools),
+      );
       const result = await generateText({
         model: model(config.composeModel),
         system: skill,
@@ -239,21 +266,29 @@ export async function generateDeck(opts: {
         prompt: composeUserPrompt(outline.object, opts.locale),
         onStepFinish: async (step) => {
           const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-          console.info(`[llm] compose step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
+          const prev = stepTimers.get("compose") ?? Date.now();
+          const ms = Date.now() - prev;
+          stepTimers.set("compose", Date.now());
+          console.info(
+            `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+          );
         },
       });
       llm.push(summarizeGenerate("compose", result));
     },
     (call) => mcpCalls.push(call),
   );
+  timer.mark("compose");
 
   let md = await guardWorkSlides(opts.workDir, theme);
   let repaired = false;
   try {
-    await buildAndGate();
+    await buildAndGate("final");
+    timer.mark("final_build");
   } catch (err) {
     repaired = true;
     console.info(`[generate] build failed, MCP repair: ${String(err).slice(0, 400)}`);
+    stepTimers.set("repair", Date.now());
     await withSlidevMcp(
       opts.workDir,
       async (slidevTools) => {
@@ -266,15 +301,22 @@ export async function generateDeck(opts: {
           prompt: `Сборка Slidev / layout render упала. Исправь колоду только через tools (MCP update/insert/remove/move, yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Если ошибка LayoutError[<layout>] — почини frontmatter/body именно этого слайда (stats/cards ≥2 items, timeline ≥3 steps, image-* local image:, hero valid variant+image when required). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
           onStepFinish: async (step) => {
             const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-            console.info(`[llm] repair step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
+            const prev = stepTimers.get("repair") ?? Date.now();
+            const ms = Date.now() - prev;
+            stepTimers.set("repair", Date.now());
+            console.info(
+              `[llm] repair step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+            );
           },
         });
         llm.push(summarizeGenerate("repair", result));
       },
       (call) => mcpCalls.push(call),
     );
+    timer.mark("repair");
     md = await guardWorkSlides(opts.workDir, theme);
-    await buildAndGate();
+    await buildAndGate("final_after_repair");
+    timer.mark("final_build");
   }
 
   // Speech is lazy: generated on first open via POST /api/decks/:id/speech/regenerate
@@ -298,6 +340,7 @@ export async function generateDeck(opts: {
   const heroPhase = llm.find(
     (entry) => entry && typeof entry === "object" && "phase" in entry && (entry as { phase?: string }).phase === "hero",
   );
+  const timings = timer.summary();
   const trace = {
     outlineModel: config.outlineModel,
     composeModel: config.composeModel,
@@ -308,11 +351,14 @@ export async function generateDeck(opts: {
     researchUsed: research.used,
     researchSearchCalls: research.searchCalls,
     heroComposed: Boolean(heroPhase),
+    timings,
     mcpCalls,
     attributions,
     llm,
   };
   await writeFile(join(opts.workDir, "compose-trace.json"), JSON.stringify(trace, null, 2));
+  await writeFile(join(opts.workDir, "timings.json"), JSON.stringify(timings, null, 2));
+  console.info(`[timing] deck=${opts.id} summary=${JSON.stringify(timings)}`);
   console.info(
     `[generate] mcp calls=${mcpCalls.length} stock=${attributions.length} repaired=${repaired} -> ${opts.workDir}`,
   );

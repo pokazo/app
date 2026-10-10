@@ -38,10 +38,14 @@ describe("createYandexImageTools", () => {
       onAttribution: (e) => attributions.push(e),
     });
     const search = tools["yandex-image-search"] as {
-      execute: (a: { query: string }) => Promise<Array<{ id: string; title: string }>>;
+      execute: (a: { query: string }) => Promise<{
+        hits: Array<{ id: string; title: string }>;
+        suggestedId?: string;
+      }>;
     };
-    const hits = await search.execute({ query: "УАЗ Патриот" });
-    expect(hits[0]?.id).toBe("h1");
+    const outSearch = await search.execute({ query: "УАЗ Патриот" });
+    expect(outSearch.hits[0]?.id).toBe("h1");
+    expect(outSearch.suggestedId).toBe("h1");
     const dl = tools["yandex-image-download"] as {
       execute: (a: {
         id: string;

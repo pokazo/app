@@ -3,7 +3,12 @@ import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { downloadStockToPublic, safePublicPath, searchUnsplash } from "./assets-stock.js";
+import {
+  UNSPLASH_SEARCH_TIMEOUT_MS,
+  downloadStockToPublic,
+  safePublicPath,
+  searchUnsplash,
+} from "./assets-stock.js";
 
 describe("safePublicPath", () => {
   it("rejects path traversal", () => {
@@ -18,6 +23,21 @@ describe("safePublicPath", () => {
 });
 
 describe("searchUnsplash", () => {
+  it("uses a short AbortSignal timeout (fail-fast)", async () => {
+    expect(UNSPLASH_SEARCH_TIMEOUT_MS).toBeLessThanOrEqual(8_000);
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(init?.signal).toBeDefined();
+      expect(init?.signal?.aborted).toBe(false);
+      return Response.json({ results: [] });
+    });
+    await searchUnsplash({
+      accessKey: "key",
+      query: "car",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
   it("returns mapped results from Unsplash JSON", async () => {
     const fetchMock = vi.fn(async () =>
       Response.json({

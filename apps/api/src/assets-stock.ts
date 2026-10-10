@@ -48,6 +48,10 @@ export function rewriteUnsplashImageUrl(url: string, imagesBase?: string): strin
   }
 }
 
+/** Fail-fast: egress proxy sometimes hangs; do not block the compose agent for 20s+. */
+export const UNSPLASH_SEARCH_TIMEOUT_MS = 6_000;
+export const UNSPLASH_DOWNLOAD_TIMEOUT_MS = 10_000;
+
 export async function searchUnsplash(opts: {
   accessKey: string;
   query: string;
@@ -55,6 +59,7 @@ export async function searchUnsplash(opts: {
   count?: number;
   apiBase?: string;
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
 }): Promise<StockHit[]> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const count = Math.min(5, Math.max(1, opts.count ?? 3));
@@ -69,6 +74,7 @@ export async function searchUnsplash(opts: {
       Authorization: `Client-ID ${opts.accessKey}`,
       "Accept-Version": "v1",
     },
+    signal: AbortSignal.timeout(opts.timeoutMs ?? UNSPLASH_SEARCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`unsplash search ${res.status}`);
@@ -108,11 +114,14 @@ export async function downloadStockToPublic(opts: {
   attribution: StockAttribution;
   imagesBase?: string;
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
 }): Promise<{ path: string; attribution: StockAttribution; file: string }> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const file = safePublicPath(opts.workDir, opts.filename);
   await mkdir(join(opts.workDir, "public"), { recursive: true });
-  const res = await fetchImpl(rewriteUnsplashImageUrl(opts.url, opts.imagesBase));
+  const res = await fetchImpl(rewriteUnsplashImageUrl(opts.url, opts.imagesBase), {
+    signal: AbortSignal.timeout(opts.timeoutMs ?? UNSPLASH_DOWNLOAD_TIMEOUT_MS),
+  });
   if (!res.ok) {
     throw new Error(`unsplash download ${res.status}`);
   }
