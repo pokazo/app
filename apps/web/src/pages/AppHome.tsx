@@ -112,10 +112,6 @@ export function AppHome() {
                 disabled={Boolean(status)}
                 onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 20))}
               />
-              <span className="upload-field__hint">
-                Сначала возьмём фото из ваших файлов, потом из поиска. JPEG / PNG / WebP, до 20 шт.
-                {files.length ? ` Выбрано: ${files.length}` : ""}
-              </span>
             </label>
             <div className="actions">
               <SlideCountPicker
