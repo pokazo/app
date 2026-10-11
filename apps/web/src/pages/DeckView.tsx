@@ -5,6 +5,7 @@ import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage } from "../deck-view";
 import {
   isDeckId,
+  progressiveSlideReveal,
   shouldPollDeckView,
   VIEW_NOT_FOUND_ERR,
   VIEW_WAITING_NOTE,
@@ -95,6 +96,7 @@ export function DeckView() {
     let stopped = false;
     let hasMeta = false;
     let isBuilding = false;
+    let slideCount = 0;
     const started = Date.now();
 
     const stopWithError = (message: string) => {
@@ -120,8 +122,15 @@ export function DeckView() {
         if (cancelled || stopped) return;
         const firstMeta = !hasMeta;
         const wasBuilding = hasMeta && isBuilding;
+        const nextCount = data.slides.length;
+        const reveal = progressiveSlideReveal({
+          prevCount: slideCount,
+          nextCount,
+          building: Boolean(data.building),
+        });
         hasMeta = true;
         isBuilding = Boolean(data.building);
+        slideCount = nextCount;
         if (isBuilding) forcePollRef.current = true;
         if (!isBuilding) forcePollRef.current = false;
         setMeta(data);
@@ -137,6 +146,10 @@ export function DeckView() {
         }
         if (firstMeta) {
           setCurrent(data.slides[0]?.index ?? 1);
+        } else if (reveal.remount) {
+          setStageReady(false);
+          setEmbedKey((k) => k + 1);
+          if (reveal.focusSlide != null) setCurrent(reveal.focusSlide);
         }
         if (wasBuilding && !isBuilding) {
           setStageReady(false);
@@ -144,11 +157,12 @@ export function DeckView() {
           setRewriteBusy(false);
           const stay = stayOnSlideRef.current;
           stayOnSlideRef.current = null;
+          const max = data.slides.length || 1;
           if (stay != null) {
-            const max = data.slides.length || 1;
             setCurrent(Math.min(max, Math.max(1, stay)));
           } else {
-            setCurrent(data.slides[0]?.index ?? 1);
+            // Keep the page the user is on after progressive reveal / final remount.
+            setCurrent((c) => Math.min(max, Math.max(1, c)));
           }
         }
       } catch {
@@ -376,34 +390,6 @@ export function DeckView() {
             : "Собираем остальные слайды…"}
         </p>
       ) : null}
-      {meta && me && meta.status === "ready" ? (
-        <form
-          className="deck-rewrite"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void submitRewrite();
-          }}
-        >
-          <label className="deck-rewrite-label" htmlFor="deck-rewrite-input">
-            Что переделать на слайде {current}
-          </label>
-          <div className="deck-rewrite-row">
-            <input
-              id="deck-rewrite-input"
-              className="deck-rewrite-input"
-              type="text"
-              value={rewriteText}
-              disabled={!rewriteReady}
-              placeholder="Например: сделай крупную цифру и короче текст"
-              onChange={(e) => setRewriteText(e.target.value)}
-            />
-            <button type="submit" className="pk ghost" disabled={!rewriteReady}>
-              {rewriteBusy || (building && rewritingSlide != null) ? "Пересобираем…" : "Пересобрать"}
-            </button>
-          </div>
-          {rewriteErr ? <p className="err app-note">{rewriteErr}</p> : null}
-        </form>
-      ) : null}
       {speechOpen && id && !building ? (
         <SpeechModal
           deckId={id}
@@ -424,6 +410,7 @@ export function DeckView() {
               onClick={() => go(s.index)}
             >
               <DeckThumbPreview
+                key={`${embedKey}-${s.index}`}
                 embedBase={embedBase}
                 index={s.index}
                 heading={s.heading || `Слайд ${s.index}`}
@@ -433,7 +420,9 @@ export function DeckView() {
             </button>
           ))}
         </nav>
-        <div className="deck-stage">
+        <div
+          className={`deck-stage${me && meta?.status === "ready" ? " has-rewrite" : ""}`}
+        >
           <div className="deck-stage-frame">
             {id && meta && !err ? (
               <iframe
@@ -450,6 +439,36 @@ export function DeckView() {
               <button type="button" className="deck-hit right" onClick={() => go(current + 1)} />
             </div>
           </div>
+          {meta && me && meta.status === "ready" ? (
+            <form
+              className="deck-rewrite"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submitRewrite();
+              }}
+            >
+              <label className="deck-rewrite-label" htmlFor="deck-rewrite-input">
+                Что переделать на слайде {current}
+              </label>
+              <div className="deck-rewrite-row">
+                <input
+                  id="deck-rewrite-input"
+                  className="deck-rewrite-input"
+                  type="text"
+                  value={rewriteText}
+                  disabled={!rewriteReady}
+                  placeholder="Например: сделай крупную цифру и короче текст"
+                  onChange={(e) => setRewriteText(e.target.value)}
+                />
+                <button type="submit" className="pk ghost" disabled={!rewriteReady}>
+                  {rewriteBusy || (building && rewritingSlide != null)
+                    ? "Пересобираем…"
+                    : "Пересобрать"}
+                </button>
+              </div>
+              {rewriteErr ? <p className="err app-note">{rewriteErr}</p> : null}
+            </form>
+          ) : null}
         </div>
       </div>
     </div>

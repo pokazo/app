@@ -21,7 +21,7 @@ describe("deck history screen", () => {
 
   it("labels pipeline statuses in Russian", () => {
     expect(deckStatusLabel("queued")).toBe("В очереди");
-    expect(deckStatusLabel("preview")).toMatch(/Первый слайд/);
+    expect(deckStatusLabel("preview")).toMatch(/по мере сборки/);
     expect(deckStatusLabel("ready")).toBe("Готово");
     expect(deckStatusLabel("weird")).toBe("weird");
   });

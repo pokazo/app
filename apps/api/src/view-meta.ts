@@ -40,22 +40,27 @@ export function countSlidesInMarkdown(md: string): number {
 }
 
 /**
- * For progressive preview: expose only the hero slide.
- * Compose mutates slides.md early, but preview `dist/` is still the hero-only build
- * until the final rebuild — listing md slides makes every thumb/stage show slide 1.
+ * For progressive preview: expose only slides present in the last successful preview `dist/`.
+ * Compose mutates slides.md early; listing md slides beyond `builtSlideCount` would make
+ * thumbs/stage point at pages the iframe build does not have yet.
  */
 export function slidesForView(opts: {
   outlineSlides: ViewSlide[];
   markdown?: string;
-  /** When true (preview / still composing), hero-only until final dist rebuild. */
+  /** When true (preview / still composing), truncate to built preview slides. */
   progressive?: boolean;
+  /** How many slides the current preview dist contains (default 1 = hero-only). */
+  builtSlideCount?: number;
 }): ViewSlide[] {
-  const { outlineSlides, markdown, progressive } = opts;
+  const { outlineSlides, markdown, progressive, builtSlideCount } = opts;
   if (!markdown) return outlineSlides;
   const images = parseSlideImages(markdown);
   const withImages = withSlideImages(outlineSlides, images);
   if (!progressive) return withImages;
-  return withImages.slice(0, 1);
+  const mdCount = images.length;
+  const built = Math.max(1, Math.floor(builtSlideCount ?? 1));
+  const n = Math.min(withImages.length, mdCount || 1, built);
+  return withImages.slice(0, Math.max(1, n));
 }
 
 export function outlineTitle(raw: unknown, fallback = ""): string {

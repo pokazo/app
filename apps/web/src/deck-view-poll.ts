@@ -24,3 +24,18 @@ export const VIEW_WAITING_NOTE =
   "Собираем презентацию… первый слайд появится здесь автоматически.";
 
 export const VIEW_NOT_FOUND_ERR = "Презентация ещё не готова или ссылка неверная.";
+
+/**
+ * While compose is still running, each progressive dist rebuild grows the slide list.
+ * Remount the player and focus the newest page so pages appear one-by-one.
+ */
+export function progressiveSlideReveal(opts: {
+  prevCount: number;
+  nextCount: number;
+  building: boolean;
+}): { remount: boolean; focusSlide: number | null } {
+  if (opts.building && opts.prevCount > 0 && opts.nextCount > opts.prevCount) {
+    return { remount: true, focusSlide: opts.nextCount };
+  }
+  return { remount: false, focusSlide: null };
+}

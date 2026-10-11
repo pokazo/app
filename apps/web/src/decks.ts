@@ -13,7 +13,7 @@ export type Deck = {
 export const DECK_STATUS_LABEL: Record<string, string> = {
   queued: "В очереди",
   generating: "Пишем слайды",
-  preview: "Первый слайд готов — собираем остальные",
+  preview: "Слайды появляются по мере сборки",
   building: "Собираем показ",
   ready: "Готово",
   failed: "Не собралось",

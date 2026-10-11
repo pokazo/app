@@ -22,6 +22,12 @@ import { validateOutlinePlan } from "./outline-plan.js";
 import { generateOutlineWithLayoutMcp } from "./outline-layout-agent.js";
 import { runTopicResearch } from "./research.js";
 import { createPhaseTimer } from "./timing.js";
+import {
+  composeStepMayChangeDeck,
+  shouldRebuildProgressivePreview,
+  writePreviewBuild,
+} from "./progressive-preview.js";
+import { countSlidesInMarkdown } from "./view-meta.js";
 
 function model(id: string) {
   const openai = createOpenAI({
@@ -244,11 +250,16 @@ export async function generateDeck(opts: {
     }
     console.info(`[timing] ${label} build=${buildMs}ms gate=${gateMs}ms`);
   };
+
+  let builtSlideCount = 0;
   // Early build of slide 1 so the player can open while the rest compose.
   try {
     await buildAndGate("preview");
     timer.mark("preview");
-    console.info(`[generate] preview build ok (hero)`);
+    const heroMd = await readFile(join(opts.workDir, "slides.md"), "utf8");
+    builtSlideCount = Math.max(1, countSlidesInMarkdown(heroMd));
+    await writePreviewBuild(opts.workDir, { builtSlideCount });
+    console.info(`[generate] preview build ok (slides=${builtSlideCount})`);
     if (opts.onPreviewReady) {
       await opts.onPreviewReady();
       console.info(`[generate] preview status published`);
@@ -256,6 +267,45 @@ export async function generateDeck(opts: {
   } catch (err) {
     console.warn(`[generate] preview build skipped: ${String(err).slice(0, 300)}`);
   }
+
+  // Rebuild preview dist as compose inserts pages so the player reveals them one-by-one.
+  let progressiveBusy = false;
+  let progressivePending = false;
+  const publishProgressivePreview = async () => {
+    if (progressiveBusy) {
+      progressivePending = true;
+      return;
+    }
+    progressiveBusy = true;
+    try {
+      do {
+        progressivePending = false;
+        let md: string;
+        try {
+          md = await readFile(join(opts.workDir, "slides.md"), "utf8");
+        } catch {
+          continue;
+        }
+        const mdCount = countSlidesInMarkdown(md);
+        if (!shouldRebuildProgressivePreview(mdCount, builtSlideCount)) continue;
+        try {
+          const t0 = Date.now();
+          await buildSlidev(opts.workDir, base);
+          builtSlideCount = mdCount;
+          await writePreviewBuild(opts.workDir, { builtSlideCount });
+          console.info(
+            `[generate] progressive preview ok slides=${builtSlideCount} build=${Date.now() - t0}ms`,
+          );
+        } catch (err) {
+          console.warn(
+            `[generate] progressive preview skipped slides=${mdCount}: ${String(err).slice(0, 300)}`,
+          );
+        }
+      } while (progressivePending);
+    } finally {
+      progressiveBusy = false;
+    }
+  };
 
   stepTimers.set("compose", Date.now());
   await withSlidevMcp(
@@ -278,6 +328,10 @@ export async function generateDeck(opts: {
           console.info(
             `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
           );
+          if (composeStepMayChangeDeck(names)) {
+            // Don't block the LLM on Slidev build — coalesce rebuilds in the background.
+            void publishProgressivePreview();
+          }
         },
       });
       llm.push(summarizeGenerate("compose", result));
@@ -285,6 +339,7 @@ export async function generateDeck(opts: {
     (call) => mcpCalls.push(call),
   );
   timer.mark("compose");
+  await publishProgressivePreview();
 
   let md = await guardWorkSlides(opts.workDir, theme);
   let repaired = false;

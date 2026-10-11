@@ -21,6 +21,7 @@ import {
 } from "./deck-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
+import { readPreviewBuild } from "./progressive-preview.js";
 
 const DECK_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -153,7 +154,15 @@ export function createApp() {
     const progressive = deckStatus === "preview" || deckStatus === "generating";
     const rewrite = await readRewriteStatus(dir);
     const rewriting = isRewriteBuilding(rewrite);
-    const slides = slidesForView({ outlineSlides, markdown, progressive });
+    const { builtSlideCount } = progressive
+      ? await readPreviewBuild(dir)
+      : { builtSlideCount: outlineSlides.length };
+    const slides = slidesForView({
+      outlineSlides,
+      markdown,
+      progressive,
+      builtSlideCount,
+    });
     return c.json({
       deckId: id,
       topic: outlineTitle(outline, input.topic ?? ""),
