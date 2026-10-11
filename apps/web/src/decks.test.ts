@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   APP_HISTORY_PATH,
   DECK_THEMES,
+  SLIDE_COUNT_DEFAULT,
+  SLIDE_COUNT_MAX,
+  SLIDE_COUNT_MIN,
+  SLIDE_COUNT_OPTIONS,
   deckBusy,
   deckStatusLabel,
   deckViewable,
   formatWhen,
   sanitizeDeckTheme,
+  sanitizeSlideCount,
 } from "./decks";
 
 describe("deck history screen", () => {
@@ -59,5 +64,22 @@ describe("deck theme picker", () => {
     expect(sanitizeDeckTheme("seriph")).toBe("seriph");
     expect(sanitizeDeckTheme("hack-theme")).toBe("auto");
     expect(sanitizeDeckTheme(null)).toBe("auto");
+  });
+});
+
+describe("slide count picker", () => {
+  it("exposes options in the API clamp range", () => {
+    expect(SLIDE_COUNT_OPTIONS[0]).toBe(SLIDE_COUNT_MIN);
+    expect(SLIDE_COUNT_OPTIONS.at(-1)).toBe(SLIDE_COUNT_MAX);
+    expect(SLIDE_COUNT_DEFAULT).toBe(8);
+  });
+
+  it("clamps and rounds raw values", () => {
+    expect(sanitizeSlideCount(10)).toBe(10);
+    expect(sanitizeSlideCount("12")).toBe(12);
+    expect(sanitizeSlideCount(3)).toBe(SLIDE_COUNT_MIN);
+    expect(sanitizeSlideCount(99)).toBe(SLIDE_COUNT_MAX);
+    expect(sanitizeSlideCount("nope")).toBe(SLIDE_COUNT_DEFAULT);
+    expect(sanitizeSlideCount(null)).toBe(SLIDE_COUNT_DEFAULT);
   });
 });

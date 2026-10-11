@@ -73,3 +73,20 @@ export function sanitizeDeckTheme(raw: string | null | undefined) {
   const id = (raw ?? "").trim();
   return THEME_IDS.has(id) ? id : "auto";
 }
+
+/** Matches API clamp in POST /api/decks. */
+export const SLIDE_COUNT_MIN = 6;
+export const SLIDE_COUNT_MAX = 16;
+export const SLIDE_COUNT_DEFAULT = 8;
+
+export const SLIDE_COUNT_OPTIONS = Array.from(
+  { length: SLIDE_COUNT_MAX - SLIDE_COUNT_MIN + 1 },
+  (_, i) => SLIDE_COUNT_MIN + i,
+);
+
+export function sanitizeSlideCount(raw: string | number | null | undefined) {
+  if (raw == null || raw === "") return SLIDE_COUNT_DEFAULT;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return SLIDE_COUNT_DEFAULT;
+  return Math.min(SLIDE_COUNT_MAX, Math.max(SLIDE_COUNT_MIN, Math.round(n)));
+}

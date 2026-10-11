@@ -13,6 +13,7 @@ export function Login() {
     const base = isSafePath(params.get("next"));
     const topic = params.get("topic") ?? "";
     const theme = params.get("theme") ?? "";
+    const slides = params.get("slides") ?? "";
     let dest = base;
     if (topic) {
       const join = dest.includes("?") ? "&" : "?";
@@ -21,6 +22,10 @@ export function Login() {
     if (theme) {
       const join = dest.includes("?") ? "&" : "?";
       dest = `${dest}${join}theme=${encodeURIComponent(theme)}`;
+    }
+    if (slides) {
+      const join = dest.includes("?") ? "&" : "?";
+      dest = `${dest}${join}slides=${encodeURIComponent(slides)}`;
     }
     return dest;
   }, [params]);

@@ -4,8 +4,9 @@ import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { PkSlideFrame } from "../components/PkSlideFrame";
 import { apiUrl } from "../safe";
-import { sanitizeDeckTheme } from "../decks";
+import { sanitizeDeckTheme, SLIDE_COUNT_DEFAULT } from "../decks";
 import { ThemePicker } from "../components/ThemePicker";
+import { SlideCountPicker } from "../components/SlideCountPicker";
 
 const THUMBS = [
   {
@@ -43,6 +44,7 @@ const THUMBS = [
 export function Landing() {
   const [topic, setTopic] = useState("");
   const [theme, setTheme] = useState("auto");
+  const [slideCount, setSlideCount] = useState(SLIDE_COUNT_DEFAULT);
   const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
   const nav = useNavigate();
 
@@ -59,13 +61,14 @@ export function Landing() {
     const text = t.trim();
     if (text.length < 5) return;
     const pick = sanitizeDeckTheme(theme);
-    const dest = `/app?topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}`;
+    const q = `topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}&slides=${slideCount}`;
+    const dest = `/app?${q}`;
     try {
       const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });
       if (res.ok) nav(dest);
-      else nav(`/login?next=/app&topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}`);
+      else nav(`/login?next=/app&${q}`);
     } catch {
-      nav(`/login?next=/app&topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}`);
+      nav(`/login?next=/app&${q}`);
     }
   }
 
@@ -92,6 +95,7 @@ export function Landing() {
                 placeholder="Например: «Фотосинтез, 8 слайдов, 8 класс»"
               />
               <div className="actions">
+                <SlideCountPicker value={slideCount} onChange={setSlideCount} />
                 <PkButton data-pk="cta-create" disabled={topic.trim().length < 5} type="submit">
                   Создать
                 </PkButton>

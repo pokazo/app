@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { api, apiUrl } from "../api";
-import { deckStatusLabel, deckViewable, sanitizeDeckTheme } from "../decks";
+import { deckStatusLabel, deckViewable, sanitizeDeckTheme, sanitizeSlideCount } from "../decks";
 import { ThemePicker } from "../components/ThemePicker";
+import { SlideCountPicker } from "../components/SlideCountPicker";
 
 type Me = { id: string; email: string; name: string };
 
@@ -14,6 +15,7 @@ export function AppHome() {
   const [me, setMe] = useState<Me | null>(null);
   const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [theme, setTheme] = useState(() => sanitizeDeckTheme(params.get("theme")));
+  const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
   const [status, setStatus] = useState("");
   const [err, setErr] = useState("");
 
@@ -44,7 +46,7 @@ export function AppHome() {
     try {
       const created = await api<{ deckId: string }>("/api/decks", {
         method: "POST",
-        body: JSON.stringify({ topic, locale: "ru", slideCount: 8, audience: "school", theme }),
+        body: JSON.stringify({ topic, locale: "ru", slideCount, audience: "school", theme }),
       });
       for (;;) {
         await new Promise((r) => setTimeout(r, 2000));
@@ -86,6 +88,11 @@ export function AppHome() {
               placeholder="Тема новой презентации…"
             />
             <div className="actions">
+              <SlideCountPicker
+                value={slideCount}
+                onChange={setSlideCount}
+                disabled={Boolean(status)}
+              />
               <PkButton disabled={topic.trim().length < 5 || Boolean(status)} type="submit">
                 {status ? "Создаём…" : "Создать"}
               </PkButton>
