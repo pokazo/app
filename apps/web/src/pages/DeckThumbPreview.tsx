@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { embedSlideUrl } from "../deck-view";
+import {
+  thumbEmbedSrc,
+  thumbPlaceholderLayers,
+  thumbShouldResetReady,
+} from "../deck-thumb-preview";
 
 /** Scaled Slidev slide preview — mounts iframe only when near the filmstrip viewport. */
 export function DeckThumbPreview(props: {
@@ -8,10 +12,21 @@ export function DeckThumbPreview(props: {
   heading: string;
   imageUrl?: string | null;
   enabled: boolean;
+  /** Bumps when preview dist rebuilds — refreshes iframe without remounting the thumb. */
+  embedCacheKey?: number;
 }) {
   const rootRef = useRef<HTMLSpanElement>(null);
+  const cacheKey = props.embedCacheKey ?? 0;
+  const cacheKeyRef = useRef(cacheKey);
   const [visible, setVisible] = useState(false);
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (thumbShouldResetReady(cacheKeyRef.current, cacheKey)) {
+      cacheKeyRef.current = cacheKey;
+      setReady(false);
+    }
+  }, [cacheKey]);
 
   useEffect(() => {
     if (!props.enabled) return;
@@ -28,21 +43,38 @@ export function DeckThumbPreview(props: {
     return () => io.disconnect();
   }, [props.enabled]);
 
+  const layers = thumbPlaceholderLayers({
+    ready,
+    heading: props.heading || `Слайд ${props.index}`,
+    imageUrl: props.imageUrl,
+  });
+
   return (
     <span ref={rootRef} className="deck-thumb-frame" aria-hidden>
       {!ready ? (
-        props.imageUrl ? (
-          <img className="deck-thumb-ph" src={props.imageUrl} alt="" loading="lazy" decoding="async" />
-        ) : (
-          <span className="deck-thumb-fallback">{props.heading || `Слайд ${props.index}`}</span>
-        )
+        <span className="deck-thumb-ph-wrap">
+          {layers.showImage && props.imageUrl ? (
+            <img
+              className="deck-thumb-ph"
+              src={props.imageUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          ) : null}
+          {layers.showHeading ? (
+            <span className={layers.showImage ? "deck-thumb-ph-label" : "deck-thumb-fallback"}>
+              {layers.label}
+            </span>
+          ) : null}
+        </span>
       ) : null}
       {props.enabled && visible ? (
         <span className="deck-thumb-scaler">
           <iframe
             title=""
             tabIndex={-1}
-            src={embedSlideUrl(props.embedBase, props.index)}
+            src={thumbEmbedSrc(props.embedBase, props.index, cacheKey)}
             onLoad={() => setReady(true)}
           />
         </span>

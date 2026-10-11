@@ -11,6 +11,7 @@ import {
   VIEW_WAITING_NOTE,
 } from "../deck-view-poll";
 import { APP_HISTORY_PATH } from "../decks";
+import { thumbReactKey } from "../deck-thumb-preview";
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
 
@@ -426,8 +427,9 @@ export function DeckView() {
               onClick={() => go(s.index)}
             >
               <DeckThumbPreview
-                key={`${embedKey}-${s.index}`}
+                key={thumbReactKey(s.index)}
                 embedBase={embedBase}
+                embedCacheKey={embedKey}
                 index={s.index}
                 heading={s.heading || `Слайд ${s.index}`}
                 imageUrl={s.image ? apiUrl(`/p/${id}${s.image}`) : null}
