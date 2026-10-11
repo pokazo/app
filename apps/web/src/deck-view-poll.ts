@@ -8,10 +8,15 @@ export function isDeckId(id: string): boolean {
 
 /**
  * Keep polling /api/view until the first successful response (preview/ready dist),
- * then while progressive compose is still running.
+ * then while progressive compose / single-slide rewrite is still running.
  */
-export function shouldPollDeckView(opts: { hasMeta: boolean; building: boolean }): boolean {
-  return !opts.hasMeta || opts.building;
+export function shouldPollDeckView(opts: {
+  hasMeta: boolean;
+  building: boolean;
+  /** Client forced poll after POST rewrite (until server building catches up). */
+  forcePoll?: boolean;
+}): boolean {
+  return !opts.hasMeta || opts.building || Boolean(opts.forcePoll);
 }
 
 /** Soft copy while dist is not ready yet (hero preview pending). */

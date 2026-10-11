@@ -7,7 +7,7 @@ import { cors } from "hono/cors";
 import { config } from "./env.js";
 import { pool } from "./migrate.js";
 import { createAuth } from "./auth.js";
-import { enqueueDeck } from "./queue.js";
+import { deckBusyForRewrite, enqueueDeck, enqueueRewriteSlide } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesForView, slidesFromOutline } from "./view-meta.js";
@@ -20,6 +20,7 @@ import {
   isExportFormat,
 } from "./deck-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
+import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 
 const DECK_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -150,6 +151,8 @@ export function createApp() {
       markdown = undefined;
     }
     const progressive = deckStatus === "preview" || deckStatus === "generating";
+    const rewrite = await readRewriteStatus(dir);
+    const rewriting = isRewriteBuilding(rewrite);
     const slides = slidesForView({ outlineSlides, markdown, progressive });
     return c.json({
       deckId: id,
@@ -157,9 +160,67 @@ export function createApp() {
       slideCount: slides.length,
       slides,
       status: deckStatus,
-      building: progressive,
+      building: progressive || rewriting,
+      rewritingSlide: rewriting ? rewrite?.slide : undefined,
+      rewriteError: rewrite?.status === "failed" ? rewrite.error ?? "rewrite failed" : undefined,
       embedBase: `${config.apiOrigin}/p/${id}/`,
     });
+  });
+
+  app.post("/api/decks/:id/slides/:n/rewrite", async (c) => {
+    if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session) return c.json({ error: "unauthorized" }, 401);
+    const id = c.req.param("id");
+    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const n = Number(c.req.param("n"));
+    if (!Number.isInteger(n) || n < 1 || n > 16) return c.json({ error: "bad slide" }, 400);
+    const { rows } = await pool.query(`SELECT * FROM deck WHERE id=$1 AND user_id=$2`, [
+      id,
+      session.user.id,
+    ]);
+    const deck = rows[0] as DeckRow | undefined;
+    if (!deck) return c.json({ error: "not found" }, 404);
+    if (deck.status !== "ready") {
+      return c.json({ error: "deck not ready", status: deck.status }, 409);
+    }
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "outline.json")) || !existsSync(join(dir, "slides.md"))) {
+      return c.json({ error: "not found" }, 404);
+    }
+    let slideCount = 0;
+    try {
+      const outline = JSON.parse(await readFile(join(dir, "outline.json"), "utf8")) as {
+        slides?: unknown[];
+      };
+      slideCount = Array.isArray(outline.slides) ? outline.slides.length : 0;
+    } catch {
+      return c.json({ error: "not found" }, 404);
+    }
+    if (n > slideCount) return c.json({ error: "bad slide" }, 400);
+
+    let body: { instruction?: string };
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "bad body" }, 400);
+    }
+    const instruction = (body.instruction ?? "").trim();
+    if (instruction.length < 2 || instruction.length > 2000) {
+      return c.json({ error: "bad instruction" }, 400);
+    }
+
+    const busy = await deckBusyForRewrite(id);
+    if (busy) return c.json({ error: "busy", reason: busy }, 409);
+
+    await writeRewriteStatus(dir, {
+      slide: n,
+      status: "running",
+      instruction,
+      updatedAt: new Date().toISOString(),
+    });
+    await enqueueRewriteSlide({ id, slide: n, instruction });
+    return c.json({ deckId: id, slide: n, status: "accepted" }, 202);
   });
 
   app.get("/api/decks/:id/speech", async (c) => {

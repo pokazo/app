@@ -3,6 +3,7 @@ import {
   composeMaxSteps,
   mergeComposeTools,
   pickHeroTools,
+  pickRewriteTools,
   stripComposeInspectTools,
 } from "./generate-helpers.js";
 
@@ -56,6 +57,34 @@ describe("stripComposeInspectTools", () => {
     const out = await info.execute();
     expect(out.error).toMatch(/inspect disabled/i);
     expect(info.description).toMatch(/DISABLED/i);
+  });
+});
+
+describe("pickRewriteTools", () => {
+  it("keeps get/update + assets and drops insert/remove/move/list", () => {
+    const picked = pickRewriteTools({
+      "slidev-get-slide": 1,
+      "slidev-update-slide": 2,
+      "slidev-insert-slide": 3,
+      "slidev-remove-slide": 4,
+      "slidev-move-slide": 5,
+      "slidev-list-slides": 6,
+      "slidev-get-info": 7,
+      "yandex-image-search": 8,
+      "yandex-image-download": 9,
+      "stock-search": 10,
+      "stock-download": 11,
+      "image-generate": 12,
+    });
+    expect(Object.keys(picked).sort()).toEqual([
+      "image-generate",
+      "slidev-get-slide",
+      "slidev-update-slide",
+      "stock-download",
+      "stock-search",
+      "yandex-image-download",
+      "yandex-image-search",
+    ]);
   });
 });
 

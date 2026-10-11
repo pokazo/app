@@ -416,6 +416,36 @@ footer.foot {
   flex-wrap: wrap;
 }
 .deck-pos { color: var(--pk-ink-muted); font-size: 14px; }
+.deck-rewrite {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 10px;
+}
+.deck-rewrite-label {
+  font-size: 13px;
+  color: var(--pk-ink-muted);
+}
+.deck-rewrite-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.deck-rewrite-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--pk-line);
+  border-radius: 8px;
+  background: var(--pk-paper);
+  color: var(--pk-ink);
+  font: inherit;
+}
+.deck-rewrite-input:disabled {
+  opacity: 0.6;
+}
 .deck-layout {
   flex: 1;
   display: grid;

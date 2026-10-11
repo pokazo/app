@@ -21,6 +21,8 @@ type ViewMeta = {
   embedBase: string;
   status?: string;
   building?: boolean;
+  rewritingSlide?: number;
+  rewriteError?: string;
 };
 
 const WAIT_TIMEOUT_MS = 20 * 60 * 1000;
@@ -41,6 +43,12 @@ export function DeckView() {
   const [speechOpen, setSpeechOpen] = useState(false);
   const [embedKey, setEmbedKey] = useState(0);
   const [building, setBuilding] = useState(false);
+  const [rewriteText, setRewriteText] = useState("");
+  const [rewriteBusy, setRewriteBusy] = useState(false);
+  const [rewriteErr, setRewriteErr] = useState("");
+  const [rewritingSlide, setRewritingSlide] = useState<number | null>(null);
+  const forcePollRef = useRef(false);
+  const stayOnSlideRef = useRef<number | null>(null);
 
   const embedBase = apiUrl(`/p/${id}/`);
   const idOk = isDeckId(id);
@@ -70,6 +78,12 @@ export function DeckView() {
     setBuilding(false);
     setEmbedKey(0);
     setSpeechOpen(false);
+    setRewriteText("");
+    setRewriteBusy(false);
+    setRewriteErr("");
+    setRewritingSlide(null);
+    forcePollRef.current = false;
+    stayOnSlideRef.current = null;
 
     if (!idOk) {
       setWaiting(false);
@@ -91,7 +105,15 @@ export function DeckView() {
 
     const tick = async () => {
       if (cancelled || stopped) return;
-      if (!shouldPollDeckView({ hasMeta, building: isBuilding })) return;
+      if (
+        !shouldPollDeckView({
+          hasMeta,
+          building: isBuilding,
+          forcePoll: forcePollRef.current,
+        })
+      ) {
+        return;
+      }
 
       try {
         const data = await loadView();
@@ -100,17 +122,34 @@ export function DeckView() {
         const wasBuilding = hasMeta && isBuilding;
         hasMeta = true;
         isBuilding = Boolean(data.building);
+        if (isBuilding) forcePollRef.current = true;
+        if (!isBuilding) forcePollRef.current = false;
         setMeta(data);
         setWaiting(false);
         setErr("");
         setBuilding(isBuilding);
+        setRewritingSlide(
+          typeof data.rewritingSlide === "number" ? data.rewritingSlide : null,
+        );
+        if (data.rewriteError && !isBuilding) {
+          setRewriteErr(data.rewriteError);
+          setRewriteBusy(false);
+        }
         if (firstMeta) {
           setCurrent(data.slides[0]?.index ?? 1);
         }
         if (wasBuilding && !isBuilding) {
           setStageReady(false);
           setEmbedKey((k) => k + 1);
-          setCurrent(data.slides[0]?.index ?? 1);
+          setRewriteBusy(false);
+          const stay = stayOnSlideRef.current;
+          stayOnSlideRef.current = null;
+          if (stay != null) {
+            const max = data.slides.length || 1;
+            setCurrent(Math.min(max, Math.max(1, stay)));
+          } else {
+            setCurrent(data.slides[0]?.index ?? 1);
+          }
         }
       } catch {
         if (cancelled || stopped || hasMeta) return;
@@ -225,7 +264,57 @@ export function DeckView() {
     }
   }
 
+  async function submitRewrite() {
+    if (!id || !me || building || rewriteBusy) return;
+    const instruction = rewriteText.trim();
+    if (instruction.length < 2) {
+      setRewriteErr("Напишите, что переделать на этом слайде.");
+      return;
+    }
+    setRewriteErr("");
+    setRewriteBusy(true);
+    stayOnSlideRef.current = current;
+    forcePollRef.current = true;
+    setBuilding(true);
+    setRewritingSlide(current);
+    try {
+      const res = await fetch(apiUrl(`/api/decks/${id}/slides/${current}/rewrite`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instruction }),
+      });
+      if (res.status === 202) {
+        setRewriteText("");
+        return;
+      }
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      forcePollRef.current = false;
+      setBuilding(false);
+      setRewriteBusy(false);
+      setRewritingSlide(null);
+      stayOnSlideRef.current = null;
+      if (res.status === 401) {
+        setRewriteErr("Войдите, чтобы пересобрать слайд.");
+        return;
+      }
+      if (res.status === 409) {
+        setRewriteErr("Сейчас идёт сборка — подождите и попробуйте снова.");
+        return;
+      }
+      setRewriteErr(body.error || "Не удалось запустить пересборку.");
+    } catch {
+      forcePollRef.current = false;
+      setBuilding(false);
+      setRewriteBusy(false);
+      setRewritingSlide(null);
+      stayOnSlideRef.current = null;
+      setRewriteErr("Не удалось запустить пересборку.");
+    }
+  }
+
   const slides = meta?.slides ?? [];
+  const rewriteReady = Boolean(me && meta && meta.status === "ready" && !building && !rewriteBusy);
 
   return (
     <div className="deck-shell">
@@ -281,7 +370,39 @@ export function DeckView() {
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
       {waiting && !err ? <p className="app-note deck-building">{VIEW_WAITING_NOTE}</p> : null}
       {building && meta ? (
-        <p className="app-note deck-building">Собираем остальные слайды…</p>
+        <p className="app-note deck-building">
+          {rewritingSlide != null
+            ? `Пересобираем слайд ${rewritingSlide}…`
+            : "Собираем остальные слайды…"}
+        </p>
+      ) : null}
+      {meta && me && meta.status === "ready" ? (
+        <form
+          className="deck-rewrite"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitRewrite();
+          }}
+        >
+          <label className="deck-rewrite-label" htmlFor="deck-rewrite-input">
+            Что переделать на слайде {current}
+          </label>
+          <div className="deck-rewrite-row">
+            <input
+              id="deck-rewrite-input"
+              className="deck-rewrite-input"
+              type="text"
+              value={rewriteText}
+              disabled={!rewriteReady}
+              placeholder="Например: сделай крупную цифру и короче текст"
+              onChange={(e) => setRewriteText(e.target.value)}
+            />
+            <button type="submit" className="pk ghost" disabled={!rewriteReady}>
+              {rewriteBusy || (building && rewritingSlide != null) ? "Пересобираем…" : "Пересобрать"}
+            </button>
+          </div>
+          {rewriteErr ? <p className="err app-note">{rewriteErr}</p> : null}
+        </form>
       ) : null}
       {speechOpen && id && !building ? (
         <SpeechModal

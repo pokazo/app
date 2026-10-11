@@ -48,3 +48,22 @@ export function stripComposeInspectTools(tools: Record<string, unknown>): Record
   }
   return out;
 }
+
+const REWRITE_TOOL_ALLOW = new Set([
+  "slidev-get-slide",
+  "slidev-update-slide",
+  "yandex-image-search",
+  "yandex-image-download",
+  "stock-search",
+  "stock-download",
+  "image-generate",
+]);
+
+/** Single-slide rewrite: get/update target slide + assets — no insert/remove/move/list. */
+export function pickRewriteTools(tools: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [name, tool] of Object.entries(tools)) {
+    if (REWRITE_TOOL_ALLOW.has(name)) out[name] = tool;
+  }
+  return out;
+}

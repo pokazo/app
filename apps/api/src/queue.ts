@@ -5,6 +5,8 @@ import { Redis } from "ioredis";
 import { config } from "./env.js";
 import { pool } from "./migrate.js";
 import { generateDeck } from "./generate.js";
+import { rewriteSlide } from "./rewrite-slide.js";
+import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { sanitizePickerTheme } from "./themes.js";
 
 let queue: Queue | null = null;
@@ -20,10 +22,23 @@ export function startDeckWorker(): Queue | null {
     if (!queue) queue = new Queue("decks", { connection: redis() });
     if (!workerStarted) {
       workerStarted = true;
-      new Worker("decks", (job) => processDeck(String(job.data.id)), {
-        connection: redis(),
-        concurrency: 1,
-      });
+      new Worker(
+        "decks",
+        async (job) => {
+          if (job.name === "rewrite-slide") {
+            const id = String(job.data.id);
+            const slide = Number(job.data.slide);
+            const instruction = String(job.data.instruction ?? "");
+            await processRewriteSlide(id, slide, instruction);
+            return;
+          }
+          await processDeck(String(job.data.id));
+        },
+        {
+          connection: redis(),
+          concurrency: 1,
+        },
+      );
     }
     return queue;
   } catch (err) {
@@ -91,6 +106,26 @@ export async function processDeck(id: string): Promise<void> {
   }
 }
 
+export async function processRewriteSlide(
+  id: string,
+  slide: number,
+  instruction: string,
+): Promise<void> {
+  const workDir = join(config.deckDataDir, id);
+  try {
+    await rewriteSlide({ id, workDir, slideIndex: slide, instruction });
+  } catch (err) {
+    await writeRewriteStatus(workDir, {
+      slide,
+      status: "failed",
+      error: String(err).slice(0, 2000),
+      instruction,
+      updatedAt: new Date().toISOString(),
+    });
+    throw err;
+  }
+}
+
 export async function enqueueDeck(id: string): Promise<void> {
   try {
     const q = startDeckWorker();
@@ -102,4 +137,45 @@ export async function enqueueDeck(id: string): Promise<void> {
     console.error("enqueue redis failed, inline", err);
   }
   void processDeck(id).catch((err) => console.error(err));
+}
+
+/** Enqueue single-slide rewrite. Caller must have written rewrite.json status=running. */
+export async function enqueueRewriteSlide(opts: {
+  id: string;
+  slide: number;
+  instruction: string;
+}): Promise<void> {
+  const jobId = `rewrite-${opts.id}`;
+  try {
+    const q = startDeckWorker();
+    if (q) {
+      await q.add(
+        "rewrite-slide",
+        { id: opts.id, slide: opts.slide, instruction: opts.instruction },
+        { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
+      );
+      return;
+    }
+  } catch (err) {
+    console.error("enqueue rewrite redis failed, inline", err);
+  }
+  void processRewriteSlide(opts.id, opts.slide, opts.instruction).catch((err) =>
+    console.error(err),
+  );
+}
+
+export async function deckBusyForRewrite(id: string): Promise<"generating" | "rewriting" | null> {
+  if (pool) {
+    const { rows } = await pool.query<{ status: string }>(`SELECT status FROM deck WHERE id=$1`, [
+      id,
+    ]);
+    const status = rows[0]?.status;
+    if (status === "queued" || status === "generating" || status === "preview") {
+      return "generating";
+    }
+  }
+  const workDir = join(config.deckDataDir, id);
+  const rewrite = await readRewriteStatus(workDir);
+  if (isRewriteBuilding(rewrite)) return "rewriting";
+  return null;
 }

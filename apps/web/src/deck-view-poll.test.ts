@@ -24,4 +24,8 @@ describe("shouldPollDeckView", () => {
   it("stops when ready with meta", () => {
     expect(shouldPollDeckView({ hasMeta: true, building: false })).toBe(false);
   });
+
+  it("keeps polling when forcePoll after rewrite POST", () => {
+    expect(shouldPollDeckView({ hasMeta: true, building: false, forcePoll: true })).toBe(true);
+  });
 });
