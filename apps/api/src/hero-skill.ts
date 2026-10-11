@@ -17,7 +17,7 @@ export function heroSkill(theme: string, locale: string): string {
 Tools:
 - Hero MCP (variant catalog — THIS PHASE ONLY): hero-list, hero-get. Call hero-list BEFORE choosing a variant; call hero-get on 1–2 finalists if needs are unclear.
 - Slidev MCP: slidev-update-slide only (slide 1 already exists as scaffold)
-- User uploads (FIRST when present): upload-image-search, upload-image-use. Judge caption/filename; suggestedId → upload-image-use.
+- User uploads (FIRST when present): upload-image-search, upload-image-use. Prefer originalName over vague caption. If suggestedId is set → IMMEDIATELY upload-image-use BEFORE yandex/stock. Do not reject uploads for "solid/abstract" captions.
 - Yandex Images (SECOND): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl (title may be synthesized from URL — still valid).
 - Unsplash (THIRD): stock-search, stock-download. English query. Judge description/altDescription.
 - OpenAI image-generate (LAST, cheap gpt-image-1-mini, low quality): when upload/Yandex/Unsplash are empty OR wrong subject. Writes local /slide-1-gen.png.
@@ -44,8 +44,8 @@ Frontmatter for slide 1:
 Body: H1 + 1–2 sentences (or one short paragraph). No bullet lists. No emoji.
 
 Photo pipeline (one photo for slide 1):
-  1) If upload tools exist: ONE upload-image-search → if suggestedId or caption on-topic → IMMEDIATELY upload-image-use (filename slide-1.jpg)
-  2) Only if uploads empty/all-wrong/missing → ONE yandex-image-search (Russian/natural query; orientation horizontal)
+  1) If upload tools exist: ONE upload-image-search (not only list). If suggestedId → IMMEDIATELY upload-image-use (filename slide-1.jpg). Else use the hit with the best originalName match. Never go to Yandex while a usable upload hit exists.
+  2) Only if uploads empty/error → ONE yandex-image-search (Russian/natural query; orientation horizontal)
   3) If suggestedId or any hit looks on-topic by domain/pageUrl/title → IMMEDIATELY yandex-image-download (id, filename slide-1.jpg). Empty title is NOT a reason to skip.
   4) Only if Yandex empty/all-wrong/error → ONE stock-search (English, landscape) → stock-download OR image-generate
   5) slidev-update-slide with layout hero + chosen variant + image path

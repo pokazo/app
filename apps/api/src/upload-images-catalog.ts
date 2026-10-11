@@ -71,13 +71,13 @@ export async function uploadImageSearch(
           score: 0,
         }));
 
-  const suggestedId = hits.find((h) => h.score >= 0.25)?.id ?? (hits[0]?.score === 0 ? null : hits[0]?.id) ?? null;
-  // Prefer first hit when we only returned fallback (score 0) — let agent judge captions.
-  const suggested =
-    suggestedId ??
-    (ranked.length === 0 && hits[0] ? hits[0].id : null);
+  // Always nudge a pick when uploads exist: filename tokens often beat vague vision captions.
+  const suggestedId =
+    hits.find((h) => h.score >= 0.2)?.id ??
+    hits[0]?.id ??
+    null;
 
-  return { hits, suggestedId: suggested };
+  return { hits, suggestedId };
 }
 
 export async function resolveUploadFilePath(

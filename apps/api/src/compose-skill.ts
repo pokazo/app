@@ -8,7 +8,7 @@ export function composeSkill(theme: string, locale: string): string {
 
 Tools:
 - Slidev MCP: slidev-get-info, slidev-list-slides, slidev-get-slide, slidev-update-slide, slidev-insert-slide, slidev-remove-slide, slidev-move-slide
-- User uploads (FIRST when present): upload-image-search, upload-image-use (optional upload-image-list). Judge by caption/filename; if suggestedId or on-topic → IMMEDIATELY upload-image-use.
+- User uploads (FIRST when present): upload-image-search, upload-image-use (optional upload-image-list). Prefer originalName/filename over a vague caption. If suggestedId is set OR originalName tokens match the subject → IMMEDIATELY upload-image-use BEFORE any yandex/stock/generate. Do not skip uploads because caption says "solid/abstract/no subject".
 - Yandex Images (SECOND): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl (synthesized title from URL is OK).
 - Unsplash (THIRD): stock-search, stock-download. English query. Judge description/altDescription.
 - OpenAI image-generate (LAST, cheap gpt-image-1-mini, low quality): when upload/Yandex/Unsplash are empty OR wrong subject. Writes local /slide-N-gen.png.
@@ -38,8 +38,8 @@ Visual rules:
 - For visual process: layout: process. Put kicker and steps (3–5): title, iconHint — same allowlist. Body is only the H1. Map outline.process → steps:.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
 - Photo slides (visual image-right, image-left, and any remaining slide with a non-empty imageQuery — NOT slide 1):
-  1) If upload tools exist: ONE upload-image-search (query from imageQuery) → if suggestedId or caption on-topic → IMMEDIATELY upload-image-use (filename slide-N.jpg)
-  2) Only if uploads empty/all-wrong/missing tools → ONE yandex-image-search (Russian/natural query; orientation horizontal)
+  1) If upload tools exist: ONE upload-image-search (query from imageQuery). If suggestedId is set → IMMEDIATELY upload-image-use (filename slide-N.jpg). Else pick the hit whose originalName best matches the subject and upload-image-use. Only skip uploads when the tool errors or the list is empty.
+  2) Only if uploads empty/error/no usable hit → ONE yandex-image-search (Russian/natural query; orientation horizontal)
   3) If suggestedId or on-topic domain/pageUrl/title → IMMEDIATELY yandex-image-download (empty title is fine)
   4) Only if Yandex empty/all-wrong/error → ONE stock-search → stock-download OR image-generate (filename slide-N-gen.png)
   5) insert/update with layout + image: /slide-N.jpg or /slide-N-gen.png

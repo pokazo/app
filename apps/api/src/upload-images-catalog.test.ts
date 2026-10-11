@@ -48,7 +48,7 @@ describe("upload-images-catalog", () => {
     expect(list).toHaveLength(2);
   });
 
-  it("returns files when query has no token overlap", async () => {
+  it("returns files with suggestedId when query has no token overlap", async () => {
     const dir = await fixtureIndex([
       {
         id: "up-001",
@@ -59,8 +59,9 @@ describe("upload-images-catalog", () => {
         tokens: ["red", "car"],
       },
     ]);
-    const { hits } = await uploadImageSearch(dir, "zzzqqq", 3);
+    const { hits, suggestedId } = await uploadImageSearch(dir, "zzzqqq", 3);
     expect(hits).toHaveLength(1);
     expect(hits[0]!.id).toBe("up-001");
+    expect(suggestedId).toBe("up-001");
   });
 });

@@ -25,7 +25,7 @@ export function createUploadImageUseTools(
   return {
     "upload-image-use": tool({
       description:
-        "Copy a user-uploaded image into deck public/ for Slidev image:. Pass id from upload-image-search (or upload-image-list). filename basename like slide-2.jpg. Prefer this BEFORE yandex-image-search when uploads exist and a hit matches the subject.",
+        "Copy a user-uploaded image into deck public/ for Slidev image:. Pass id from upload-image-search suggestedId (or upload-image-list). filename basename like slide-2.jpg. REQUIRED before yandex/stock when upload-image-search returned suggestedId — vague captions are OK if originalName fits.",
       parameters: z.object({
         id: z.string().describe("Upload image id, e.g. up-001"),
         filename: z.string().describe("Basename under public/, e.g. slide-2.jpg"),

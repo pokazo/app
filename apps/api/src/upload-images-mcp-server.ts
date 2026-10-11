@@ -43,7 +43,7 @@ server.registerTool(
   "upload-image-search",
   {
     description:
-      "FIRST photo search when the user attached images. Query from imageQuery (Russian/natural OK). Returns hits with captions + suggestedId. If suggestedId or a caption matches the subject, IMMEDIATELY call upload-image-use with that id. Only if empty/all-wrong → yandex-image-search.",
+      "FIRST photo search when the user attached images. Query from imageQuery (Russian/natural OK). Returns hits with captions + suggestedId. Prefer originalName over vague captions. If suggestedId is set, IMMEDIATELY call upload-image-use with that id — do not fall through to yandex/stock first. Only if this tool errors or hits are empty → yandex-image-search.",
     inputSchema: {
       query: z.string().describe("Natural image search query from outline imageQuery"),
       count: z.number().describe("Max hits 1–10; use 5 if unsure"),
