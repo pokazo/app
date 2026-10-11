@@ -28,6 +28,10 @@ import {
   writePreviewBuild,
 } from "./progressive-preview.js";
 import { countSlidesInMarkdown } from "./view-meta.js";
+import { ensureUploadIndex } from "./upload-index.js";
+import { withUploadImagesMcp } from "./upload-images-mcp.js";
+import { createUploadImageUseTools, type UploadToolAttribution } from "./upload-images-tools.js";
+import { hasUploadImages, uploadDirForDeck } from "./upload-store.js";
 
 function model(id: string) {
   const openai = createOpenAI({
@@ -104,13 +108,30 @@ export async function generateDeck(opts: {
   const skill = composeSkill(theme, opts.locale);
   const heroSystem = heroSkill(theme, opts.locale);
   const mcpCalls: McpCallLog[] = [];
-  const attributions: Array<StockToolAttribution | GenToolAttribution | YandexToolAttribution> = [];
+  const attributions: Array<
+    StockToolAttribution | GenToolAttribution | YandexToolAttribution | UploadToolAttribution
+  > = [];
   const llm: unknown[] = [];
   const timer = createPhaseTimer(`deck=${opts.id}`);
   const stepTimers = new Map<"hero" | "compose" | "repair", number>();
 
   await mkdir(join(opts.workDir, "public"), { recursive: true });
   installDeckLayouts(opts.workDir);
+
+  const uploadDir = hasUploadImages(config.uploadDataDir, opts.id)
+    ? uploadDirForDeck(config.uploadDataDir, opts.id)
+    : null;
+  if (uploadDir) {
+    console.info(`[generate] upload-images index start dir=${uploadDir}`);
+    await ensureUploadIndex({
+      uploadRoot: config.uploadDataDir,
+      deckId: opts.id,
+      apiKey: config.openrouterKey || config.openaiApiKey,
+      apiBase: config.openrouterKey ? config.openrouterBaseUrl : config.openaiImageApiBase,
+      model: config.openrouterKey ? "openai/gpt-4o-mini" : "gpt-4o-mini",
+    });
+    console.info(`[generate] upload-images index done`);
+  }
 
   console.info(
     `[generate] outline model=${config.outlineModel} compose=${config.composeModel} topic=${opts.topic}`,
@@ -196,42 +217,64 @@ export async function generateDeck(opts: {
     apiBase: config.openaiImageApiBase,
     onAttribution: (entry) => attributions.push(entry),
   });
+  const uploadUseTools = uploadDir
+    ? createUploadImageUseTools(opts.workDir, uploadDir, {
+        onAttribution: (entry) => attributions.push(entry),
+      })
+    : {};
 
-  console.info(`[generate] hero-compose start`);
+  const withOptionalUploadMcp = async <T>(
+    run: (uploadSearchTools: Record<string, unknown>) => Promise<T>,
+  ): Promise<T> => {
+    if (!uploadDir) return run({});
+    return withUploadImagesMcp(uploadDir, run, (call) => mcpCalls.push(call));
+  };
+
+  console.info(`[generate] hero-compose start uploads=${Boolean(uploadDir)}`);
   stepTimers.set("hero", Date.now());
-  await withSlidevMcp(
-    opts.workDir,
-    async (slidevTools) => {
-      // Hero catalog MCP is nested here only — outline/compose never open withHeroMcp.
-      await withHeroMcp(async (heroCatalogTools) => {
-        const tools = pickHeroTools(
-          mergeComposeTools(slidevTools, heroCatalogTools, yandexTools, stockTools, imageGenTools),
-        );
-        const result = await generateText({
-          model: model(config.composeModel),
-          system: heroSystem,
-          tools: tools as never,
-          maxSteps: heroMaxSteps(),
-          prompt: heroUserPrompt({
-            outline: outline.object,
-            locale: opts.locale,
-            topic: opts.topic,
-          }),
-          onStepFinish: async (step) => {
-            const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-            const prev = stepTimers.get("hero") ?? Date.now();
-            const ms = Date.now() - prev;
-            stepTimers.set("hero", Date.now());
-            console.info(
-              `[llm] hero step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
-            );
-          },
-        });
-        llm.push(summarizeGenerate("hero", result));
-      }, (call) => mcpCalls.push(call));
-    },
-    (call) => mcpCalls.push(call),
-  );
+  await withOptionalUploadMcp(async (uploadSearchTools) => {
+    await withSlidevMcp(
+      opts.workDir,
+      async (slidevTools) => {
+        // Hero catalog MCP is nested here only — outline/compose never open withHeroMcp.
+        await withHeroMcp(async (heroCatalogTools) => {
+          const tools = pickHeroTools(
+            mergeComposeTools(
+              slidevTools,
+              heroCatalogTools,
+              uploadSearchTools,
+              uploadUseTools,
+              yandexTools,
+              stockTools,
+              imageGenTools,
+            ),
+          );
+          const result = await generateText({
+            model: model(config.composeModel),
+            system: heroSystem,
+            tools: tools as never,
+            maxSteps: heroMaxSteps(),
+            prompt: heroUserPrompt({
+              outline: outline.object,
+              locale: opts.locale,
+              topic: opts.topic,
+            }),
+            onStepFinish: async (step) => {
+              const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+              const prev = stepTimers.get("hero") ?? Date.now();
+              const ms = Date.now() - prev;
+              stepTimers.set("hero", Date.now());
+              console.info(
+                `[llm] hero step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+              );
+            },
+          });
+          llm.push(summarizeGenerate("hero", result));
+        }, (call) => mcpCalls.push(call));
+      },
+      (call) => mcpCalls.push(call),
+    );
+  });
   await guardWorkSlides(opts.workDir, theme);
   timer.mark("hero");
   console.info(`[generate] hero-compose done`);
@@ -308,36 +351,45 @@ export async function generateDeck(opts: {
   };
 
   stepTimers.set("compose", Date.now());
-  await withSlidevMcp(
-    opts.workDir,
-    async (slidevTools) => {
-      const tools = stripComposeInspectTools(
-        mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools),
-      );
-      const result = await generateText({
-        model: model(config.composeModel),
-        system: skill,
-        tools: tools as never,
-        maxSteps,
-        prompt: composeUserPrompt(outline.object, opts.locale),
-        onStepFinish: async (step) => {
-          const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-          const prev = stepTimers.get("compose") ?? Date.now();
-          const ms = Date.now() - prev;
-          stepTimers.set("compose", Date.now());
-          console.info(
-            `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
-          );
-          if (composeStepMayChangeDeck(names)) {
-            // Don't block the LLM on Slidev build — coalesce rebuilds in the background.
-            void publishProgressivePreview();
-          }
-        },
-      });
-      llm.push(summarizeGenerate("compose", result));
-    },
-    (call) => mcpCalls.push(call),
-  );
+  await withOptionalUploadMcp(async (uploadSearchTools) => {
+    await withSlidevMcp(
+      opts.workDir,
+      async (slidevTools) => {
+        const tools = stripComposeInspectTools(
+          mergeComposeTools(
+            slidevTools,
+            uploadSearchTools,
+            uploadUseTools,
+            yandexTools,
+            stockTools,
+            imageGenTools,
+          ),
+        );
+        const result = await generateText({
+          model: model(config.composeModel),
+          system: skill,
+          tools: tools as never,
+          maxSteps,
+          prompt: composeUserPrompt(outline.object, opts.locale),
+          onStepFinish: async (step) => {
+            const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+            const prev = stepTimers.get("compose") ?? Date.now();
+            const ms = Date.now() - prev;
+            stepTimers.set("compose", Date.now());
+            console.info(
+              `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+            );
+            if (composeStepMayChangeDeck(names)) {
+              // Don't block the LLM on Slidev build — coalesce rebuilds in the background.
+              void publishProgressivePreview();
+            }
+          },
+        });
+        llm.push(summarizeGenerate("compose", result));
+      },
+      (call) => mcpCalls.push(call),
+    );
+  });
   timer.mark("compose");
   await publishProgressivePreview();
 
@@ -350,30 +402,39 @@ export async function generateDeck(opts: {
     repaired = true;
     console.info(`[generate] build failed, MCP repair: ${String(err).slice(0, 400)}`);
     stepTimers.set("repair", Date.now());
-    await withSlidevMcp(
-      opts.workDir,
-      async (slidevTools) => {
-        const tools = mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools);
-        const result = await generateText({
-          model: model(config.composeModel),
-          system: skill,
-          tools: tools as never,
-          maxSteps: 24,
-          prompt: `Сборка Slidev / layout render упала. Исправь колоду только через tools (MCP update/insert/remove/move, yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Если ошибка LayoutError[<layout>] — почини frontmatter/body именно этого слайда (stats/cards ≥2 items, timeline ≥3 steps, image-* local image:, hero valid variant+image when required). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
-          onStepFinish: async (step) => {
-            const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-            const prev = stepTimers.get("repair") ?? Date.now();
-            const ms = Date.now() - prev;
-            stepTimers.set("repair", Date.now());
-            console.info(
-              `[llm] repair step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
-            );
-          },
-        });
-        llm.push(summarizeGenerate("repair", result));
-      },
-      (call) => mcpCalls.push(call),
-    );
+    await withOptionalUploadMcp(async (uploadSearchTools) => {
+      await withSlidevMcp(
+        opts.workDir,
+        async (slidevTools) => {
+          const tools = mergeComposeTools(
+            slidevTools,
+            uploadSearchTools,
+            uploadUseTools,
+            yandexTools,
+            stockTools,
+            imageGenTools,
+          );
+          const result = await generateText({
+            model: model(config.composeModel),
+            system: skill,
+            tools: tools as never,
+            maxSteps: 24,
+            prompt: `Сборка Slidev / layout render упала. Исправь колоду только через tools (MCP update/insert/remove/move, upload-image / yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Если ошибка LayoutError[<layout>] — почини frontmatter/body именно этого слайда (stats/cards ≥2 items, timeline ≥3 steps, image-* local image:, hero valid variant+image when required). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
+            onStepFinish: async (step) => {
+              const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+              const prev = stepTimers.get("repair") ?? Date.now();
+              const ms = Date.now() - prev;
+              stepTimers.set("repair", Date.now());
+              console.info(
+                `[llm] repair step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+              );
+            },
+          });
+          llm.push(summarizeGenerate("repair", result));
+        },
+        (call) => mcpCalls.push(call),
+      );
+    });
     timer.mark("repair");
     md = await guardWorkSlides(opts.workDir, theme);
     await buildAndGate("final_after_repair");

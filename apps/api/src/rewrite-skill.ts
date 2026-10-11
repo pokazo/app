@@ -58,9 +58,10 @@ export function composeOneSlideSkill(theme: string, locale: string): string {
 
 Tools:
 - Slidev MCP: slidev-get-slide, slidev-update-slide ONLY
-- Yandex Images (FIRST): yandex-image-search, yandex-image-download
-- Unsplash (SECOND): stock-search, stock-download
-- OpenAI image-generate (LAST): when Yandex and Unsplash fail — local /slide-N-gen.png
+- User uploads (FIRST when present): upload-image-search, upload-image-use
+- Yandex Images (SECOND): yandex-image-search, yandex-image-download
+- Unsplash (THIRD): stock-search, stock-download
+- OpenAI image-generate (LAST): when upload/Yandex/Unsplash fail — local /slide-N-gen.png
 
 Do NOT insert, remove, or move slides. Do NOT touch any slide except the target number.
 Do NOT change theme/palette in headmatter.
@@ -76,10 +77,11 @@ Visual / layout mapping (same as deck compose):
 iconHint allowlist: ${LAYOUT_ICON_HINTS}.
 
 Photo pipeline (when visual needs a photo / non-empty imageQuery):
-  1) ONE yandex-image-search → prefer suggestedId → yandex-image-download (filename slide-N.jpg)
-  2) Else ONE stock-search → stock-download OR image-generate (slide-N-gen.png)
-  3) slidev-update-slide with layout + image path
-Local paths only. At most ONE yandex-image-search and ONE stock-search.
+  1) If upload tools exist: ONE upload-image-search → upload-image-use when on-topic (filename slide-N.jpg)
+  2) Else ONE yandex-image-search → prefer suggestedId → yandex-image-download (filename slide-N.jpg)
+  3) Else ONE stock-search → stock-download OR image-generate (slide-N-gen.png)
+  4) slidev-update-slide with layout + image path
+Local paths only. At most ONE upload-image-search, ONE yandex-image-search and ONE stock-search.
 
 Language: ${lang}.
 Picker theme hint: ${theme}.

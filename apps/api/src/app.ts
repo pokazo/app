@@ -22,9 +22,60 @@ import {
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { readPreviewBuild } from "./progressive-preview.js";
+import { persistDeckUploads } from "./upload-store.js";
 
 const DECK_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type DeckCreateFields = {
+  topic?: string;
+  locale?: string;
+  slideCount?: number;
+  audience?: string;
+  theme?: string;
+};
+
+function asFileList(value: unknown): Array<{ name: string; type: string; arrayBuffer: () => Promise<ArrayBuffer> }> {
+  if (!value) return [];
+  const list = Array.isArray(value) ? value : [value];
+  return list.filter(
+    (f): f is File =>
+      typeof f === "object" &&
+      f != null &&
+      typeof (f as File).arrayBuffer === "function" &&
+      typeof (f as File).name === "string",
+  );
+}
+
+async function parseDeckCreateRequest(c: {
+  req: {
+    header: (name: string) => string | undefined;
+    json: <T>() => Promise<T>;
+    parseBody: (opts?: { all?: boolean }) => Promise<Record<string, unknown>>;
+  };
+}): Promise<{ fields: DeckCreateFields; files: ReturnType<typeof asFileList> }> {
+  const contentType = c.req.header("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    const body = await c.req.parseBody({ all: true });
+    const files = [
+      ...asFileList(body.files),
+      ...asFileList(body.file),
+      ...asFileList(body["files[]"]),
+    ];
+    return {
+      fields: {
+        topic: typeof body.topic === "string" ? body.topic : undefined,
+        locale: typeof body.locale === "string" ? body.locale : undefined,
+        slideCount: body.slideCount != null ? Number(body.slideCount) : undefined,
+        audience: typeof body.audience === "string" ? body.audience : undefined,
+        theme: typeof body.theme === "string" ? body.theme : undefined,
+      },
+      files,
+    };
+  }
+  const body = await c.req.json<DeckCreateFields>();
+  return { fields: body, files: [] };
+}
 
 export function createApp() {
   const app = new Hono();
@@ -59,16 +110,10 @@ export function createApp() {
     if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (!session) return c.json({ error: "unauthorized" }, 401);
-    const body = await c.req.json<{
-      topic?: string;
-      locale?: string;
-      slideCount?: number;
-      audience?: string;
-      theme?: string;
-    }>();
-    const topic = (body.topic ?? "").trim();
+    const { fields, files } = await parseDeckCreateRequest(c);
+    const topic = (fields.topic ?? "").trim();
     if (topic.length < 5 || topic.length > 500) return c.json({ error: "bad topic" }, 400);
-    const slideCount = Math.min(16, Math.max(6, Number(body.slideCount ?? 8)));
+    const slideCount = Math.min(16, Math.max(6, Number(fields.slideCount ?? 8)));
     const id = randomUUID();
     await pool.query(
       `INSERT INTO deck (id, user_id, topic, locale, slide_count, audience, theme, status)
@@ -77,12 +122,20 @@ export function createApp() {
         id,
         session.user.id,
         topic,
-        body.locale ?? "ru",
+        fields.locale ?? "ru",
         slideCount,
-        body.audience ?? "school",
-        sanitizePickerTheme(body.theme),
+        fields.audience ?? "school",
+        sanitizePickerTheme(fields.theme),
       ],
     );
+    if (files.length > 0) {
+      const manifest = await persistDeckUploads({
+        uploadRoot: config.uploadDataDir,
+        deckId: id,
+        files,
+      });
+      console.info(`[api] deck ${id} uploads=${manifest.files.length}`);
+    }
     await enqueueDeck(id);
     return c.json({ deckId: id, status: "queued" }, 201);
   });

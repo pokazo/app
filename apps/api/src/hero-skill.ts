@@ -17,9 +17,10 @@ export function heroSkill(theme: string, locale: string): string {
 Tools:
 - Hero MCP (variant catalog — THIS PHASE ONLY): hero-list, hero-get. Call hero-list BEFORE choosing a variant; call hero-get on 1–2 finalists if needs are unclear.
 - Slidev MCP: slidev-update-slide only (slide 1 already exists as scaffold)
-- Yandex Images (FIRST): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl (title may be synthesized from URL — still valid).
-- Unsplash (SECOND): stock-search, stock-download. English query. Judge description/altDescription.
-- OpenAI image-generate (LAST, cheap gpt-image-1-mini, low quality): when Yandex and Unsplash are empty OR wrong subject. Writes local /slide-1-gen.png.
+- User uploads (FIRST when present): upload-image-search, upload-image-use. Judge caption/filename; suggestedId → upload-image-use.
+- Yandex Images (SECOND): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl (title may be synthesized from URL — still valid).
+- Unsplash (THIRD): stock-search, stock-download. English query. Judge description/altDescription.
+- OpenAI image-generate (LAST, cheap gpt-image-1-mini, low quality): when upload/Yandex/Unsplash are empty OR wrong subject. Writes local /slide-1-gen.png.
 
 Do NOT insert, remove, or move slides. Do NOT create slide 2+. Only update slide 1 in place.
 Do NOT call slidev-get-info, slidev-list-slides, or slidev-get-slide — outline + topic are enough.
@@ -43,12 +44,13 @@ Frontmatter for slide 1:
 Body: H1 + 1–2 sentences (or one short paragraph). No bullet lists. No emoji.
 
 Photo pipeline (one photo for slide 1):
-  1) ONE yandex-image-search (Russian/natural query from imageQuery when locale is Russian; orientation horizontal)
-  2) If suggestedId or any hit looks on-topic by domain/pageUrl/title → IMMEDIATELY yandex-image-download (id, filename slide-1.jpg). Empty title is NOT a reason to skip.
-  3) Only if Yandex empty/all-wrong/error → ONE stock-search (English, landscape) → stock-download OR image-generate
-  4) slidev-update-slide with layout hero + chosen variant + image path
+  1) If upload tools exist: ONE upload-image-search → if suggestedId or caption on-topic → IMMEDIATELY upload-image-use (filename slide-1.jpg)
+  2) Only if uploads empty/all-wrong/missing → ONE yandex-image-search (Russian/natural query; orientation horizontal)
+  3) If suggestedId or any hit looks on-topic by domain/pageUrl/title → IMMEDIATELY yandex-image-download (id, filename slide-1.jpg). Empty title is NOT a reason to skip.
+  4) Only if Yandex empty/all-wrong/error → ONE stock-search (English, landscape) → stock-download OR image-generate
+  5) slidev-update-slide with layout hero + chosen variant + image path
 Local paths only — never http(s) image URLs. Never high/expensive image quality.
-Do NOT call yandex-image-search more than once. Do NOT skip yandex-image-download just because title looks short.
+Do NOT call upload-image-search or yandex-image-search more than once each. Do NOT skip download/use just because title looks short.
 
 theme/palette are already set — do not change theme or palette.
 Language: ${lang}.

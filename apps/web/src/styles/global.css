@@ -89,6 +89,25 @@ textarea.pk {
   color: var(--pk-ink);
 }
 textarea.pk:focus { outline: none; }
+.upload-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  text-align: left;
+}
+.upload-field__label {
+  font-size: 0.9rem;
+  color: var(--pk-ink-muted, #555);
+}
+.upload-field__hint {
+  font-size: 0.8rem;
+  color: var(--pk-ink-muted, #777);
+  line-height: 1.35;
+}
+.upload-field input[type="file"] {
+  font-size: 0.9rem;
+}
 .prompt-card .actions {
   display: flex;
   align-items: center;

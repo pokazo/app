@@ -8,9 +8,10 @@ export function composeSkill(theme: string, locale: string): string {
 
 Tools:
 - Slidev MCP: slidev-get-info, slidev-list-slides, slidev-get-slide, slidev-update-slide, slidev-insert-slide, slidev-remove-slide, slidev-move-slide
-- Yandex Images (FIRST): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl (synthesized title from URL is OK).
-- Unsplash (SECOND): stock-search, stock-download. English query. Judge description/altDescription.
-- OpenAI image-generate (LAST, cheap gpt-image-1-mini, low quality): when Yandex and Unsplash are empty OR wrong subject. Writes local /slide-N-gen.png.
+- User uploads (FIRST when present): upload-image-search, upload-image-use (optional upload-image-list). Judge by caption/filename; if suggestedId or on-topic → IMMEDIATELY upload-image-use.
+- Yandex Images (SECOND): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl (synthesized title from URL is OK).
+- Unsplash (THIRD): stock-search, stock-download. English query. Judge description/altDescription.
+- OpenAI image-generate (LAST, cheap gpt-image-1-mini, low quality): when upload/Yandex/Unsplash are empty OR wrong subject. Writes local /slide-N-gen.png.
 
 Visual rules:
 - Follow outline: same slide count and order; honor each slide intent and visual hint.
@@ -37,12 +38,13 @@ Visual rules:
 - For visual process: layout: process. Put kicker and steps (3–5): title, iconHint — same allowlist. Body is only the H1. Map outline.process → steps:.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
 - Photo slides (visual image-right, image-left, and any remaining slide with a non-empty imageQuery — NOT slide 1):
-  1) ONE yandex-image-search (Russian/natural query from imageQuery when locale is Russian; orientation horizontal)
-  2) If suggestedId or on-topic domain/pageUrl/title → IMMEDIATELY yandex-image-download (empty title is fine)
-  3) Only if Yandex empty/all-wrong/error → ONE stock-search → stock-download OR image-generate (filename slide-N-gen.png)
-  4) insert/update with layout + image: /slide-N.jpg or /slide-N-gen.png
+  1) If upload tools exist: ONE upload-image-search (query from imageQuery) → if suggestedId or caption on-topic → IMMEDIATELY upload-image-use (filename slide-N.jpg)
+  2) Only if uploads empty/all-wrong/missing tools → ONE yandex-image-search (Russian/natural query; orientation horizontal)
+  3) If suggestedId or on-topic domain/pageUrl/title → IMMEDIATELY yandex-image-download (empty title is fine)
+  4) Only if Yandex empty/all-wrong/error → ONE stock-search → stock-download OR image-generate (filename slide-N-gen.png)
+  5) insert/update with layout + image: /slide-N.jpg or /slide-N-gen.png
   Local paths only — never http(s) image URLs. Never use expensive/high image quality.
-- At most ONE yandex-image-search and ONE stock-search per photo slide. Never search Yandex twice for the same slide.
+- At most ONE upload-image-search, ONE yandex-image-search and ONE stock-search per photo slide. Never search Yandex twice for the same slide.
 - Never treat one stock error as permission to skip photos for the rest of the deck.
 - Slide 1 already has a local hero image. Finish with at least 3 local image: paths total (hero + ≥2 more).
 - Dense facts: prefer concrete numbers, named entities, and source: on stats/timeline/comparison slides. For side-by-side specs use two-cols or a markdown table in default layout — not vague marketing bullets.
@@ -147,10 +149,11 @@ export function composeUserPrompt(outline: unknown, locale: string): string {
   return `Собери ОСТАЛЬНЫЕ слайды колоды по outline через tools.
 Slide 1 (hero) уже готов — не обновляй и не удаляй его.
 Для каждого слайда со 2-го с visual image-right, image-left или непустым imageQuery:
-  ONE yandex-image-search → prefer suggestedId → yandex-image-download
+  If upload tools exist: ONE upload-image-search → prefer suggestedId → upload-image-use
+  OR (only if empty/wrong/missing) ONE yandex-image-search → prefer suggestedId → yandex-image-download
   OR (only if empty/wrong/error) ONE stock-search → stock-download
   OR image-generate → then insert/update with image: /slide-N.jpg or /slide-N-gen.png.
-Empty Yandex title is OK — use domain/pageUrl/suggestedId. Do not call yandex-image-search twice per slide.
+Empty Yandex title is OK — use domain/pageUrl/suggestedId. Do not call upload-image-search or yandex-image-search twice per slide.
 For visual=stats: map outline.stats → frontmatter items: (never stats:). Body = H1 only. Keep source when present.
 For visual=cards: map outline.cards → frontmatter items: (never cards:). Body = H1 only. Optional kicker.
 For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoji. Use for comparisons when useful.
@@ -159,7 +162,7 @@ For visual=features: map outline.features → frontmatter items: (title, body, i
 For visual=process: map outline.process → frontmatter steps: (title, iconHint from allowlist). Body = H1 only.
 iconHint allowlist: ${LAYOUT_ICON_HINTS}.
 Hero already has one local image. At least 3 local image: paths total when finished.
-Do not skip remaining photos after one stock error — one Yandex attempt, then one Unsplash, then generate, then continue.
+Do not skip remaining photos after one stock error — one upload attempt (if tools exist), then one Yandex, then one Unsplash, then generate, then continue.
 outline:
 ${JSON.stringify(outline)}
 locale=${locale}`;

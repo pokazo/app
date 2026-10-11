@@ -24,6 +24,10 @@ import {
 } from "./rewrite-skill.js";
 import { writeRewriteStatus } from "./rewrite-status.js";
 import { sanitizePickerTheme } from "./themes.js";
+import { ensureUploadIndex } from "./upload-index.js";
+import { withUploadImagesMcp } from "./upload-images-mcp.js";
+import { createUploadImageUseTools, type UploadToolAttribution } from "./upload-images-tools.js";
+import { hasUploadImages, uploadDirForDeck } from "./upload-store.js";
 
 function model(id: string) {
   const openai = createOpenAI({
@@ -162,7 +166,9 @@ export async function rewriteSlide(opts: {
   outline.slides[opts.slideIndex - 1] = revised;
   await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(outline, null, 2), "utf8");
 
-  const attributions: Array<StockToolAttribution | GenToolAttribution | YandexToolAttribution> = [];
+  const attributions: Array<
+    StockToolAttribution | GenToolAttribution | YandexToolAttribution | UploadToolAttribution
+  > = [];
   const yandexTools = createYandexImageTools(opts.workDir, {
     baseUrl: config.yandexImagesUrl,
     onAttribution: (entry) => attributions.push(entry),
@@ -180,46 +186,89 @@ export async function rewriteSlide(opts: {
     onAttribution: (entry) => attributions.push(entry),
   });
 
+  const uploadDir = hasUploadImages(config.uploadDataDir, opts.id)
+    ? uploadDirForDeck(config.uploadDataDir, opts.id)
+    : null;
+  if (uploadDir) {
+    await ensureUploadIndex({
+      uploadRoot: config.uploadDataDir,
+      deckId: opts.id,
+      apiKey: config.openrouterKey || config.openaiApiKey,
+      apiBase: config.openrouterKey ? config.openrouterBaseUrl : config.openaiImageApiBase,
+      model: config.openrouterKey ? "openai/gpt-4o-mini" : "gpt-4o-mini",
+    });
+  }
+  const uploadUseTools = uploadDir
+    ? createUploadImageUseTools(opts.workDir, uploadDir, {
+        onAttribution: (entry) => attributions.push(entry),
+      })
+    : {};
+  const withOptionalUploadMcp = async <T>(
+    run: (uploadSearchTools: Record<string, unknown>) => Promise<T>,
+  ): Promise<T> => {
+    if (!uploadDir) return run({});
+    return withUploadImagesMcp(uploadDir, run);
+  };
+
   if (isHero) {
     console.info(`[rewrite] hero-compose slide=1 deck=${opts.id}`);
-    await withSlidevMcp(opts.workDir, async (slidevTools) => {
-      await withHeroMcp(async (heroCatalogTools) => {
-        const tools = pickHeroTools(
-          mergeComposeTools(slidevTools, heroCatalogTools, yandexTools, stockTools, imageGenTools),
-        );
-        await generateText({
-          model: model(config.composeModel),
-          system: heroSkill(theme, locale),
-          tools: tools as never,
-          maxSteps: heroMaxSteps(),
-          prompt: heroRewriteUserPrompt({
-            slide: revised,
-            locale,
-            topic,
-            deckTitle: outline.title,
-            instruction,
-          }),
+    await withOptionalUploadMcp(async (uploadSearchTools) => {
+      await withSlidevMcp(opts.workDir, async (slidevTools) => {
+        await withHeroMcp(async (heroCatalogTools) => {
+          const tools = pickHeroTools(
+            mergeComposeTools(
+              slidevTools,
+              heroCatalogTools,
+              uploadSearchTools,
+              uploadUseTools,
+              yandexTools,
+              stockTools,
+              imageGenTools,
+            ),
+          );
+          await generateText({
+            model: model(config.composeModel),
+            system: heroSkill(theme, locale),
+            tools: tools as never,
+            maxSteps: heroMaxSteps(),
+            prompt: heroRewriteUserPrompt({
+              slide: revised,
+              locale,
+              topic,
+              deckTitle: outline.title,
+              instruction,
+            }),
+          });
         });
       });
     });
   } else {
     console.info(`[rewrite] compose-one slide=${opts.slideIndex} deck=${opts.id}`);
-    await withSlidevMcp(opts.workDir, async (slidevTools) => {
-      const tools = pickRewriteTools(
-        mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools),
-      );
-      await generateText({
-        model: model(config.composeModel),
-        system: composeOneSlideSkill(theme, locale),
-        tools: tools as never,
-        maxSteps: composeOneSlideMaxSteps(),
-        prompt: composeOneSlideUserPrompt({
-          slideIndex: opts.slideIndex,
-          slide: revised,
-          locale,
-          topic,
-          instruction,
-        }),
+    await withOptionalUploadMcp(async (uploadSearchTools) => {
+      await withSlidevMcp(opts.workDir, async (slidevTools) => {
+        const tools = pickRewriteTools(
+          mergeComposeTools(
+            slidevTools,
+            uploadSearchTools,
+            uploadUseTools,
+            yandexTools,
+            stockTools,
+            imageGenTools,
+          ),
+        );
+        await generateText({
+          model: model(config.composeModel),
+          system: composeOneSlideSkill(theme, locale),
+          tools: tools as never,
+          maxSteps: composeOneSlideMaxSteps(),
+          prompt: composeOneSlideUserPrompt({
+            slideIndex: opts.slideIndex,
+            slide: revised,
+            locale,
+            topic,
+            instruction,
+          }),
+        });
       });
     });
   }
@@ -238,21 +287,30 @@ export async function rewriteSlide(opts: {
     await buildAndGate();
   } catch (err) {
     console.info(`[rewrite] build failed, MCP repair slide=${opts.slideIndex}: ${String(err).slice(0, 400)}`);
-    await withSlidevMcp(opts.workDir, async (slidevTools) => {
-      const tools = pickRewriteTools(
-        mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools),
-      );
-      const system = isHero ? heroSkill(theme, locale) : composeOneSlideSkill(theme, locale);
-      await generateText({
-        model: model(config.composeModel),
-        system,
-        tools: tools as never,
-        maxSteps: 16,
-        prompt: rewriteRepairPrompt({
-          slideIndex: opts.slideIndex,
-          error: String(err),
-          md,
-        }),
+    await withOptionalUploadMcp(async (uploadSearchTools) => {
+      await withSlidevMcp(opts.workDir, async (slidevTools) => {
+        const tools = pickRewriteTools(
+          mergeComposeTools(
+            slidevTools,
+            uploadSearchTools,
+            uploadUseTools,
+            yandexTools,
+            stockTools,
+            imageGenTools,
+          ),
+        );
+        const system = isHero ? heroSkill(theme, locale) : composeOneSlideSkill(theme, locale);
+        await generateText({
+          model: model(config.composeModel),
+          system,
+          tools: tools as never,
+          maxSteps: 16,
+          prompt: rewriteRepairPrompt({
+            slideIndex: opts.slideIndex,
+            error: String(err),
+            md,
+          }),
+        });
       });
     });
     md = await guardWorkSlides(opts.workDir, theme);

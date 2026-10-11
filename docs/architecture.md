@@ -97,17 +97,16 @@ BullMQ job
 ```text
 клиент                    pokazo-api                 worker
   │  POST /decks             │                          │
-  │  {topic, locale, n}      │  enqueue                 │
+  │  topic (+ optional files)│  save uploads → enqueue  │
   │◄──── job_id ─────────────┤                          │
   │                          │                          │
   │                          │        job               │
   │                          ├─────────────────────────►│
-  │                          │                          │ 1. outline (LLM)
-  │                          │                          │ 2. compose slides.md
-  │                          │                          │    (skill + whitelist layout)
-  │                          │                          │ 3. validate md
-  │                          │                          │ 4. slidev build
-  │                          │                          │ 5. optional: MCP patch overflow
+  │                          │                          │ 1. research + outline (layout MCP)
+  │                          │                          │ 2. index user uploads (vision)
+  │                          │                          │ 3. hero/compose: upload-images MCP
+  │                          │                          │    → Yandex → Unsplash → generate
+  │                          │                          │ 4. validate md + slidev build
   │                          │◄──── artifact ───────────┤
   │  GET /decks/:id          │    md + dist/ + meta     │
   │◄──── url просмотра ──────┤                          │
@@ -122,6 +121,10 @@ BullMQ job
 | `slides.md` | Источник правды MVP |
 | `dist/` | Статический плеер Slidev |
 | `meta.json` | Модель, токены, статус, ошибки |
+| `public/` | Локальные картинки слайдов |
+| `assets.json` | Атрибуции (`upload` / `yandex` / unsplash / openai) |
+
+Отдельно (не в workDir колоды): `UPLOAD_DATA_DIR/{deckId}/` — оригиналы загрузок + `manifest.json` + `index.json` для разбора ошибок и MCP `pokazo-upload-images`. Env: `DECK_DATA_DIR`, `UPLOAD_DATA_DIR`. Спека: [superpowers/specs/2026-10-11-upload-images-mcp-design.md](./superpowers/specs/2026-10-11-upload-images-mcp-design.md).
 
 ## Готовые агенты: что встраиваем
 
@@ -180,3 +183,4 @@ BullMQ job
 | 2026-10-04 | Лендинг Vite React; auth Better Auth + Яндекс ID |
 | 2026-10-04 | Деплой: 91.x лендинг, 80.x API, CI master, blue-green |
 | 2026-10-04 | LLM: OpenRouter, модели через env |
+| 2026-10-11 | Upload images MCP: attach at create, search uploads first, `UPLOAD_DATA_DIR` |

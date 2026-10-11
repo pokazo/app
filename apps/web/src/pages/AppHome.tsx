@@ -16,6 +16,7 @@ export function AppHome() {
   const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [theme, setTheme] = useState(() => sanitizeDeckTheme(params.get("theme")));
   const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
+  const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState("");
   const [err, setErr] = useState("");
 
@@ -44,10 +45,25 @@ export function AppHome() {
     setErr("");
     setStatus("queued");
     try {
-      const created = await api<{ deckId: string }>("/api/decks", {
-        method: "POST",
-        body: JSON.stringify({ topic, locale: "ru", slideCount, audience: "school", theme }),
-      });
+      let created: { deckId: string };
+      if (files.length > 0) {
+        const form = new FormData();
+        form.set("topic", topic);
+        form.set("locale", "ru");
+        form.set("slideCount", String(slideCount));
+        form.set("audience", "school");
+        form.set("theme", theme);
+        for (const f of files) form.append("files", f);
+        created = await api<{ deckId: string }>("/api/decks", {
+          method: "POST",
+          body: form,
+        });
+      } else {
+        created = await api<{ deckId: string }>("/api/decks", {
+          method: "POST",
+          body: JSON.stringify({ topic, locale: "ru", slideCount, audience: "school", theme }),
+        });
+      }
       for (;;) {
         await new Promise((r) => setTimeout(r, 2000));
         const d = await api<{ status: string; viewUrl: string | null; error?: string }>(
@@ -87,6 +103,20 @@ export function AppHome() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Тема новой презентации…"
             />
+            <label className="upload-field">
+              <span className="upload-field__label">Картинки (опционально)</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                disabled={Boolean(status)}
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 20))}
+              />
+              <span className="upload-field__hint">
+                Сначала возьмём фото из ваших файлов, потом из поиска. JPEG / PNG / WebP, до 20 шт.
+                {files.length ? ` Выбрано: ${files.length}` : ""}
+              </span>
+            </label>
             <div className="actions">
               <SlideCountPicker
                 value={slideCount}

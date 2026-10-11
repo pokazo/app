@@ -67,6 +67,15 @@ slot-b  контейнер  :18081
 
 API: два контейнера Hono; Redis/Postgres — **отдельные**, не в blue-green (данные общие). Session cookie и BullMQ смотрят в один Postgres/Redis.
 
+Volumes API-слота (`deploy/switch.sh`):
+
+| Хост | Контейнер | Назначение |
+|------|-----------|------------|
+| `/var/lib/pokazo/decks` | `/app/data/decks` | `DECK_DATA_DIR` — колоды |
+| `/var/lib/pokazo/uploads` | `/app/data/uploads` | `UPLOAD_DATA_DIR` — оригиналы user-upload для upload-images MCP / triage |
+
+Перед первым деплоем с uploads: `mkdir -p /var/lib/pokazo/uploads` на API-хосте. Post-deploy smoke: создать колоду с 3–6 картинками через UI и проверить `assets.json` на `source: "upload"` (см. [upload-images design](./superpowers/specs/2026-10-11-upload-images-mcp-design.md)).
+
 ## Сеть между серверами
 
 Браузер на `pokazo.ru` зовёт `https://api.pokazo.ru`. CORS: origin `https://pokazo.ru` и `https://www.pokazo.ru`. Cookie: `Domain=.pokazo.ru` если сессия с API на поддомене; иначе Better Auth на `api.` + SameSite=None Secure **или** прокси `/api` с лендинга на бэк (предпочтительно **не** проксировать генерацию через 91.x — тяжёлый воркер на 80.x).

@@ -28,6 +28,8 @@ export const config = {
   llmReferer: env("LLM_HTTP_REFERER", "https://pokazo.ru"),
   llmTitle: env("LLM_APP_TITLE", "Pokazo"),
   deckDataDir: env("DECK_DATA_DIR", "./data/decks"),
+  /** Separate from decks — originals kept for error triage / upload-images MCP. */
+  uploadDataDir: env("UPLOAD_DATA_DIR", "./data/uploads"),
   unsplashAccessKey: env("UNSPLASH_ACCESS_KEY"),
   unsplashApiBase: env("UNSPLASH_API_BASE", "https://api.unsplash.com"),
   unsplashImagesBase: env("UNSPLASH_IMAGES_BASE"),

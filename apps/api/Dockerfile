@@ -14,6 +14,7 @@ COPY apps/api apps/api
 RUN pnpm --filter @pokazo/api build
 ENV PORT=3000
 ENV DECK_DATA_DIR=/app/data/decks
+ENV UPLOAD_DATA_DIR=/app/data/uploads
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --retries=8 CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/api/dist/index.js"]

@@ -57,6 +57,9 @@ describe("heroSkill", () => {
     expect(skill).toMatch(/Call hero-list BEFORE choosing/i);
     expect(skill).toMatch(/ribbon \| corner \| inset \| fullbleed \| editorial \| product/);
     expect(skill).toMatch(/never use split, interactive, or centered/i);
+    expect(skill).toMatch(/upload-image-search/);
+    expect(skill).toMatch(/upload-image-use/);
+    expect(skill).toMatch(/upload-image-search[\s\S]*yandex-image-search[\s\S]*stock-search/i);
     expect(skill).toMatch(/yandex-image-search/);
     expect(skill).toMatch(/stock-search/);
     expect(skill).toMatch(/image-generate/);

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "migrate": "tsx src/migrate.ts",
     "update-layout-shots": "node scripts/update-layout-shots.mjs",
-    "layout-mcp": "tsx src/layout-mcp-server.ts"
+    "layout-mcp": "tsx src/layout-mcp-server.ts",
+    "upload-images-mcp": "tsx src/upload-images-mcp-server.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.22",

@@ -38,20 +38,26 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/description\/altDescription|wrong subject/i);
     expect(skill).toMatch(/gpt-image-1-mini|low quality/i);
     expect(skill).toMatch(/image: \/slide-/);
-    expect(skill).toMatch(/At most ONE yandex-image-search and ONE stock-search/i);
+    expect(skill).toMatch(
+      /At most ONE upload-image-search, ONE yandex-image-search and ONE stock-search/i,
+    );
     expect(skill).not.toMatch(/If stock tools return an error, fall back/i);
     expect(skill).toMatch(/Slide 1 is already a finished hero/i);
     expect(skill).toMatch(/at least 3 local image: paths total/i);
     expect(skill).not.toMatch(/high quality/i);
   });
 
-  it("requires Yandex-first then Unsplash then image-generate", () => {
+  it("requires upload-first then Yandex then Unsplash then image-generate", () => {
     const skill = composeSkill("shibainu", "ru");
+    expect(skill).toMatch(/upload-image-search/);
+    expect(skill).toMatch(/upload-image-use/);
     expect(skill).toMatch(/yandex-image-search/);
     expect(skill).toMatch(/yandex-image-download/);
-    expect(skill).toMatch(/yandex-image-search[\s\S]*stock-search[\s\S]*image-generate/i);
-    expect(skill).toMatch(/suggestedId|IMMEDIATELY yandex-image-download/i);
-    expect(skill).toMatch(/title\/domain\/pageUrl|wrong subject/i);
+    expect(skill).toMatch(
+      /upload-image-search[\s\S]*yandex-image-search[\s\S]*stock-search[\s\S]*image-generate/i,
+    );
+    expect(skill).toMatch(/suggestedId|IMMEDIATELY yandex-image-download|IMMEDIATELY upload-image-use/i);
+    expect(skill).toMatch(/title\/domain\/pageUrl|wrong subject|caption/i);
   });
 
   it("teaches two-cols H1-before-columns and stats items frontmatter", () => {
@@ -164,8 +170,9 @@ describe("outlineRevisePrompt", () => {
 });
 
 describe("composeUserPrompt", () => {
-  it("repeats Yandex → Unsplash → generate fallback and leaves hero alone", () => {
+  it("repeats upload → Yandex → Unsplash → generate fallback and leaves hero alone", () => {
     const prompt = composeUserPrompt({ title: "T", slides: [] }, "ru");
+    expect(prompt).toMatch(/upload-image-search/);
     expect(prompt).toMatch(/yandex-image-search/);
     expect(prompt).toMatch(/stock-search/);
     expect(prompt).toMatch(/image-generate/);

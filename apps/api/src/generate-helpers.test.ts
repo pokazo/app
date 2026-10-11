@@ -70,6 +70,9 @@ describe("pickRewriteTools", () => {
       "slidev-move-slide": 5,
       "slidev-list-slides": 6,
       "slidev-get-info": 7,
+      "upload-image-list": 13,
+      "upload-image-search": 14,
+      "upload-image-use": 15,
       "yandex-image-search": 8,
       "yandex-image-download": 9,
       "stock-search": 10,
@@ -82,6 +85,9 @@ describe("pickRewriteTools", () => {
       "slidev-update-slide",
       "stock-download",
       "stock-search",
+      "upload-image-list",
+      "upload-image-search",
+      "upload-image-use",
       "yandex-image-download",
       "yandex-image-search",
     ]);
@@ -102,6 +108,8 @@ describe("pickHeroTools", () => {
       "slidev-list-slides": 5,
       "slidev-get-info": 9,
       "slidev-get-slide": 10,
+      "upload-image-search": 15,
+      "upload-image-use": 16,
       "yandex-image-search": 8,
       "stock-search": 6,
       "image-generate": 7,
@@ -112,6 +120,8 @@ describe("pickHeroTools", () => {
       "image-generate",
       "slidev-update-slide",
       "stock-search",
+      "upload-image-search",
+      "upload-image-use",
       "yandex-image-search",
     ]);
   });
