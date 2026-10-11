@@ -447,9 +447,6 @@ export function DeckView() {
                 void submitRewrite();
               }}
             >
-              <label className="deck-rewrite-label" htmlFor="deck-rewrite-input">
-                Что переделать на слайде {current}
-              </label>
               <div className="deck-rewrite-row">
                 <input
                   id="deck-rewrite-input"
@@ -457,7 +454,8 @@ export function DeckView() {
                   type="text"
                   value={rewriteText}
                   disabled={!rewriteReady}
-                  placeholder="Например: сделай крупную цифру и короче текст"
+                  placeholder="Что переделать на этом слайде…"
+                  aria-label={`Что переделать на слайде ${current}`}
                   onChange={(e) => setRewriteText(e.target.value)}
                 />
                 <button type="submit" className="pk ghost" disabled={!rewriteReady}>

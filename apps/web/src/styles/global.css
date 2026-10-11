@@ -541,7 +541,7 @@ footer.foot {
   container-type: size;
 }
 .deck-stage.has-rewrite {
-  --deck-rewrite-h: 72px;
+  --deck-rewrite-h: 52px;
 }
 .deck-stage-frame {
   position: relative;
@@ -557,14 +557,7 @@ footer.foot {
 }
 .deck-rewrite {
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   width: min(100%, calc((100cqh - var(--deck-rewrite-h)) * 16 / 9));
-}
-.deck-rewrite-label {
-  font-size: 13px;
-  color: var(--pk-ink-muted);
 }
 .deck-rewrite-row {
   display: flex;
