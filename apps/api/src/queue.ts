@@ -50,7 +50,10 @@ export function startDeckWorker(): Queue | null {
 export async function processDeck(id: string): Promise<void> {
   if (!pool) throw new Error("no db");
   const db = pool;
-  await db.query(`UPDATE deck SET status='generating', updated_at=now() WHERE id=$1`, [id]);
+  await db.query(
+    `UPDATE deck SET status='generating', error=NULL, updated_at=now() WHERE id=$1`,
+    [id],
+  );
   const { rows } = await db.query(`SELECT * FROM deck WHERE id=$1`, [id]);
   const deck = rows[0];
   if (!deck) throw new Error("deck not found");
