@@ -7,7 +7,7 @@ const props = defineProps<{
   brand?: string
   image?: string
   palette?: string
-  /** centered | fullbleed | editorial | product — never split */
+  /** ribbon | corner | inset | fullbleed | editorial | product — never split/centered */
   variant?: string
 }>()
 
@@ -37,11 +37,11 @@ function photoSrc(image?: string) {
     </div>
 
     <div class="pk-brick__pane">
+      <div class="pk-brand" v-if="brand">
+        <span class="pk-brand__mark" />
+        <span class="pk-brand__text">{{ brand }}</span>
+      </div>
       <div class="pk-hero__plate">
-        <div class="pk-brand" v-if="brand">
-          <span class="pk-brand__mark" />
-          <span class="pk-brand__text">{{ brand }}</span>
-        </div>
         <div class="pk-kicker" v-if="kicker">
           <span class="pk-kicker__line" />
           <span class="pk-kicker__text">{{ kicker }}</span>
@@ -116,6 +116,9 @@ function photoSrc(image?: string) {
   flex-direction: column;
   color: var(--pk-ink);
   box-sizing: border-box;
+}
+.pk-brick__pane > .pk-brand {
+  flex: none;
 }
 /* Default: plate is transparent pass-through (no photo / editorial pane already solid). */
 .pk-hero__plate {
@@ -200,51 +203,122 @@ function photoSrc(image?: string) {
   margin: 0;
 }
 
-/* --- centered: brand/kicker/body centered; solid plate when photo has baked-in type --- */
-.pk-hero--centered .pk-brick__pane {
-  align-items: center;
-  text-align: center;
-  justify-content: center;
+/* --- ribbon: full photo; brand top-left; paper band with type across lower third --- */
+.pk-hero--ribbon .pk-hero__veil {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.05) 40%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
 }
-.pk-hero--centered .pk-hero__plate {
-  align-items: center;
+.pk-hero--ribbon .pk-brick__pane {
+  justify-content: flex-end;
+  padding: 48px 0 18%;
 }
-.pk-hero--centered.pk-hero--photo .pk-hero__veil {
-  /* Wash out baked-in image lettering; plate carries our copy. */
-  background: color-mix(in srgb, var(--pk-paper) 92%, transparent);
-}
-.pk-hero--centered.pk-hero--photo .pk-hero__photo img {
-  /* Soften remaining photo type at the edges */
-  filter: blur(1.2px) saturate(0.9);
-  transform: scale(1.03);
-}
-.pk-hero--centered.pk-hero--photo .pk-hero__plate {
-  background: var(--pk-paper);
-  padding: 36px 44px 32px;
-  border-radius: 28px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
-  max-width: min(780px, 92%);
-}
-.pk-hero--centered .pk-brand,
-.pk-hero--centered .pk-kicker {
-  justify-content: center;
-  margin-bottom: 16px;
-}
-.pk-hero--centered .pk-brand {
-  margin-bottom: 12px;
-}
-.pk-hero--centered .pk-hero__body {
+.pk-hero--ribbon .pk-brand {
+  position: absolute;
+  top: 48px;
+  left: 56px;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
-.pk-hero--centered .pk-hero__body :deep(h1) {
-  max-width: min(16em, 100%);
+.pk-hero--ribbon .pk-hero__plate {
+  width: 100%;
+  background: color-mix(in srgb, var(--pk-paper) 94%, transparent);
+  backdrop-filter: blur(8px);
+  padding: 36px 56px 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.pk-hero--ribbon .pk-kicker {
+  margin-bottom: 14px;
+}
+.pk-hero--ribbon .pk-hero__body {
+  margin: 0;
+}
+.pk-hero--ribbon .pk-hero__body :deep(h1) {
+  font-size: 52px;
+  max-width: min(18em, 100%);
+}
+
+/* --- corner: full photo; brand top-left; compact type bottom-right --- */
+.pk-hero--corner .pk-hero__veil {
+  background: linear-gradient(
+    225deg,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.15) 45%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+.pk-hero--corner.pk-palette-cream {
+  --pk-ink: #ffffff;
+  --pk-sub: #e8e4dc;
+  --pk-faint: #cfc9bd;
+}
+.pk-hero--corner .pk-brick__pane {
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 48px 56px 56px;
+}
+.pk-hero--corner .pk-brand {
+  position: absolute;
+  top: 48px;
+  left: 56px;
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+.pk-hero--corner .pk-hero__plate {
+  max-width: min(520px, 92%);
+  text-align: left;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.5);
+}
+.pk-hero--corner .pk-kicker {
+  margin-bottom: 18px;
+}
+.pk-hero--corner .pk-hero__body {
+  margin: 0;
+}
+.pk-hero--corner .pk-hero__body :deep(h1) {
   font-size: 44px;
+  max-width: 12em;
 }
-.pk-hero--centered .pk-hero__body :deep(p) {
-  max-width: min(36em, 100%);
+
+/* --- inset: paper field + framed photo window on the right --- */
+.pk-hero--inset .pk-hero__photo {
+  inset: 80px 80px 80px 52%;
+  border-radius: 4px;
+}
+.pk-hero--inset .pk-hero__veil {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+.pk-hero--inset .pk-brick__pane {
+  width: min(48%, 720px);
+  justify-content: center;
+  padding: 48px 40px 48px 72px;
+  background: transparent;
+}
+.pk-hero--inset .pk-brand {
+  margin-bottom: 28px;
+}
+.pk-hero--inset .pk-kicker {
+  margin-bottom: 18px;
+}
+.pk-hero--inset .pk-hero__body {
+  margin: 0;
+}
+.pk-hero--inset .pk-hero__body :deep(h1) {
+  font-size: 46px;
+  max-width: 14em;
+}
+.pk-hero--inset:not(.pk-hero--photo) .pk-brick__pane {
+  width: 100%;
 }
 
 /* --- fullbleed: strong photo, light veil, text bottom-left --- */
@@ -262,11 +336,14 @@ function photoSrc(image?: string) {
   --pk-faint: #cfc9bd;
 }
 .pk-hero--fullbleed .pk-brick__pane {
-  justify-content: flex-end;
+  justify-content: flex-start;
   padding-bottom: 56px;
 }
 .pk-hero--fullbleed .pk-brand {
   margin-bottom: auto;
+}
+.pk-hero--fullbleed .pk-hero__plate {
+  margin-top: auto;
 }
 .pk-hero--fullbleed .pk-hero__body {
   margin: 0;

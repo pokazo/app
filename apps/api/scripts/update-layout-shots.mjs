@@ -40,6 +40,14 @@ const names = [
   "features",
   "process",
 ];
+const heroVariantNames = [
+  "hero-ribbon",
+  "hero-corner",
+  "hero-inset",
+  "hero-fullbleed",
+  "hero-editorial",
+  "hero-product",
+];
 
 if (!existsSync(join(nm, ".bin/slidev"))) {
   console.error("Missing /tmp/pokazo-layout-shots/nm — see script header for npm install.");
@@ -155,18 +163,114 @@ const page = await browser.newPage({
   deviceScaleFactor: 1,
 });
 await mkdir(out, { recursive: true });
-for (let i = 0; i < names.length; i++) {
-  const name = names[i];
-  await page.goto(`http://127.0.0.1:${port}/p/gallery/${i + 1}?embedded`, {
+async function captureDeck(namesList, basePath) {
+  for (let i = 0; i < namesList.length; i++) {
+    const name = namesList[i];
+    await page.goto(`http://127.0.0.1:${port}${basePath}${i + 1}?embedded`, {
+      waitUntil: "networkidle",
+      timeout: 60_000,
+    });
+    await page.waitForSelector("#slide-container", { timeout: 30_000 });
+    await new Promise((r) => setTimeout(r, 600));
+    const buf = await page.locator("#slide-container").screenshot({ type: "png" });
+    await writeFile(join(out, `${name}.png`), buf);
+    console.log("wrote", name, buf.length);
+  }
+}
+await captureDeck(names, "/p/gallery/");
+await browser.close();
+server.close();
+
+const heroDeck = join(base, "hero-deck");
+mkdirSync(join(heroDeck, "layouts"), { recursive: true });
+mkdirSync(join(heroDeck, "public"), { recursive: true });
+for (const name of [
+  "layout-assert.js",
+  "hero.vue",
+]) {
+  copyFileSync(join(apiRoot, "slidev-layouts", name), join(heroDeck, "layouts", name));
+}
+const heroImg = spawnSync(
+  "pnpm",
+  [
+    "exec",
+    "tsx",
+    "-e",
+    `import { writeFileSync } from "fs"; import { heroFixturePng, heroVariantsMarkdown } from "./src/layout-fixtures.ts"; writeFileSync(${JSON.stringify(join(heroDeck, "public/slide-1.png"))}, heroFixturePng()); writeFileSync(${JSON.stringify(join(heroDeck, "slides.md"))}, heroVariantsMarkdown());`,
+  ],
+  { cwd: apiRoot, encoding: "utf8" },
+);
+if (heroImg.status !== 0) {
+  console.error(heroImg.stderr || heroImg.stdout);
+  process.exit(heroImg.status ?? 1);
+}
+writeFileSync(
+  join(heroDeck, "vite.config.ts"),
+  `import { defineConfig } from 'vite'\nexport default defineConfig({ build: { cssMinify: false } })\n`,
+);
+try {
+  if (!existsSync(join(heroDeck, "node_modules"))) {
+    spawnSync("ln", ["-sf", nm, join(heroDeck, "node_modules")], { stdio: "inherit" });
+  }
+} catch {
+  /* exists */
+}
+const heroBuild = spawnSync(
+  join(nm, ".bin/slidev"),
+  ["build", "slides.md", "--out", "dist", "--base", "/p/heroes/"],
+  { cwd: heroDeck, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+);
+if (heroBuild.status !== 0) {
+  console.error(heroBuild.stderr || heroBuild.stdout);
+  process.exit(heroBuild.status ?? 1);
+}
+
+const heroDist = join(heroDeck, "dist");
+const heroPrefix = "/p/heroes/";
+const heroServer = createServer(async (req, res) => {
+  try {
+    const u = new URL(req.url || "/", "http://127.0.0.1");
+    if (!u.pathname.startsWith(heroPrefix)) {
+      res.writeHead(404);
+      res.end("nf");
+      return;
+    }
+    let rel = decodeURIComponent(u.pathname.slice(heroPrefix.length)) || "index.html";
+    if (rel.endsWith("/")) rel += "index.html";
+    let file = normalize(join(heroDist, rel));
+    if (!file.startsWith(normalize(heroDist))) {
+      res.writeHead(403);
+      res.end("no");
+      return;
+    }
+    if (!existsSync(file) || /^\d+/.test(rel)) file = join(heroDist, "index.html");
+    const body = await readFile(file);
+    res.writeHead(200, { "content-type": types[extname(file)] || "application/octet-stream" });
+    res.end(body);
+  } catch {
+    res.writeHead(404);
+    res.end("missing");
+  }
+});
+await new Promise((r) => heroServer.listen(0, "127.0.0.1", r));
+const heroPort = heroServer.address().port;
+const heroBrowser = await chromium.launch({ headless: true });
+const heroPage = await heroBrowser.newPage({
+  viewport: { width: 1920, height: 1080 },
+  deviceScaleFactor: 1,
+});
+for (let i = 0; i < heroVariantNames.length; i++) {
+  const name = heroVariantNames[i];
+  await heroPage.goto(`http://127.0.0.1:${heroPort}/p/heroes/${i + 1}?embedded`, {
     waitUntil: "networkidle",
     timeout: 60_000,
   });
-  await page.waitForSelector("#slide-container", { timeout: 30_000 });
+  await heroPage.waitForSelector("#slide-container", { timeout: 30_000 });
   await new Promise((r) => setTimeout(r, 600));
-  const buf = await page.locator("#slide-container").screenshot({ type: "png" });
+  const buf = await heroPage.locator("#slide-container").screenshot({ type: "png" });
   await writeFile(join(out, `${name}.png`), buf);
   console.log("wrote", name, buf.length);
 }
-await browser.close();
-server.close();
+await heroBrowser.close();
+heroServer.close();
 console.log("goldens →", out);

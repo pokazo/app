@@ -82,7 +82,14 @@ function sanitizeImageFrontmatter(md: string): string {
   });
 }
 
-const HERO_VARIANTS = new Set(["centered", "fullbleed", "editorial", "product"]);
+const HERO_VARIANTS = new Set([
+  "ribbon",
+  "corner",
+  "inset",
+  "fullbleed",
+  "editorial",
+  "product",
+]);
 
 /** Drop unknown hero variants (no split / interactive). */
 export function sanitizeHeroVariantFrontmatter(md: string): string {

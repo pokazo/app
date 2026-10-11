@@ -7,6 +7,13 @@ import {
 } from "./compose-skill.js";
 
 describe("composeSkill", () => {
+  it("does not expose hero catalog MCP", () => {
+    const skill = composeSkill("default", "ru");
+    expect(skill).not.toMatch(/hero-list/);
+    expect(skill).not.toMatch(/hero-get/);
+    expect(skill).not.toMatch(/pokazo-hero/);
+  });
+
   it("requires MCP + stock tools and sequential inserts", () => {
     const skill = composeSkill("seriph", "ru");
     expect(skill).toMatch(/stock-search/);

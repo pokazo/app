@@ -3,14 +3,15 @@ import { guardMarkdown, sanitizeHeroVariantFrontmatter } from "./md-guard.js";
 
 describe("sanitizeHeroVariantFrontmatter", () => {
   it("keeps known variants", () => {
-    for (const v of ["centered", "fullbleed", "editorial", "product"]) {
+    for (const v of ["ribbon", "corner", "inset", "fullbleed", "editorial", "product"]) {
       expect(sanitizeHeroVariantFrontmatter(`variant: ${v}`)).toBe(`variant: ${v}`);
     }
   });
 
-  it("rewrites split and interactive to fullbleed", () => {
+  it("rewrites split, interactive, and centered to fullbleed", () => {
     expect(sanitizeHeroVariantFrontmatter("variant: split")).toBe("variant: fullbleed");
     expect(sanitizeHeroVariantFrontmatter("variant: interactive")).toBe("variant: fullbleed");
+    expect(sanitizeHeroVariantFrontmatter("variant: centered")).toBe("variant: fullbleed");
   });
 });
 

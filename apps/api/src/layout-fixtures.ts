@@ -1,5 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { deflateSync } from "node:zlib";
+import { HERO_VARIANTS, type HeroVariant } from "./hero-skill.js";
 
 /** 1×1 PNG — enough for image: frontmatter in visual tests */
 export const FIXTURE_PNG = Buffer.from(
@@ -27,11 +29,119 @@ export const LAYOUT_SHOT_ORDER = [
 
 export type LayoutShotName = (typeof LAYOUT_SHOT_ORDER)[number];
 
+/** Golden names for each hero variant (separate from gallery `hero` = ribbon). */
+export const HERO_VARIANT_SHOT_ORDER = HERO_VARIANTS.map(
+  (v) => `hero-${v}` as const,
+);
+export type HeroVariantShotName = (typeof HERO_VARIANT_SHOT_ORDER)[number];
+
+/** Half-and-half scene PNG so editorial crop / fullbleed / product stage read differently. */
+export function heroFixturePng(width = 640, height = 360): Buffer {
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const row = y * (width * 3 + 1);
+    raw[row] = 0; // filter None
+    for (let x = 0; x < width; x++) {
+      const i = row + 1 + x * 3;
+      const left = x < width / 2;
+      const band = Math.floor(y / (height / 6));
+      if (left) {
+        raw[i] = 40 + band * 12;
+        raw[i + 1] = 90 + band * 18;
+        raw[i + 2] = 140 + band * 10;
+      } else {
+        raw[i] = 200 - band * 8;
+        raw[i + 1] = 110 + band * 10;
+        raw[i + 2] = 55;
+      }
+    }
+  }
+  const compressed = deflateSync(raw);
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // RGB
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
+  const crcTable = (() => {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      table[n] = c;
+    }
+    return table;
+  })();
+  const crc32 = (buf: Buffer) => {
+    let c = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]!) & 0xff]! ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const typeBuf = Buffer.from(type, "ascii");
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length, 0);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
+    return Buffer.concat([len, typeBuf, data, crc]);
+  };
+  return Buffer.concat([
+    signature,
+    chunk("IHDR", ihdr),
+    chunk("IDAT", compressed),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
 export function writeFixturePublicImage(workDir: string, filename = "slide-1.png"): string {
   const pub = join(workDir, "public");
   mkdirSync(pub, { recursive: true });
   writeFileSync(join(pub, filename), FIXTURE_PNG);
   return `/${filename}`;
+}
+
+export function writeHeroFixturePublicImage(
+  workDir: string,
+  filename = "slide-1.png",
+): string {
+  const pub = join(workDir, "public");
+  mkdirSync(pub, { recursive: true });
+  writeFileSync(join(pub, filename), heroFixturePng());
+  return `/${filename}`;
+}
+
+/** One happy-path slide per hero variant — for golden screenshots. */
+export function heroVariantsMarkdown(imagePath = "/slide-1.png"): string {
+  const slides = HERO_VARIANTS.map((variant: HeroVariant, i) => {
+    const head =
+      i === 0
+        ? `---
+theme: default
+title: "Hero variants"
+layout: hero
+variant: ${variant}
+image: ${imagePath}
+brand: Pokazo
+kicker: HERO
+---`
+        : `---
+layout: hero
+variant: ${variant}
+image: ${imagePath}
+brand: Pokazo
+kicker: HERO
+---`;
+    return `${head}
+
+# ${variant[0]!.toUpperCase()}${variant.slice(1)} hero
+
+One clear promise under the title.
+`;
+  });
+  return slides.join("\n");
 }
 
 export function happyPathLayoutsMarkdown(imagePath = "/slide-1.png"): string {
@@ -40,12 +150,12 @@ export function happyPathLayoutsMarkdown(imagePath = "/slide-1.png"): string {
 theme: default
 title: "Layout gallery"
 layout: hero
-variant: centered
+variant: ribbon
 image: ${imagePath}
 kicker: BRAND
 ---
 
-# Hero centered
+# Hero ribbon
 
 Promise line
 

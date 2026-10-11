@@ -71,10 +71,13 @@ describe("installDeckLayouts", () => {
     const dir = mkdtempSync(join(tmpdir(), "pokazo-layouts-"));
     installDeckLayouts(dir);
     const src = readFileSync(join(dir, "layouts", "hero.vue"), "utf8");
-    expect(src).toMatch(/centered/);
+    expect(src).toMatch(/ribbon/);
+    expect(src).toMatch(/corner/);
+    expect(src).toMatch(/inset/);
     expect(src).toMatch(/fullbleed/);
     expect(src).toMatch(/editorial/);
     expect(src).toMatch(/product/);
+    expect(src).not.toMatch(/pk-hero--centered/);
     expect(src).toMatch(/never split/i);
     expect(src).not.toMatch(/grid-template-columns:\s*1\.05fr\s+0\.95fr/);
   });

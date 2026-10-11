@@ -257,14 +257,26 @@ describe("assertHeroLayout", () => {
     expect(() => assertHeroLayout({})).toThrow(/LayoutError\[hero\]/);
     expect(() => assertHeroLayout({ variant: "split" })).toThrow(/LayoutError\[hero\]/);
     expect(() => assertHeroLayout({ variant: "interactive" })).toThrow(/LayoutError\[hero\]/);
+    expect(() => assertHeroLayout({ variant: "centered" })).toThrow(/LayoutError\[hero\]/);
   });
-  it("throws LayoutError[hero] when fullbleed/product lack image", () => {
+  it("throws LayoutError[hero] when photo variants lack image", () => {
     expect(() => assertHeroLayout({ variant: "fullbleed" })).toThrow(/LayoutError\[hero\]/);
     expect(() => assertHeroLayout({ variant: "product" })).toThrow(/LayoutError\[hero\]/);
+    expect(() => assertHeroLayout({ variant: "ribbon" })).toThrow(/requires local image/);
+    expect(() => assertHeroLayout({ variant: "corner" })).toThrow(/requires local image/);
+    expect(() => assertHeroLayout({ variant: "inset" })).toThrow(/requires local image/);
   });
   it("passes valid variants", () => {
-    expect(() => assertHeroLayout({ variant: "centered" })).not.toThrow();
     expect(() => assertHeroLayout({ variant: "editorial" })).not.toThrow();
+    expect(() =>
+      assertHeroLayout({ variant: "ribbon", image: "/slide-1.jpg" }),
+    ).not.toThrow();
+    expect(() =>
+      assertHeroLayout({ variant: "corner", image: "/slide-1.jpg" }),
+    ).not.toThrow();
+    expect(() =>
+      assertHeroLayout({ variant: "inset", image: "/slide-1.jpg" }),
+    ).not.toThrow();
     expect(() =>
       assertHeroLayout({ variant: "fullbleed", image: "/slide-1.jpg" }),
     ).not.toThrow();

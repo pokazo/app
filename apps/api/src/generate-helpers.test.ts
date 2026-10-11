@@ -60,8 +60,12 @@ describe("stripComposeInspectTools", () => {
 });
 
 describe("pickHeroTools", () => {
-  it("keeps update + assets and drops inspect/insert/remove/move", () => {
+  it("keeps hero catalog + update + assets and drops inspect/insert/remove/move", () => {
     const picked = pickHeroTools({
+      "hero-list": 11,
+      "hero-get": 12,
+      "layout-list": 13,
+      "layout-get": 14,
       "slidev-update-slide": 1,
       "slidev-insert-slide": 2,
       "slidev-remove-slide": 3,
@@ -74,6 +78,8 @@ describe("pickHeroTools", () => {
       "image-generate": 7,
     });
     expect(Object.keys(picked).sort()).toEqual([
+      "hero-get",
+      "hero-list",
       "image-generate",
       "slidev-update-slide",
       "stock-search",

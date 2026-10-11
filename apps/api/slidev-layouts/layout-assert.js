@@ -189,17 +189,26 @@ export function assertImageLayout(name, props) {
   }
 }
 
-const HERO_VARIANTS = new Set(["centered", "fullbleed", "editorial", "product"]);
+const HERO_VARIANTS = new Set([
+  "ribbon",
+  "corner",
+  "inset",
+  "fullbleed",
+  "editorial",
+  "product",
+]);
+
+const HERO_NEEDS_IMAGE = new Set(["ribbon", "corner", "inset", "fullbleed", "product"]);
 
 export function assertHeroLayout(props) {
   const v = props.variant?.trim() || "";
   if (!HERO_VARIANTS.has(v)) {
     throw layoutError(
       "hero",
-      `variant must be centered|fullbleed|editorial|product, got ${JSON.stringify(props.variant)}`,
+      `variant must be ribbon|corner|inset|fullbleed|editorial|product, got ${JSON.stringify(props.variant)}`,
     );
   }
-  if ((v === "fullbleed" || v === "product") && !isLocalImagePath(props.image)) {
+  if (HERO_NEEDS_IMAGE.has(v) && !isLocalImagePath(props.image)) {
     throw layoutError("hero", `${v} requires local image:`);
   }
 }

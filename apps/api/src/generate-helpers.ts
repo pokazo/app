@@ -8,6 +8,8 @@ export function mergeComposeTools(...maps: Record<string, unknown>[]): Record<st
 }
 
 const HERO_TOOL_ALLOW = new Set([
+  "hero-list",
+  "hero-get",
   "slidev-update-slide",
   "yandex-image-search",
   "yandex-image-download",

@@ -27,7 +27,7 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     whenToUse: "Slide 1 / cover energy: brand promise, product shot, fullbleed mood",
     antiPatterns: "Mid-deck bullets; dense facts",
     outlineFields: "visual=hero|cover; imageQuery; kicker; points or long heading",
-    frontmatter: "layout: hero; variant: centered|fullbleed|editorial|product; image: /local.png; kicker",
+    frontmatter: "layout: hero; variant: ribbon|corner|inset|fullbleed|editorial|product; image: /local.png; kicker",
     body: "H1 + short promise line",
     displays: "Large title on cream/ink; photo for fullbleed/product",
     example: '{ "visual": "hero", "heading": "Pokazo", "points": ["Decks from a brief"], "imageQuery": "presentation stage", "kicker": "BRAND" }',

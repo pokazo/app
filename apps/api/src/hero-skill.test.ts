@@ -1,39 +1,73 @@
 import { describe, expect, it } from "vitest";
 import { HERO_VARIANTS, heroMaxSteps, heroSkill, heroUserPrompt } from "./hero-skill.js";
+import {
+  HERO_VARIANT_SHOT_ORDER,
+  heroFixturePng,
+  heroVariantsMarkdown,
+} from "./layout-fixtures.js";
 
 describe("HERO_VARIANTS", () => {
-  it("includes four variants and excludes split/interactive", () => {
-    expect(HERO_VARIANTS).toEqual(["centered", "fullbleed", "editorial", "product"]);
+  it("includes six variants and excludes split/interactive/centered", () => {
+    expect(HERO_VARIANTS).toEqual([
+      "ribbon",
+      "corner",
+      "inset",
+      "fullbleed",
+      "editorial",
+      "product",
+    ]);
     expect(HERO_VARIANTS).not.toContain("split");
     expect(HERO_VARIANTS).not.toContain("interactive");
+    expect(HERO_VARIANTS).not.toContain("centered");
+  });
+
+  it("maps to screenshot golden names", () => {
+    expect(HERO_VARIANT_SHOT_ORDER).toEqual([
+      "hero-ribbon",
+      "hero-corner",
+      "hero-inset",
+      "hero-fullbleed",
+      "hero-editorial",
+      "hero-product",
+    ]);
+  });
+
+  it("heroVariantsMarkdown covers every variant once", () => {
+    const md = heroVariantsMarkdown();
+    for (const v of HERO_VARIANTS) {
+      expect(md).toMatch(new RegExp(`variant: ${v}`));
+    }
+    expect(md.match(/layout: hero/g)?.length).toBe(6);
+  });
+
+  it("heroFixturePng is a valid PNG", () => {
+    const png = heroFixturePng(32, 18);
+    expect(png.subarray(0, 8)).toEqual(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    );
+    expect(png.length).toBeGreaterThan(64);
   });
 });
 
 describe("heroSkill", () => {
-  it("teaches variants, tools, and slide-1-only updates", () => {
+  it("teaches hero MCP catalog then photo then update", () => {
     const skill = heroSkill("seriph", "ru");
-    expect(skill).toMatch(/centered/);
-    expect(skill).toMatch(/fullbleed/);
-    expect(skill).toMatch(/editorial/);
-    expect(skill).toMatch(/product/);
-    expect(skill).toMatch(/never use split/i);
-    expect(skill).not.toMatch(/\bsplit\b.*50\/50|layout: split/i);
+    expect(skill).toMatch(/hero-list/);
+    expect(skill).toMatch(/hero-get/);
+    expect(skill).toMatch(/Call hero-list BEFORE choosing/i);
+    expect(skill).toMatch(/ribbon \| corner \| inset \| fullbleed \| editorial \| product/);
+    expect(skill).toMatch(/never use split, interactive, or centered/i);
     expect(skill).toMatch(/yandex-image-search/);
     expect(skill).toMatch(/stock-search/);
     expect(skill).toMatch(/image-generate/);
-    expect(skill).toMatch(/yandex-image-search[\s\S]*stock-search/i);
-    expect(skill).toMatch(/suggestedId|IMMEDIATELY yandex-image-download/i);
-    expect(skill).toMatch(/Do NOT call yandex-image-search more than once/i);
     expect(skill).toMatch(/slidev-update-slide/);
     expect(skill).toMatch(/Do NOT call slidev-get-info/i);
-    expect(skill).toMatch(/Do NOT insert/i);
-    expect(skill).toMatch(/variant:/);
     expect(skill).toMatch(/Russian/);
   });
 });
 
 describe("heroUserPrompt", () => {
-  it("passes first outline slide and forbids split", () => {
+  it("requires hero-list before photo pipeline", () => {
     const prompt = heroUserPrompt({
       topic: "УАЗ",
       locale: "ru",
@@ -58,15 +92,19 @@ describe("heroUserPrompt", () => {
       },
     });
     expect(prompt).toContain("УАЗ Патриот");
-    expect(prompt).toMatch(/centered \| fullbleed \| editorial \| product/);
+    expect(prompt).toMatch(/FIRST call hero-list/i);
+    expect(prompt).toMatch(
+      /ribbon \| corner \| inset \| fullbleed \| editorial \| product/,
+    );
     expect(prompt).toMatch(/Never use split/i);
+    expect(prompt).toMatch(/centered/);
     expect(prompt).toMatch(/yandex-image-search/);
   });
 });
 
 describe("heroMaxSteps", () => {
-  it("is enough for search + download + update", () => {
-    expect(heroMaxSteps()).toBeGreaterThanOrEqual(8);
-    expect(heroMaxSteps()).toBeLessThanOrEqual(12);
+  it("budget covers catalog + search + download + update", () => {
+    expect(heroMaxSteps()).toBeGreaterThanOrEqual(10);
+    expect(heroMaxSteps()).toBeLessThanOrEqual(14);
   });
 });

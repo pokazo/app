@@ -4,11 +4,13 @@ import {
   parseSlideBlocks,
   parseSimpleYaml,
 } from "./layout-md-assert.js";
+import { HERO_VARIANTS } from "./hero-skill.js";
 import {
   BAD_LAYOUT_MARKDOWN,
   LAYOUT_SHOT_ORDER,
   badMarkdownForLayout,
   happyPathLayoutsMarkdown,
+  heroVariantsMarkdown,
 } from "./layout-fixtures.js";
 
 describe("parseSimpleYaml", () => {
@@ -273,6 +275,13 @@ describe("assertLayoutsInMarkdown", () => {
     for (const name of LAYOUT_SHOT_ORDER) {
       expect(layouts, `gallery missing ${name}`).toContain(name);
     }
+  });
+
+  it("accepts all four hero variant slides", () => {
+    const md = heroVariantsMarkdown();
+    expect(() => assertLayoutsInMarkdown(md)).not.toThrow();
+    const variants = parseSlideBlocks(md).map((b) => b.fm.variant);
+    expect(variants).toEqual([...HERO_VARIANTS]);
   });
 
   it.each(LAYOUT_SHOT_ORDER)(

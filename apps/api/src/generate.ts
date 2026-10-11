@@ -6,6 +6,7 @@ import { config } from "./env.js";
 import { buildSlidev, installDeckLayouts, scaffoldMarkdown, writeSlides } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp, type McpCallLog } from "./slidev-mcp.js";
+import { withHeroMcp } from "./hero-mcp.js";
 import { composeSkill, composeUserPrompt } from "./compose-skill.js";
 import { heroMaxSteps, heroSkill, heroUserPrompt } from "./hero-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
@@ -195,28 +196,33 @@ export async function generateDeck(opts: {
   await withSlidevMcp(
     opts.workDir,
     async (slidevTools) => {
-      const tools = pickHeroTools(mergeComposeTools(slidevTools, yandexTools, stockTools, imageGenTools));
-      const result = await generateText({
-        model: model(config.composeModel),
-        system: heroSystem,
-        tools: tools as never,
-        maxSteps: heroMaxSteps(),
-        prompt: heroUserPrompt({
-          outline: outline.object,
-          locale: opts.locale,
-          topic: opts.topic,
-        }),
-        onStepFinish: async (step) => {
-          const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-          const prev = stepTimers.get("hero") ?? Date.now();
-          const ms = Date.now() - prev;
-          stepTimers.set("hero", Date.now());
-          console.info(
-            `[llm] hero step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
-          );
-        },
-      });
-      llm.push(summarizeGenerate("hero", result));
+      // Hero catalog MCP is nested here only — outline/compose never open withHeroMcp.
+      await withHeroMcp(async (heroCatalogTools) => {
+        const tools = pickHeroTools(
+          mergeComposeTools(slidevTools, heroCatalogTools, yandexTools, stockTools, imageGenTools),
+        );
+        const result = await generateText({
+          model: model(config.composeModel),
+          system: heroSystem,
+          tools: tools as never,
+          maxSteps: heroMaxSteps(),
+          prompt: heroUserPrompt({
+            outline: outline.object,
+            locale: opts.locale,
+            topic: opts.topic,
+          }),
+          onStepFinish: async (step) => {
+            const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+            const prev = stepTimers.get("hero") ?? Date.now();
+            const ms = Date.now() - prev;
+            stepTimers.set("hero", Date.now());
+            console.info(
+              `[llm] hero step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+            );
+          },
+        });
+        llm.push(summarizeGenerate("hero", result));
+      }, (call) => mcpCalls.push(call));
     },
     (call) => mcpCalls.push(call),
   );
