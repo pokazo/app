@@ -6,19 +6,21 @@ import { config } from "./env.js";
 import { buildSlidev } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp } from "./slidev-mcp.js";
-import { withHeroMcp } from "./hero-mcp.js";
-import { heroMaxSteps, heroSkill } from "./hero-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
 import { createYandexImageTools, type YandexToolAttribution } from "./assets-yandex-tools.js";
-import { mergeComposeTools, pickHeroTools, pickRewriteTools } from "./generate-helpers.js";
+import { mergeComposeTools, pickRewriteTools } from "./generate-helpers.js";
 import { Outline, OutlineSlide, type OutlineT } from "./outline.js";
 import { emptySlideIssues, formatOutlinePlanIssues, textOnlySlideIssues } from "./outline-plan.js";
+import {
+  applyLockedVisual,
+  lockedSlideLayoutFromMarkdown,
+  type LockedSlideLayout,
+} from "./rewrite-lock.js";
 import {
   composeOneSlideMaxSteps,
   composeOneSlideSkill,
   composeOneSlideUserPrompt,
-  heroRewriteUserPrompt,
   reviseOutlineSlidePrompt,
   rewriteRepairPrompt,
 } from "./rewrite-skill.js";
@@ -64,10 +66,13 @@ export async function reviseOutlineSlide(opts: {
   instruction: string;
   researchMarkdown?: string;
   isHero: boolean;
+  locked?: LockedSlideLayout;
   /** Injectable for tests — skips OpenRouter client entirely. */
   generateObjectFn?: ReviseOutlineSlideFn;
 }): Promise<OutlineSlide> {
   const prompt = reviseOutlineSlidePrompt(opts);
+  const lockVisual = (slide: OutlineSlide) =>
+    opts.locked ? applyLockedVisual(slide, opts.locked) : slide;
 
   async function once(p: string): Promise<OutlineSlide> {
     if (opts.generateObjectFn) {
@@ -76,14 +81,14 @@ export async function reviseOutlineSlide(opts: {
         schema: OutlineSlide,
         prompt: p,
       });
-      return result.object;
+      return lockVisual(result.object);
     }
     const result = await generateObject({
       model: model(config.outlineModel),
       schema: OutlineSlide,
       prompt: p,
     });
-    return result.object;
+    return lockVisual(result.object);
   }
 
   let slide = await once(prompt);
@@ -152,7 +157,16 @@ export async function rewriteSlide(opts: {
 
   const isHero = opts.slideIndex === 1;
   const previous = outline.slides[opts.slideIndex - 1]!;
-  console.info(`[rewrite] revise outline slide=${opts.slideIndex} deck=${opts.id}`);
+  let slidesMd = "";
+  try {
+    slidesMd = await readFile(join(opts.workDir, "slides.md"), "utf8");
+  } catch {
+    slidesMd = "";
+  }
+  const locked = lockedSlideLayoutFromMarkdown(slidesMd, opts.slideIndex, previous.visual);
+  console.info(
+    `[rewrite] revise outline slide=${opts.slideIndex} deck=${opts.id} lock=${locked.layout || "?"} variant=${locked.variant || "-"}`,
+  );
   const revised = await reviseOutlineSlide({
     topic,
     locale,
@@ -162,6 +176,7 @@ export async function rewriteSlide(opts: {
     instruction,
     researchMarkdown,
     isHero,
+    locked,
   });
   outline.slides[opts.slideIndex - 1] = revised;
   await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(outline, null, 2), "utf8");
@@ -210,68 +225,36 @@ export async function rewriteSlide(opts: {
     return withUploadImagesMcp(uploadDir, run);
   };
 
-  if (isHero) {
-    console.info(`[rewrite] hero-compose slide=1 deck=${opts.id}`);
-    await withOptionalUploadMcp(async (uploadSearchTools) => {
-      await withSlidevMcp(opts.workDir, async (slidevTools) => {
-        await withHeroMcp(async (heroCatalogTools) => {
-          const tools = pickHeroTools(
-            mergeComposeTools(
-              slidevTools,
-              heroCatalogTools,
-              uploadSearchTools,
-              uploadUseTools,
-              yandexTools,
-              stockTools,
-              imageGenTools,
-            ),
-          );
-          await generateText({
-            model: model(config.composeModel),
-            system: heroSkill(theme, locale),
-            tools: tools as never,
-            maxSteps: heroMaxSteps(),
-            prompt: heroRewriteUserPrompt({
-              slide: revised,
-              locale,
-              topic,
-              deckTitle: outline.title,
-              instruction,
-            }),
-          });
-        });
+  // Fields-only rewrite: same layout/variant for hero and body slides (no hero catalog).
+  console.info(`[rewrite] compose-one slide=${opts.slideIndex} deck=${opts.id} layout=${locked.layout || "?"}`);
+  await withOptionalUploadMcp(async (uploadSearchTools) => {
+    await withSlidevMcp(opts.workDir, async (slidevTools) => {
+      const tools = pickRewriteTools(
+        mergeComposeTools(
+          slidevTools,
+          uploadSearchTools,
+          uploadUseTools,
+          yandexTools,
+          stockTools,
+          imageGenTools,
+        ),
+      );
+      await generateText({
+        model: model(config.composeModel),
+        system: composeOneSlideSkill(theme, locale),
+        tools: tools as never,
+        maxSteps: composeOneSlideMaxSteps(),
+        prompt: composeOneSlideUserPrompt({
+          slideIndex: opts.slideIndex,
+          slide: revised,
+          locale,
+          topic,
+          instruction,
+          locked,
+        }),
       });
     });
-  } else {
-    console.info(`[rewrite] compose-one slide=${opts.slideIndex} deck=${opts.id}`);
-    await withOptionalUploadMcp(async (uploadSearchTools) => {
-      await withSlidevMcp(opts.workDir, async (slidevTools) => {
-        const tools = pickRewriteTools(
-          mergeComposeTools(
-            slidevTools,
-            uploadSearchTools,
-            uploadUseTools,
-            yandexTools,
-            stockTools,
-            imageGenTools,
-          ),
-        );
-        await generateText({
-          model: model(config.composeModel),
-          system: composeOneSlideSkill(theme, locale),
-          tools: tools as never,
-          maxSteps: composeOneSlideMaxSteps(),
-          prompt: composeOneSlideUserPrompt({
-            slideIndex: opts.slideIndex,
-            slide: revised,
-            locale,
-            topic,
-            instruction,
-          }),
-        });
-      });
-    });
-  }
+  });
 
   let md = await guardWorkSlides(opts.workDir, theme);
   const base = `/p/${opts.id}/`;
@@ -299,16 +282,16 @@ export async function rewriteSlide(opts: {
             imageGenTools,
           ),
         );
-        const system = isHero ? heroSkill(theme, locale) : composeOneSlideSkill(theme, locale);
         await generateText({
           model: model(config.composeModel),
-          system,
+          system: composeOneSlideSkill(theme, locale),
           tools: tools as never,
-          maxSteps: 16,
+          maxSteps: 12,
           prompt: rewriteRepairPrompt({
             slideIndex: opts.slideIndex,
             error: String(err),
             md,
+            locked,
           }),
         });
       });

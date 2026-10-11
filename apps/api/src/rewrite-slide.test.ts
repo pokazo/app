@@ -54,4 +54,27 @@ describe("reviseOutlineSlide", () => {
     expect(out.heading).toBe("Рынок");
     expect(generateObjectFn).toHaveBeenCalledTimes(2);
   });
+
+  it("forces locked visual even if model changes it", async () => {
+    const generateObjectFn = vi.fn(async () => ({
+      object: { ...goodSlide, visual: "timeline" as const },
+    }));
+    const out = await reviseOutlineSlide({
+      topic: "Тема",
+      locale: "ru",
+      audience: "school",
+      slideIndex: 1,
+      previous: { ...goodSlide, visual: "hero" },
+      instruction: "короче заголовок",
+      isHero: true,
+      locked: {
+        layout: "hero",
+        variant: "ribbon",
+        image: "/slide-1.jpg",
+        visual: "hero",
+      },
+      generateObjectFn: generateObjectFn as never,
+    });
+    expect(out.visual).toBe("hero");
+  });
 });

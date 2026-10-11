@@ -45,11 +45,13 @@ export function DeckView() {
   const [embedKey, setEmbedKey] = useState(0);
   const [building, setBuilding] = useState(false);
   const [rewriteText, setRewriteText] = useState("");
+  const [rewriteFiles, setRewriteFiles] = useState<File[]>([]);
   const [rewriteBusy, setRewriteBusy] = useState(false);
   const [rewriteErr, setRewriteErr] = useState("");
   const [rewritingSlide, setRewritingSlide] = useState<number | null>(null);
   const forcePollRef = useRef(false);
   const stayOnSlideRef = useRef<number | null>(null);
+  const rewriteFileRef = useRef<HTMLInputElement>(null);
 
   const embedBase = apiUrl(`/p/${id}/`);
   const idOk = isDeckId(id);
@@ -281,8 +283,8 @@ export function DeckView() {
   async function submitRewrite() {
     if (!id || !me || building || rewriteBusy) return;
     const instruction = rewriteText.trim();
-    if (instruction.length < 2) {
-      setRewriteErr("Напишите, что переделать на этом слайде.");
+    if (instruction.length < 2 && rewriteFiles.length === 0) {
+      setRewriteErr("Напишите, что переделать, или прикрепите картинку.");
       return;
     }
     setRewriteErr("");
@@ -292,14 +294,28 @@ export function DeckView() {
     setBuilding(true);
     setRewritingSlide(current);
     try {
-      const res = await fetch(apiUrl(`/api/decks/${id}/slides/${current}/rewrite`), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction }),
-      });
+      let res: Response;
+      if (rewriteFiles.length > 0) {
+        const form = new FormData();
+        form.set("instruction", instruction || "Замени картинку на этом слайде на прикреплённое фото.");
+        for (const f of rewriteFiles.slice(0, 5)) form.append("files", f);
+        res = await fetch(apiUrl(`/api/decks/${id}/slides/${current}/rewrite`), {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+      } else {
+        res = await fetch(apiUrl(`/api/decks/${id}/slides/${current}/rewrite`), {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ instruction }),
+        });
+      }
       if (res.status === 202) {
         setRewriteText("");
+        setRewriteFiles([]);
+        if (rewriteFileRef.current) rewriteFileRef.current.value = "";
         return;
       }
       const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -458,12 +474,33 @@ export function DeckView() {
                   aria-label={`Что переделать на слайде ${current}`}
                   onChange={(e) => setRewriteText(e.target.value)}
                 />
+                <label className="deck-rewrite-file">
+                  <span className="deck-rewrite-file-btn" aria-hidden>
+                    {rewriteFiles.length ? `Файл ${rewriteFiles.length}` : "Файл"}
+                  </span>
+                  <input
+                    ref={rewriteFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    disabled={!rewriteReady}
+                    aria-label="Прикрепить картинку для этого слайда"
+                    onChange={(e) =>
+                      setRewriteFiles(Array.from(e.target.files ?? []).slice(0, 5))
+                    }
+                  />
+                </label>
                 <button type="submit" className="pk ghost" disabled={!rewriteReady}>
                   {rewriteBusy || (building && rewritingSlide != null)
                     ? "Пересобираем…"
                     : "Пересобрать"}
                 </button>
               </div>
+              {rewriteFiles.length ? (
+                <p className="deck-rewrite-hint">
+                  Прикреплено: {rewriteFiles.map((f) => f.name).join(", ")}
+                </p>
+              ) : null}
               {rewriteErr ? <p className="err app-note">{rewriteErr}</p> : null}
             </form>
           ) : null}

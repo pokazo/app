@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, normalize, sep } from "node:path";
 import { existsSync } from "node:fs";
 
@@ -97,6 +97,60 @@ export async function persistDeckUploads(opts: {
   const manifest: UploadManifest = { deckId: opts.deckId, files: entries };
   await writeFile(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
   return manifest;
+}
+
+/** Append images to an existing deck upload set (rewrite chat attach). */
+export async function appendDeckUploads(opts: {
+  uploadRoot: string;
+  deckId: string;
+  files: Array<{ name: string; type: string; arrayBuffer: () => Promise<ArrayBuffer> }>;
+}): Promise<{ manifest: UploadManifest; added: UploadManifestEntry[] }> {
+  const dir = uploadDirForDeck(opts.uploadRoot, opts.deckId);
+  await mkdir(dir, { recursive: true });
+
+  let existing: UploadManifestEntry[] = [];
+  const manifestPath = join(dir, "manifest.json");
+  if (existsSync(manifestPath)) {
+    try {
+      const prev = JSON.parse(await readFile(manifestPath, "utf8")) as UploadManifest;
+      if (Array.isArray(prev.files)) existing = prev.files;
+    } catch {
+      existing = [];
+    }
+  }
+
+  let nextIndex = 0;
+  for (const e of existing) {
+    const m = /^up-(\d+)/.exec(e.id);
+    if (m) nextIndex = Math.max(nextIndex, Number(m[1]));
+  }
+
+  const room = Math.max(0, UPLOAD_MAX_FILES - existing.length);
+  const incoming = opts.files.slice(0, room);
+  const added: UploadManifestEntry[] = [];
+  for (const file of incoming) {
+    const mime = resolveUploadMime(file);
+    if (!mime) continue;
+    const buf = Buffer.from(await file.arrayBuffer());
+    if (buf.byteLength === 0 || buf.byteLength > UPLOAD_MAX_BYTES) continue;
+    nextIndex += 1;
+    const id = `up-${String(nextIndex).padStart(3, "0")}`;
+    const ext = UPLOAD_MIME_EXT[mime];
+    const storedName = `${id}${ext}`;
+    await writeFile(join(dir, storedName), buf);
+    added.push({
+      id,
+      originalName: sanitizeOriginalName(file.name),
+      storedName,
+      mime,
+      bytes: buf.byteLength,
+      uploadedAt: new Date().toISOString(),
+    });
+  }
+
+  const manifest: UploadManifest = { deckId: opts.deckId, files: [...existing, ...added] };
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+  return { manifest, added };
 }
 
 export async function readUploadManifest(

@@ -560,7 +560,7 @@ footer.foot {
   container-type: size;
 }
 .deck-stage.has-rewrite {
-  --deck-rewrite-h: 52px;
+  --deck-rewrite-h: 64px;
 }
 .deck-stage-frame {
   position: relative;
@@ -596,6 +596,40 @@ footer.foot {
 }
 .deck-rewrite-input:disabled {
   opacity: 0.6;
+}
+.deck-rewrite-file {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--pk-line);
+  border-radius: 8px;
+  background: var(--pk-paper);
+  cursor: pointer;
+}
+.deck-rewrite-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.deck-rewrite-file:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.deck-rewrite-file-btn {
+  font-size: 1rem;
+  line-height: 1;
+  pointer-events: none;
+}
+.deck-rewrite-hint {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--pk-ink-muted, #777);
 }
 .deck-stage-frame iframe {
   width: 100%;

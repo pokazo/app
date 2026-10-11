@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  appendDeckUploads,
   hasUploadImages,
   persistDeckUploads,
   uploadDirForDeck,
@@ -59,5 +60,25 @@ describe("upload-store", () => {
       files: [fakeFile("big.jpg", "image/jpeg", big)],
     });
     expect(manifest.files).toHaveLength(0);
+  });
+
+  it("appends rewrite attachments without wiping prior uploads", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pokazo-up-"));
+    dirs.push(root);
+    const deckId = "33333333-3333-4333-8333-333333333333";
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 1, 2]);
+    await persistDeckUploads({
+      uploadRoot: root,
+      deckId,
+      files: [fakeFile("one.png", "image/png", png)],
+    });
+    const { manifest, added } = await appendDeckUploads({
+      uploadRoot: root,
+      deckId,
+      files: [fakeFile("two.png", "image/png", png)],
+    });
+    expect(added).toHaveLength(1);
+    expect(added[0]!.id).toBe("up-002");
+    expect(manifest.files.map((f) => f.id)).toEqual(["up-001", "up-002"]);
   });
 });

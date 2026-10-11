@@ -22,7 +22,7 @@ import {
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { readPreviewBuild } from "./progressive-preview.js";
-import { persistDeckUploads } from "./upload-store.js";
+import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
 
 const DECK_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -261,19 +261,50 @@ export function createApp() {
     }
     if (n > slideCount) return c.json({ error: "bad slide" }, 400);
 
-    let body: { instruction?: string };
-    try {
-      body = await c.req.json();
-    } catch {
-      return c.json({ error: "bad body" }, 400);
+    const contentType = c.req.header("content-type") ?? "";
+    let instruction = "";
+    let files: ReturnType<typeof asFileList> = [];
+    if (contentType.includes("multipart/form-data")) {
+      const body = await c.req.parseBody({ all: true });
+      instruction = typeof body.instruction === "string" ? body.instruction.trim() : "";
+      files = [
+        ...asFileList(body.files),
+        ...asFileList(body.file),
+        ...asFileList(body["files[]"]),
+      ];
+    } else {
+      try {
+        const body = await c.req.json<{ instruction?: string }>();
+        instruction = (body.instruction ?? "").trim();
+      } catch {
+        return c.json({ error: "bad body" }, 400);
+      }
     }
-    const instruction = (body.instruction ?? "").trim();
+    if (!instruction && files.length > 0) {
+      instruction = "Замени картинку на этом слайде на прикреплённое фото.";
+    }
     if (instruction.length < 2 || instruction.length > 2000) {
       return c.json({ error: "bad instruction" }, 400);
     }
 
     const busy = await deckBusyForRewrite(id);
     if (busy) return c.json({ error: "busy", reason: busy }, 409);
+
+    let attachedIds: string[] = [];
+    if (files.length > 0) {
+      const { added } = await appendDeckUploads({
+        uploadRoot: config.uploadDataDir,
+        deckId: id,
+        files,
+      });
+      attachedIds = added.map((f) => f.id);
+      if (attachedIds.length) {
+        console.info(`[api] rewrite ${id} slide=${n} uploads+=${attachedIds.join(",")}`);
+        if (!/прикрепл|upload|фото|картинк|image|изображен/i.test(instruction)) {
+          instruction = `${instruction}\n\nИспользуй только что прикреплённое фото (upload ${attachedIds.join(", ")}) для image: этого слайда.`;
+        }
+      }
+    }
 
     await writeRewriteStatus(dir, {
       slide: n,
@@ -282,7 +313,7 @@ export function createApp() {
       updatedAt: new Date().toISOString(),
     });
     await enqueueRewriteSlide({ id, slide: n, instruction });
-    return c.json({ deckId: id, slide: n, status: "accepted" }, 202);
+    return c.json({ deckId: id, slide: n, status: "accepted", attached: attachedIds }, 202);
   });
 
   app.get("/api/decks/:id/speech", async (c) => {
