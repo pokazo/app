@@ -8,7 +8,7 @@ import { generateDeck } from "./generate.js";
 import { rewriteSlide } from "./rewrite-slide.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { sanitizePickerTheme } from "./themes.js";
-import { finalizeDeckBilling } from "./billing.js";
+import { billingLog, finalizeDeckBilling } from "./billing.js";
 
 let queue: Queue | null = null;
 let workerStarted = false;
@@ -117,7 +117,7 @@ export async function processDeck(
       try {
         await finalizeDeckBilling(id, "failed");
       } catch (billingError) {
-        console.error(`[billing] failed to finalize failed deck ${id}`, billingError);
+        billingLog("error", "finalize_failed", { deckId: id, outcome: "failed" }, billingError);
       }
     }
     throw err;
@@ -125,7 +125,7 @@ export async function processDeck(
   try {
     await finalizeDeckBilling(id, "ready");
   } catch (err) {
-    console.error(`[billing] failed to finalize ready deck ${id}`, err);
+    billingLog("error", "finalize_failed", { deckId: id, outcome: "ready" }, err);
   }
 }
 

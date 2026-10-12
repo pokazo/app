@@ -162,6 +162,10 @@ export class HttpTochkaClient implements TochkaClient {
       throw new TochkaError("Не удалось связаться с Точкой", { cause: error });
     }
     if (!response.ok) {
+      const errBody = (await response.text().catch(() => "")).slice(0, 400);
+      console.error(
+        `[billing] event=tochka_http_error method=${init.method ?? "GET"} path=${path} status=${response.status} body=${errBody}`,
+      );
       throw new TochkaError(`Запрос к Точке завершился с HTTP ${response.status}`);
     }
     try {

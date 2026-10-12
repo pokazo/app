@@ -36,6 +36,24 @@ function requirePool(): Pool {
   return pool;
 }
 
+/** Grep: `docker logs … | grep '[billing] event='` */
+export function billingLog(
+  level: "info" | "warn" | "error",
+  event: string,
+  fields: Record<string, string | number | boolean | null | undefined> = {},
+  error?: unknown,
+): void {
+  const extras = Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${value === null ? "null" : String(value)}`)
+    .join(" ");
+  const line = extras ? `[billing] event=${event} ${extras}` : `[billing] event=${event}`;
+  if (level === "info") console.info(line);
+  else if (level === "warn") console.warn(line);
+  else if (error !== undefined) console.error(line, error);
+  else console.error(line);
+}
+
 function toIso(value: Date | string | null): string | null {
   if (value === null) return null;
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -148,12 +166,20 @@ export async function reserveGenerate(
     if (!config.paymentsEnabled) {
       await updateDeckKind(client, deckId, userId, "off");
       await client.query("COMMIT");
+      billingLog("info", "reserve_ok", { userId, deckId, kind: "off", paymentsEnabled: false });
       return { ok: true, kind: "off" };
     }
 
     const kind = computeReserveKind(user);
     if (kind === "deny") {
       await client.query("COMMIT");
+      billingLog("info", "reserve_denied", {
+        userId,
+        deckId,
+        credits: user.credits,
+        freeUsed: user.free_used,
+        plan: user.plan,
+      });
       return { ok: false, code: "payment_required" };
     }
 
@@ -174,9 +200,16 @@ export async function reserveGenerate(
     }
     await updateDeckKind(client, deckId, userId, kind);
     await client.query("COMMIT");
+    billingLog("info", "reserve_ok", {
+      userId,
+      deckId,
+      kind,
+      creditsAfter: kind === "credit" ? user.credits - 1 : user.credits,
+    });
     return { ok: true, kind };
   } catch (error) {
     await client.query("ROLLBACK");
+    billingLog("error", "reserve_failed", { userId, deckId }, error);
     throw error;
   } finally {
     client.release();
@@ -237,18 +270,28 @@ export async function finalizeDeckBilling(
     }
 
     await client.query("COMMIT");
+    billingLog("info", "finalize", {
+      deckId,
+      userId: deck.user_id,
+      outcome,
+      billingKind: deck.billing_kind,
+      action,
+    });
   } catch (error) {
     await client.query("ROLLBACK");
+    billingLog("error", "finalize_failed", { deckId, outcome }, error);
     throw error;
   } finally {
     client.release();
   }
 }
 
+export type ApplyPaidResult = "applied" | "already_paid";
+
 export async function applyPaidPayment(
   paymentId: string,
   tochkaOperationId: string,
-): Promise<void> {
+): Promise<ApplyPaidResult> {
   const client = await requirePool().connect();
   try {
     await client.query("BEGIN");
@@ -268,7 +311,13 @@ export async function applyPaidPayment(
 
     if (payment.status === "paid") {
       await client.query("COMMIT");
-      return;
+      billingLog("info", "already_paid", {
+        paymentId,
+        userId: payment.user_id,
+        product: payment.product,
+        operationId: tochkaOperationId,
+      });
+      return "already_paid";
     }
 
     if (payment.product === "credit_1") {
@@ -298,8 +347,17 @@ export async function applyPaidPayment(
       [paymentId, tochkaOperationId],
     );
     await client.query("COMMIT");
+    billingLog("info", "marked_paid", {
+      paymentId,
+      userId: payment.user_id,
+      product: payment.product,
+      operationId: tochkaOperationId,
+      unlock: payment.product === "credit_1" ? "credit+1" : "month+30d",
+    });
+    return "applied";
   } catch (error) {
     await client.query("ROLLBACK");
+    billingLog("error", "mark_paid_failed", { paymentId, operationId: tochkaOperationId }, error);
     throw error;
   } finally {
     client.release();

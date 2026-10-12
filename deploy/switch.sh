@@ -101,7 +101,9 @@ if [ "$KIND" = web ]; then
     -p "127.0.0.1:$PORT_NEW:$INNER" "$IMAGE"
 else
   mkdir -p /var/lib/pokazo/decks /var/lib/pokazo/uploads
+  # Russian Trusted CA (Минцифры) — enter.tochka.com; file prepared on VPS.
   docker run -d --name "$NAME-$IDLE" --restart unless-stopped --env-file /etc/pokazo/api.env \
+    -v /etc/pokazo/russian-trusted-cas.pem:/etc/ssl/russian-trusted-cas.pem:ro \
     --add-host=host.docker.internal:host-gateway \
     --network pokazo_default \
     -v /var/lib/pokazo/decks:/app/data/decks \

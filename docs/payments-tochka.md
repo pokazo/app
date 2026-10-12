@@ -29,11 +29,28 @@
 2. `TOCHKA_ACCESS_TOKEN` выставлен (не stub).
 3. Webhook зарегистрирован в Точке (см. ниже).
 
+## Observability
+
+Все шаги биллинга пишут строки с префиксом `[billing] event=…`.
+
+```bash
+docker logs pokazo-api-$(cat /etc/pokazo/active-slot) 2>&1 | grep '\[billing\] event='
+```
+
+| event | Когда |
+|-------|--------|
+| `checkout_pending` / `checkout_created` / `checkout_free_unlock` / `checkout_tochka_failed` | `POST /api/billing/checkout` |
+| `tochka_http_error` | HTTP ≠ 200 от Точки (тело обрезано) |
+| `webhook_received` → `webhook_parsed` → `webhook_activated` / `webhook_not_found` / `webhook_ignored` / `webhook_rejected` | webhook |
+| `marked_paid` / `already_paid` / `mark_paid_failed` | начисление кредита/месяца |
+| `reserve_ok` / `reserve_denied` / `deck_payment_required` | gate на `POST /api/decks` |
+| `finalize` / `finalize_failed` | ready → none; failed → release_free / refund_credit |
+
 ## Webhook
 
 - URL: **`https://api.pokazo.ru/api/payments/tochka/webhook`**
 - Nginx API: маршрут `/api/payments/tochka/webhook` → контейнер Hono
-- В кабинете Точки: acquiring webhook → этот URL
+- В кабинете Точки: acquiring webhook → этот URL (или `PUT /uapi/webhook/v1.0/{client_id}`)
 - Подпись: JWT RS256 (`acquiringInternetPayment`), публичный ключ Точки в `apps/api/src/tochka.ts`
 
 ## Smoke (перед prod)
