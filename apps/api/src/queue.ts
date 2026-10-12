@@ -8,6 +8,7 @@ import { generateDeck } from "./generate.js";
 import { rewriteSlide } from "./rewrite-slide.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { sanitizePickerTheme } from "./themes.js";
+import { finalizeDeckBilling } from "./billing.js";
 
 let queue: Queue | null = null;
 let workerStarted = false;
@@ -100,11 +101,13 @@ export async function processDeck(id: string): Promise<void> {
       }),
     );
     await db.query(`UPDATE deck SET status='ready', updated_at=now() WHERE id=$1`, [id]);
+    await finalizeDeckBilling(id, "ready");
   } catch (err) {
     await db.query(`UPDATE deck SET status='failed', error=$2, updated_at=now() WHERE id=$1`, [
       id,
       String(err),
     ]);
+    await finalizeDeckBilling(id, "failed");
     throw err;
   }
 }
