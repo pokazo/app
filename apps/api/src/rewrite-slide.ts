@@ -12,8 +12,12 @@ import { createYandexImageTools, type YandexToolAttribution } from "./assets-yan
 import { mergeComposeTools, pickRewriteTools } from "./generate-helpers.js";
 import { Outline, OutlineSlide, type OutlineT } from "./outline.js";
 import { emptySlideIssues, formatOutlinePlanIssues, textOnlySlideIssues } from "./outline-plan.js";
+import { parseSlideBlocks } from "./layout-md-assert.js";
 import {
   applyLockedVisual,
+  hasOrphanLeadingHero,
+  lockedSlideLayoutFromMarkdown,
+  mapViewSlideToOutline,
   resolveRewriteSlideTargets,
   type LockedSlideLayout,
 } from "./rewrite-lock.js";
@@ -125,7 +129,17 @@ export async function rewriteSlide(opts: {
 
   const outlineRaw = JSON.parse(await readFile(join(opts.workDir, "outline.json"), "utf8"));
   const outline = Outline.parse(outlineRaw) as OutlineT;
-  if (opts.slideIndex < 1 || opts.slideIndex > outline.slides.length) {
+  let slidesMd = "";
+  try {
+    slidesMd = await readFile(join(opts.workDir, "slides.md"), "utf8");
+  } catch {
+    slidesMd = "";
+  }
+  const outlineCount = outline.slides.length;
+  const maxView = hasOrphanLeadingHero(slidesMd, outlineCount)
+    ? outlineCount + 1
+    : outlineCount;
+  if (opts.slideIndex < 1 || opts.slideIndex > maxView) {
     throw new Error("bad slide index");
   }
 
@@ -155,21 +169,52 @@ export async function rewriteSlide(opts: {
     researchMarkdown = undefined;
   }
 
-  const previous = outline.slides[opts.slideIndex - 1]!;
-  let slidesMd = "";
-  try {
-    slidesMd = await readFile(join(opts.workDir, "slides.md"), "utf8");
-  } catch {
-    slidesMd = "";
+  const mapping = mapViewSlideToOutline(slidesMd, opts.slideIndex, outlineCount);
+  let previous: OutlineSlide;
+  let locked: LockedSlideLayout;
+  let slidevIndex: number;
+  let isHero: boolean;
+  let outlineSlot: number | null;
+
+  if (mapping.kind === "orphan-hero") {
+    const block = parseSlideBlocks(slidesMd)[0];
+    const heading =
+      block?.body.match(/^#\s+(.+)$/m)?.[1]?.trim() ||
+      outline.title ||
+      "Слайд 1";
+    locked = lockedSlideLayoutFromMarkdown(slidesMd, 1, "hero");
+    previous = {
+      heading,
+      points: [],
+      intent: "hero",
+      visual: "hero",
+      imageQuery: "",
+      iconHint: "",
+      kicker: String(block?.fm.kicker ?? ""),
+      source: "",
+      steps: [],
+      stats: [],
+      skills: [],
+      cards: [],
+      features: [],
+      process: [],
+    };
+    slidevIndex = 1;
+    isHero = true;
+    outlineSlot = null;
+  } else {
+    outlineSlot = mapping.outlineSlideIndex;
+    previous = outline.slides[outlineSlot - 1]!;
+    ({ locked, slidevIndex, isHero } = resolveRewriteSlideTargets({
+      md: slidesMd,
+      outlineSlideIndex: outlineSlot,
+      outlineSlideCount: outlineCount,
+      fallbackVisual: previous.visual,
+    }));
   }
-  const { locked, slidevIndex, isHero } = resolveRewriteSlideTargets({
-    md: slidesMd,
-    outlineSlideIndex: opts.slideIndex,
-    outlineSlideCount: outline.slides.length,
-    fallbackVisual: previous.visual,
-  });
+
   console.info(
-    `[rewrite] revise outline slide=${opts.slideIndex} slidev=${slidevIndex} deck=${opts.id} lock=${locked.layout || "?"} variant=${locked.variant || "-"}`,
+    `[rewrite] revise view=${opts.slideIndex} outline=${outlineSlot ?? "hero"} slidev=${slidevIndex} deck=${opts.id} lock=${locked.layout || "?"} variant=${locked.variant || "-"}`,
   );
   const revised = await reviseOutlineSlide({
     topic,
@@ -182,8 +227,10 @@ export async function rewriteSlide(opts: {
     isHero,
     locked,
   });
-  outline.slides[opts.slideIndex - 1] = revised;
-  await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(outline, null, 2), "utf8");
+  if (outlineSlot != null) {
+    outline.slides[outlineSlot - 1] = revised;
+    await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(outline, null, 2), "utf8");
+  }
 
   const attributions: Array<
     StockToolAttribution | GenToolAttribution | YandexToolAttribution | UploadToolAttribution

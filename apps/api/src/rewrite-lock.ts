@@ -47,6 +47,14 @@ function isHeroOrCoverLayout(layout: string): boolean {
   return n === "hero" || n === "cover";
 }
 
+/** True when slides.md has a leading hero/cover plus every outline slide after it. */
+export function hasOrphanLeadingHero(md: string, outlineSlideCount: number): boolean {
+  if (outlineSlideCount < 1) return false;
+  const blocks = parseSlideBlocks(md);
+  const first = String(blocks[0]?.fm.layout ?? "");
+  return blocks.length === outlineSlideCount + 1 && isHeroOrCoverLayout(first);
+}
+
 /**
  * Outline index → Slidev page (both 1-based).
  * When compose left an extra leading hero/cover and then all outline slides,
@@ -58,12 +66,38 @@ export function slidevIndexForOutlineSlide(
   outlineSlideCount: number,
 ): number {
   if (outlineSlideIndex < 1 || outlineSlideCount < 1) return outlineSlideIndex;
-  const blocks = parseSlideBlocks(md);
-  const first = String(blocks[0]?.fm.layout ?? "");
-  if (blocks.length === outlineSlideCount + 1 && isHeroOrCoverLayout(first)) {
+  if (hasOrphanLeadingHero(md, outlineSlideCount)) {
     return outlineSlideIndex + 1;
   }
   return outlineSlideIndex;
+}
+
+export type ViewOutlineMapping =
+  | { kind: "orphan-hero"; slidevIndex: 1 }
+  | { kind: "outline"; outlineSlideIndex: number; slidevIndex: number };
+
+/**
+ * View/filmstrip index (1-based, may include orphan hero as 1) → outline slot + Slidev page.
+ */
+export function mapViewSlideToOutline(
+  md: string,
+  viewSlideIndex: number,
+  outlineSlideCount: number,
+): ViewOutlineMapping {
+  if (hasOrphanLeadingHero(md, outlineSlideCount)) {
+    if (viewSlideIndex === 1) return { kind: "orphan-hero", slidevIndex: 1 };
+    const outlineSlideIndex = viewSlideIndex - 1;
+    return {
+      kind: "outline",
+      outlineSlideIndex,
+      slidevIndex: slidevIndexForOutlineSlide(md, outlineSlideIndex, outlineSlideCount),
+    };
+  }
+  return {
+    kind: "outline",
+    outlineSlideIndex: viewSlideIndex,
+    slidevIndex: viewSlideIndex,
+  };
 }
 
 /** Read locked layout/variant/image for outline slideIndex (1-based) from slides.md. */

@@ -26,14 +26,15 @@ describe("embed urls", () => {
     });
   });
 
-  it("resolves Slidev page from outline index when orphan hero shifts pages", () => {
+  it("resolves Slidev page from view index when orphan hero is slide 1", () => {
     const slides = [
-      { index: 1, slidevIndex: 2 },
-      { index: 2, slidevIndex: 3 },
-      { index: 3, slidevIndex: 4 },
+      { index: 1, slidevIndex: 1 },
+      { index: 2, slidevIndex: 2 },
+      { index: 3, slidevIndex: 3 },
+      { index: 4, slidevIndex: 4 },
     ];
-    expect(slidevPageForOutlineIndex(slides, 3)).toBe(4);
-    expect(slidevPageForOutlineIndex(slides, 1)).toBe(2);
+    expect(slidevPageForOutlineIndex(slides, 1)).toBe(1);
+    expect(slidevPageForOutlineIndex(slides, 4)).toBe(4);
     expect(slidevPageForOutlineIndex([{ index: 1 }], 1)).toBe(1);
   });
 });

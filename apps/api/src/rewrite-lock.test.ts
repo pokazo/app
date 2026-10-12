@@ -3,6 +3,7 @@ import {
   applyLockedVisual,
   layoutToOutlineVisual,
   lockedSlideLayoutFromMarkdown,
+  mapViewSlideToOutline,
   resolveRewriteSlideTargets,
   slidevIndexForOutlineSlide,
 } from "./rewrite-lock.js";
@@ -162,6 +163,47 @@ image: /b.jpg
       expect(t.slidevIndex).toBe(4);
       expect(t.locked.layout).toBe("image-left");
       expect(t.isHero).toBe(false);
+    });
+
+    it("maps view slide index to outline when orphan hero is listed as slide 1", () => {
+      expect(mapViewSlideToOutline(orphanHeroMd, 1, 3)).toEqual({ kind: "orphan-hero", slidevIndex: 1 });
+      expect(mapViewSlideToOutline(orphanHeroMd, 2, 3)).toEqual({
+        kind: "outline",
+        outlineSlideIndex: 1,
+        slidevIndex: 2,
+      });
+      expect(mapViewSlideToOutline(orphanHeroMd, 4, 3)).toEqual({
+        kind: "outline",
+        outlineSlideIndex: 3,
+        slidevIndex: 4,
+      });
+    });
+
+    it("maps view index 1:1 when outline and md are aligned", () => {
+      const aligned = `---
+layout: hero
+image: /h.jpg
+---
+
+# Hero
+
+---
+layout: image-left
+image: /b.jpg
+---
+
+# Body
+`;
+      expect(mapViewSlideToOutline(aligned, 1, 2)).toEqual({
+        kind: "outline",
+        outlineSlideIndex: 1,
+        slidevIndex: 1,
+      });
+      expect(mapViewSlideToOutline(aligned, 2, 2)).toEqual({
+        kind: "outline",
+        outlineSlideIndex: 2,
+        slidevIndex: 2,
+      });
     });
   });
 });

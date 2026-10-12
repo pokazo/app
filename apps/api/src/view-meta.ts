@@ -1,4 +1,5 @@
-import { slidevIndexForOutlineSlide } from "./rewrite-lock.js";
+import { parseSlideBlocks } from "./layout-md-assert.js";
+import { hasOrphanLeadingHero } from "./rewrite-lock.js";
 
 export type ViewSlide = {
   index: number;
@@ -67,6 +68,11 @@ export function countSlidesInMarkdown(md: string): number {
   return parseSlideImages(md).length;
 }
 
+function headingFromSlideBody(body: string): string {
+  const m = body.match(/^#\s+(.+)$/m);
+  return m?.[1]?.trim() ?? "";
+}
+
 /**
  * For progressive preview: expose only slides present in the last successful preview `dist/`.
  * Compose mutates slides.md early; listing md slides beyond `builtSlideCount` would make
@@ -84,21 +90,36 @@ export function slidesForView(opts: {
   if (!markdown) return outlineSlides;
   const images = parseSlideImages(markdown);
   const outlineCount = outlineSlides.length;
-  const mdOffset =
-    outlineCount > 0 &&
-    slidevIndexForOutlineSlide(markdown, 1, outlineCount) === 2
-      ? 1
-      : 0;
-  const withImages = withSlideImages(outlineSlides, images, { mdImageOffset: mdOffset });
-  if (!progressive) return withImages;
+  const orphan = hasOrphanLeadingHero(markdown, outlineCount);
+
+  let slides: ViewSlide[];
+  if (orphan) {
+    const blocks = parseSlideBlocks(markdown);
+    const heroHeading = headingFromSlideBody(blocks[0]?.body ?? "") || "Слайд 1";
+    const hero: ViewSlide = {
+      index: 1,
+      heading: heroHeading,
+      image: images[0] ?? null,
+      slidevIndex: 1,
+    };
+    const body = withSlideImages(outlineSlides, images, { mdImageOffset: 1 }).map((s, i) => ({
+      ...s,
+      index: i + 2,
+      slidevIndex: i + 2,
+    }));
+    slides = [hero, ...body];
+  } else {
+    slides = withSlideImages(outlineSlides, images);
+  }
+
+  if (!progressive) return slides;
   const mdCount = images.length;
   const built = Math.max(1, Math.floor(builtSlideCount ?? 1));
-  // Orphan hero: built counts Slidev pages; outline thumbs start at slidevIndex 2.
-  if (mdOffset > 0) {
-    return withImages.filter((s) => s.slidevIndex <= built);
+  if (orphan) {
+    return slides.filter((s) => s.slidevIndex <= built);
   }
-  const n = Math.min(withImages.length, mdCount || 1, built);
-  return withImages.slice(0, Math.max(1, n));
+  const n = Math.min(slides.length, mdCount || 1, built);
+  return slides.slice(0, Math.max(1, n));
 }
 
 export function outlineTitle(raw: unknown, fallback = ""): string {

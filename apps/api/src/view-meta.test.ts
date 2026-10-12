@@ -203,7 +203,7 @@ layout: default
     ]);
   });
 
-  it("aligns thumbs to body slides when md has orphan leading hero", () => {
+  it("keeps orphan leading hero as slide 1, then outline body slides", () => {
     const bodyOutline = [
       { index: 1, heading: "История", image: null, slidevIndex: 1 },
       { index: 2, heading: "Успех", image: null, slidevIndex: 2 },
@@ -238,9 +238,10 @@ image: /songs.jpg
     expect(
       slidesForView({ outlineSlides: bodyOutline, markdown: orphanHero, progressive: false }),
     ).toEqual([
-      { index: 1, heading: "История", image: null, slidevIndex: 2 },
-      { index: 2, heading: "Успех", image: null, slidevIndex: 3 },
-      { index: 3, heading: "Песни", image: "/songs.jpg", slidevIndex: 4 },
+      { index: 1, heading: "Cover", image: "/hero.jpg", slidevIndex: 1 },
+      { index: 2, heading: "История", image: null, slidevIndex: 2 },
+      { index: 3, heading: "Успех", image: null, slidevIndex: 3 },
+      { index: 4, heading: "Песни", image: "/songs.jpg", slidevIndex: 4 },
     ]);
   });
 });
