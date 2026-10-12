@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
-import { embedDeckUrl, slidevNavigateMessage } from "../deck-view";
+import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex } from "../deck-view";
 import {
   isDeckId,
   progressiveSlideReveal,
@@ -16,7 +16,7 @@ import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
 
 type Me = { id: string; email: string; name: string };
-type Slide = { index: number; heading: string; image?: string | null };
+type Slide = { index: number; heading: string; image?: string | null; slidevIndex?: number };
 type ViewMeta = {
   topic: string;
   slides: Slide[];
@@ -211,8 +211,9 @@ export function DeckView() {
 
   useEffect(() => {
     if (!stageReady) return;
-    stageRef.current?.contentWindow?.postMessage(slidevNavigateMessage(current), "*");
-  }, [current, stageReady]);
+    const page = slidevPageForOutlineIndex(meta?.slides ?? [], current);
+    stageRef.current?.contentWindow?.postMessage(slidevNavigateMessage(page), "*");
+  }, [current, stageReady, meta?.slides]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -430,7 +431,7 @@ export function DeckView() {
                 key={thumbReactKey(s.index)}
                 embedBase={embedBase}
                 embedCacheKey={embedKey}
-                index={s.index}
+                index={s.slidevIndex ?? s.index}
                 heading={s.heading || `Слайд ${s.index}`}
                 imageUrl={s.image ? apiUrl(`/p/${id}${s.image}`) : null}
                 enabled={stageReady}

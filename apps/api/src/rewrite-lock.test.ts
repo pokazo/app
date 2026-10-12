@@ -3,6 +3,8 @@ import {
   applyLockedVisual,
   layoutToOutlineVisual,
   lockedSlideLayoutFromMarkdown,
+  resolveRewriteSlideTargets,
+  slidevIndexForOutlineSlide,
 } from "./rewrite-lock.js";
 
 const sampleSlide = {
@@ -24,6 +26,46 @@ const sampleSlide = {
   features: [],
   process: [],
 };
+
+/** Prod bug: hero composed separately, then all outline slides inserted → md = outline+1. */
+const orphanHeroMd = `---
+layout: hero
+variant: ribbon
+image: /slide-1.jpg
+---
+
+# Битлз для школьников
+
+---
+layout: timeline
+kicker: Этапы
+---
+
+# История
+
+---
+layout: features
+items:
+  - title: A
+    body: a
+    iconHint: carbon-idea
+  - title: B
+    body: b
+    iconHint: carbon-security
+  - title: C
+    body: c
+    iconHint: carbon-rocket
+---
+
+# Успех
+
+---
+layout: image-left
+image: /slide-4.jpg
+---
+
+# Знаковые песни
+`;
 
 describe("rewrite-lock", () => {
   it("maps slidev layout to outline visual", () => {
@@ -75,5 +117,51 @@ steps:
     const out = applyLockedVisual({ ...sampleSlide, visual: "timeline" }, locked);
     expect(out.visual).toBe("hero");
     expect(out.heading).toBe("H");
+  });
+
+  describe("orphan leading hero (outline count + 1 in md)", () => {
+    it("maps outline slide index to Slidev page after the extra hero", () => {
+      expect(slidevIndexForOutlineSlide(orphanHeroMd, 1, 3)).toBe(2);
+      expect(slidevIndexForOutlineSlide(orphanHeroMd, 2, 3)).toBe(3);
+      expect(slidevIndexForOutlineSlide(orphanHeroMd, 3, 3)).toBe(4);
+    });
+
+    it("keeps 1:1 mapping when outline and md lengths match", () => {
+      const aligned = `---
+layout: hero
+image: /h.jpg
+---
+
+# Hero
+
+---
+layout: image-left
+image: /b.jpg
+---
+
+# Body
+`;
+      expect(slidevIndexForOutlineSlide(aligned, 1, 2)).toBe(1);
+      expect(slidevIndexForOutlineSlide(aligned, 2, 2)).toBe(2);
+    });
+
+    it("locks outline slide 3 to image-left, not features (prod rewrite bug)", () => {
+      const locked = lockedSlideLayoutFromMarkdown(orphanHeroMd, 3, "image-left", 3);
+      expect(locked.layout).toBe("image-left");
+      expect(locked.visual).toBe("image-left");
+      expect(locked.image).toBe("/slide-4.jpg");
+    });
+
+    it("resolveRewriteSlideTargets pins compose MCP to Slidev page, not outline index", () => {
+      const t = resolveRewriteSlideTargets({
+        md: orphanHeroMd,
+        outlineSlideIndex: 3,
+        outlineSlideCount: 3,
+        fallbackVisual: "image-left",
+      });
+      expect(t.slidevIndex).toBe(4);
+      expect(t.locked.layout).toBe("image-left");
+      expect(t.isHero).toBe(false);
+    });
   });
 });

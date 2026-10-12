@@ -14,7 +14,7 @@ import { Outline, OutlineSlide, type OutlineT } from "./outline.js";
 import { emptySlideIssues, formatOutlinePlanIssues, textOnlySlideIssues } from "./outline-plan.js";
 import {
   applyLockedVisual,
-  lockedSlideLayoutFromMarkdown,
+  resolveRewriteSlideTargets,
   type LockedSlideLayout,
 } from "./rewrite-lock.js";
 import {
@@ -155,7 +155,6 @@ export async function rewriteSlide(opts: {
     researchMarkdown = undefined;
   }
 
-  const isHero = opts.slideIndex === 1;
   const previous = outline.slides[opts.slideIndex - 1]!;
   let slidesMd = "";
   try {
@@ -163,9 +162,14 @@ export async function rewriteSlide(opts: {
   } catch {
     slidesMd = "";
   }
-  const locked = lockedSlideLayoutFromMarkdown(slidesMd, opts.slideIndex, previous.visual);
+  const { locked, slidevIndex, isHero } = resolveRewriteSlideTargets({
+    md: slidesMd,
+    outlineSlideIndex: opts.slideIndex,
+    outlineSlideCount: outline.slides.length,
+    fallbackVisual: previous.visual,
+  });
   console.info(
-    `[rewrite] revise outline slide=${opts.slideIndex} deck=${opts.id} lock=${locked.layout || "?"} variant=${locked.variant || "-"}`,
+    `[rewrite] revise outline slide=${opts.slideIndex} slidev=${slidevIndex} deck=${opts.id} lock=${locked.layout || "?"} variant=${locked.variant || "-"}`,
   );
   const revised = await reviseOutlineSlide({
     topic,
@@ -226,7 +230,9 @@ export async function rewriteSlide(opts: {
   };
 
   // Fields-only rewrite: same layout/variant for hero and body slides (no hero catalog).
-  console.info(`[rewrite] compose-one slide=${opts.slideIndex} deck=${opts.id} layout=${locked.layout || "?"}`);
+  console.info(
+    `[rewrite] compose-one outline=${opts.slideIndex} slidev=${slidevIndex} deck=${opts.id} layout=${locked.layout || "?"}`,
+  );
   await withOptionalUploadMcp(async (uploadSearchTools) => {
     await withSlidevMcp(opts.workDir, async (slidevTools) => {
       const tools = pickRewriteTools(
@@ -245,7 +251,7 @@ export async function rewriteSlide(opts: {
         tools: tools as never,
         maxSteps: composeOneSlideMaxSteps(),
         prompt: composeOneSlideUserPrompt({
-          slideIndex: opts.slideIndex,
+          slideIndex: slidevIndex,
           slide: revised,
           locale,
           topic,
@@ -269,7 +275,9 @@ export async function rewriteSlide(opts: {
   try {
     await buildAndGate();
   } catch (err) {
-    console.info(`[rewrite] build failed, MCP repair slide=${opts.slideIndex}: ${String(err).slice(0, 400)}`);
+    console.info(
+      `[rewrite] build failed, MCP repair outline=${opts.slideIndex} slidev=${slidevIndex}: ${String(err).slice(0, 400)}`,
+    );
     await withOptionalUploadMcp(async (uploadSearchTools) => {
       await withSlidevMcp(opts.workDir, async (slidevTools) => {
         const tools = pickRewriteTools(
@@ -288,7 +296,7 @@ export async function rewriteSlide(opts: {
           tools: tools as never,
           maxSteps: 12,
           prompt: rewriteRepairPrompt({
-            slideIndex: opts.slideIndex,
+            slideIndex: slidevIndex,
             error: String(err),
             md,
             locked,
