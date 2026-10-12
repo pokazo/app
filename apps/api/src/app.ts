@@ -25,6 +25,7 @@ import { readPreviewBuild } from "./progressive-preview.js";
 import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
 import {
   applyPaidPayment,
+  finalizeDeckBilling,
   getBillingMe,
   reserveGenerate,
   type BillingProduct,
@@ -178,24 +179,34 @@ export function createApp() {
   });
 
   app.post("/api/payments/tochka/webhook", async (c) => {
-    const event = await parseTochkaWebhook(await c.req.text());
+    const rawBody = (await c.req.text()).trim();
+    const verifiedJwt = rawBody.startsWith("eyJ");
+    const stubJson =
+      rawBody.startsWith("{") &&
+      (config.billingFreeUnlock || !config.tochkaAccessToken.trim());
+    if (!verifiedJwt && !stubJson) return c.json({ error: "bad webhook" }, 400);
+
+    const event = await parseTochkaWebhook(rawBody);
     if (!event) return c.json({ error: "bad webhook" }, 400);
     if (!pool || !isTochkaPaidStatus(event.status)) return c.json({ ok: true });
 
     try {
-      const { rows } = await pool.query<{ id: string }>(
-        `SELECT id
-           FROM payment
-          WHERE ($1::text IS NOT NULL AND tochka_operation_id=$1)
-             OR ($2::text IS NOT NULL AND id=$2)
-          LIMIT 1`,
-        [event.operationId, event.paymentLinkId],
-      );
+      const lookupId = verifiedJwt ? event.operationId : event.paymentLinkId;
+      if (!lookupId) return c.json({ ok: true });
+      const { rows } = verifiedJwt
+        ? await pool.query<{ id: string }>(
+            `SELECT id FROM payment WHERE tochka_operation_id=$1 LIMIT 1`,
+            [lookupId],
+          )
+        : await pool.query<{ id: string }>(
+            `SELECT id FROM payment WHERE id=$1 LIMIT 1`,
+            [lookupId],
+          );
       const paymentId = rows[0]?.id;
       if (paymentId) {
         await applyPaidPayment(
           paymentId,
-          event.operationId ?? `payment-link-${event.paymentLinkId ?? paymentId}`,
+          event.operationId ?? `stub-payment-${paymentId}`,
         );
       }
     } catch (error) {
@@ -233,12 +244,17 @@ export function createApp() {
       return c.json({ error: "payment_required", billing }, 402);
     }
     if (files.length > 0) {
-      const manifest = await persistDeckUploads({
-        uploadRoot: config.uploadDataDir,
-        deckId: id,
-        files,
-      });
-      console.info(`[api] deck ${id} uploads=${manifest.files.length}`);
+      try {
+        const manifest = await persistDeckUploads({
+          uploadRoot: config.uploadDataDir,
+          deckId: id,
+          files,
+        });
+        console.info(`[api] deck ${id} uploads=${manifest.files.length}`);
+      } catch (error) {
+        await finalizeDeckBilling(id, "failed");
+        throw error;
+      }
     }
     await enqueueDeck(id);
     return c.json({ deckId: id, status: "queued" }, 201);
