@@ -1,4 +1,5 @@
 import { DECK_THEMES } from "../decks";
+import { ThemeThumb } from "./ThemeThumb";
 
 export function ThemePicker(props: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
   return (
@@ -15,14 +16,10 @@ export function ThemePicker(props: { value: string; onChange: (id: string) => vo
                 checked={on}
                 onChange={() => props.onChange(t.id)}
               />
-              <span className="theme-card-head">
-                <span className="theme-emoji" aria-hidden>
-                  {t.emoji}
-                </span>
-                <span className="theme-card-copy">
-                  <span className="theme-card-title">{t.title}</span>
-                  <span className="theme-card-hint">{t.hint}</span>
-                </span>
+              <ThemeThumb preview={t.preview} />
+              <span className="theme-card-copy">
+                <span className="theme-card-title">{t.title}</span>
+                <span className="theme-card-hint">{t.hint}</span>
               </span>
               <span className="theme-dots" aria-hidden>
                 {t.colors.map((c) => (

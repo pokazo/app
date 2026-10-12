@@ -48,23 +48,34 @@ export function formatWhen(iso: string) {
   });
 }
 
+/** CSS mini-slide character for ThemePicker thumbs. */
+export type ThemePreviewId =
+  | "auto"
+  | "default"
+  | "seriph"
+  | "apple-basic"
+  | "bricks"
+  | "shibainu"
+  | "ink-dark"
+  | "brand-auto";
+
 export type DeckTheme = {
   id: string;
   title: string;
   hint: string;
-  emoji: string;
+  preview: ThemePreviewId;
   colors: string[];
 };
 
 export const DECK_THEMES: DeckTheme[] = [
-  { id: "auto", title: "Авто", hint: "Нейросеть подберёт", emoji: "✨", colors: ["#6d28d9", "#ec4899", "#22c55e", "#3b82f6"] },
-  { id: "default", title: "Чистый свет", hint: "Универсальный", emoji: "◻️", colors: ["#f4f4f5", "#5d8392", "#0f1220"] },
-  { id: "seriph", title: "Serif", hint: "Доклад и наука", emoji: "✒️", colors: ["#f8f4e8", "#2c1810", "#c4a574"] },
-  { id: "apple-basic", title: "Keynote", hint: "Бизнес, минимум", emoji: "🖥️", colors: ["#ffffff", "#111111", "#9ca3af"] },
-  { id: "bricks", title: "Кирпичи", hint: "Яркие блоки", emoji: "🧱", colors: ["#e85d4c", "#f4d35e", "#2a9d8f"] },
-  { id: "shibainu", title: "Тёплый", hint: "Школа и рассказ", emoji: "🐕", colors: ["#f4e4d4", "#c45c26", "#3d2b1f"] },
-  { id: "ink-dark", title: "Тёмный", hint: "Редакционный тёмный", emoji: "🌑", colors: ["#191b1e", "#ffffff", "#c8102e"] },
-  { id: "brand-auto", title: "Автобренд", hint: "Тёмный + красный акцент", emoji: "🚗", colors: ["#191b1e", "#c8102e", "#ffffff"] },
+  { id: "auto", title: "Авто", hint: "Нейросеть подберёт", preview: "auto", colors: ["#6d28d9", "#ec4899", "#22c55e", "#3b82f6"] },
+  { id: "default", title: "Чистый свет", hint: "Универсальный", preview: "default", colors: ["#f4f4f5", "#5d8392", "#0f1220"] },
+  { id: "seriph", title: "Serif", hint: "Доклад и наука", preview: "seriph", colors: ["#f8f4e8", "#2c1810", "#c4a574"] },
+  { id: "apple-basic", title: "Keynote", hint: "Бизнес, минимум", preview: "apple-basic", colors: ["#ffffff", "#111111", "#9ca3af"] },
+  { id: "bricks", title: "Кирпичи", hint: "Яркие блоки", preview: "bricks", colors: ["#e85d4c", "#f4d35e", "#2a9d8f"] },
+  { id: "shibainu", title: "Тёплый", hint: "Школа и рассказ", preview: "shibainu", colors: ["#f4e4d4", "#c45c26", "#3d2b1f"] },
+  { id: "ink-dark", title: "Тёмный", hint: "Редакционный тёмный", preview: "ink-dark", colors: ["#191b1e", "#ffffff", "#c8102e"] },
+  { id: "brand-auto", title: "Автобренд", hint: "Тёмный + красный акцент", preview: "brand-auto", colors: ["#191b1e", "#c8102e", "#ffffff"] },
 ];
 
 const THEME_IDS = new Set(DECK_THEMES.map((t) => t.id));

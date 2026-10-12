@@ -60,6 +60,14 @@ describe("deck theme picker", () => {
     ]);
   });
 
+  it("gives each theme a CSS preview id and no emoji", () => {
+    for (const t of DECK_THEMES) {
+      expect(t.preview).toBe(t.id);
+      expect(t).not.toHaveProperty("emoji");
+      expect(t.colors.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it("keeps a known pick and falls back unknown to auto", () => {
     expect(sanitizeDeckTheme("seriph")).toBe("seriph");
     expect(sanitizeDeckTheme("hack-theme")).toBe("auto");
