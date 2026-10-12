@@ -2,43 +2,19 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
-import { PkSlideFrame } from "../components/PkSlideFrame";
 import { apiUrl } from "../safe";
 import { sanitizeDeckTheme, SLIDE_COUNT_DEFAULT } from "../decks";
 import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
+import { ExampleThumb, type ExampleThumbId } from "../components/ExampleThumb";
 
-const THUMBS = [
-  {
-    title: "Фотосинтез",
-    body: "Растения превращают свет в энергию.",
-    items: ["Свет", "Вода", "Углекислый газ"],
-  },
-  {
-    title: "Как сделать доклад",
-    body: "Тема, план, показ по ссылке.",
-    items: ["Школа", "8 слайдов", "Онлайн"],
-  },
-  {
-    title: "Питч для работы",
-    body: "Одна идея на слайд, без PowerPoint.",
-    items: ["Проблема", "Решение", "Следующий шаг"],
-  },
-  {
-    title: "ИИ для презентаций",
-    body: "Нейросеть собирает слайды по теме.",
-    items: ["Русский", "Без VPN", "Ссылка коллегам"],
-  },
-  {
-    title: "Вуз: курсовая защита",
-    body: "Структура выступления на 10 минут.",
-    items: ["Цель", "Метод", "Вывод"],
-  },
-  {
-    title: "Урок за вечер",
-    body: "Готовый показ, который можно открыть в браузере.",
-    items: ["Тема", "Слайды", "Ссылка"],
-  },
+const THUMBS: { id: ExampleThumbId; title: string }[] = [
+  { id: "photosynthesis", title: "Фотосинтез" },
+  { id: "report", title: "Как сделать доклад" },
+  { id: "pitch", title: "Питч для работы" },
+  { id: "ai", title: "ИИ для презентаций" },
+  { id: "defense", title: "Вуз: курсовая защита" },
+  { id: "lesson", title: "Урок за вечер" },
 ];
 
 export function Landing() {
@@ -138,15 +114,7 @@ export function Landing() {
           <h2>Что можно создать</h2>
           <div className="thumbs">
             {THUMBS.map((s) => (
-              <PkSlideFrame key={s.title}>
-                <h3>{s.title}</h3>
-                <p>{s.body}</p>
-                <ul>
-                  {s.items.map((i) => (
-                    <li key={i}>{i}</li>
-                  ))}
-                </ul>
-              </PkSlideFrame>
+              <ExampleThumb key={s.id} id={s.id} title={s.title} />
             ))}
           </div>
         </section>

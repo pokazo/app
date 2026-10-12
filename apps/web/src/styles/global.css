@@ -235,6 +235,184 @@ button.yandex:hover:not(:disabled), a.yandex:hover {
 .slide-frame h3 { margin: 0 0 8px; font-size: 16px; }
 .slide-frame p, .slide-frame li { font-size: 13px; color: var(--pk-ink-muted); margin: 0; }
 .slide-frame ul { margin: 8px 0 0; padding-left: 18px; }
+
+/* Landing example mini-slides (static CSS, not live Slidev) */
+.example-thumb {
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-md);
+  box-shadow: var(--pk-shadow);
+  overflow: hidden;
+  background: #fff;
+  text-align: left;
+}
+.example-thumb__inner {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.example-thumb__pad { padding: 14px 16px; }
+.example-thumb__kicker {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pk-ink-muted);
+  margin: 0 0 6px;
+  font-weight: 500;
+}
+.example-thumb__title {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+  color: inherit;
+}
+.example-thumb__title--lg { font-size: 18px; margin-top: 10px; }
+.example-thumb__sub {
+  display: block;
+  font-size: 12px;
+  color: var(--pk-ink-muted);
+  line-height: 1.3;
+}
+.example-thumb__hero-green {
+  padding: 14px 16px;
+  justify-content: flex-end;
+  color: #fff;
+  background:
+    linear-gradient(120deg, rgba(16, 72, 48, 0.78), rgba(16, 72, 48, 0.4)),
+    radial-gradient(circle at 72% 38%, #7dcea0, #1b4332 68%);
+}
+.example-thumb__hero-green .example-thumb__kicker,
+.example-thumb__hero-green .example-thumb__sub {
+  color: rgba(255, 255, 255, 0.88);
+}
+.example-thumb__steps {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.example-thumb__steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pk-ink);
+}
+.example-thumb__n {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--pk-spot);
+  color: #fff;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.example-thumb__dark {
+  background: #111;
+  color: #fff;
+  justify-content: flex-start;
+}
+.example-thumb__dark .example-thumb__kicker { color: #a3a3a3; }
+.example-thumb__dark .example-thumb__sub { color: rgba(255, 255, 255, 0.7); }
+.example-thumb__split {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  flex-direction: row;
+}
+.example-thumb__split-text {
+  padding: 14px 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.example-thumb__stack {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+  padding: 12px;
+  background: var(--pk-paper-2);
+}
+.example-thumb__stack i {
+  display: block;
+  background: #fff;
+  border: 1px solid var(--pk-line);
+  border-radius: 4px;
+}
+.example-thumb__defense {
+  background: #1a1d2e;
+  color: #fff;
+  padding: 14px 16px;
+  justify-content: space-between;
+}
+.example-thumb__defense .example-thumb__kicker { color: #a5b4fc; }
+.example-thumb__defense .example-thumb__sub { color: rgba(255, 255, 255, 0.65); }
+.example-thumb__pills {
+  display: flex;
+  gap: 6px;
+}
+.example-thumb__pills span {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.example-thumb__night {
+  background: #1e1630;
+  color: #fff;
+  padding: 14px 16px;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.example-thumb__night::before {
+  content: "";
+  position: absolute;
+  right: -24px;
+  top: -36px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.38), transparent 70%);
+  pointer-events: none;
+}
+.example-thumb__night .example-thumb__kicker {
+  color: #fbbf24;
+  position: relative;
+}
+.example-thumb__night .example-thumb__title,
+.example-thumb__night .example-thumb__sub,
+.example-thumb__night .example-thumb__chips {
+  position: relative;
+}
+.example-thumb__night .example-thumb__sub { color: rgba(255, 255, 255, 0.7); }
+.example-thumb__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.example-thumb__chips span {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fde68a;
+}
 .who { text-align: center; }
 .chip {
   display: inline-block;
