@@ -16,7 +16,6 @@ export type AudiencePage = {
   description: string;
   stepsNote: string;
   faq: AudienceFaq[];
-  ctaLead: string;
 };
 
 export const AUDIENCE_PAGES = audienceJson as AudiencePage[];

@@ -436,21 +436,6 @@ a.chip:hover { background: #e4dbff; }
 }
 .faq summary { cursor: pointer; font-weight: 500; }
 .faq p { margin: 8px 0 0; color: var(--pk-ink-muted); }
-.cta-band {
-  margin: 0 20px 48px;
-  background: var(--pk-spot);
-  color: #fff;
-  border-radius: var(--pk-r-md);
-  padding: 40px 24px;
-  text-align: center;
-}
-.cta-band h2 { color: #fff; margin: 0 0 8px; }
-.cta-band p { margin: 0 0 20px; opacity: 0.9; }
-.cta-band .pk-btn {
-  background: #fff;
-  color: var(--pk-spot);
-}
-.cta-band .pk-btn:hover { background: var(--pk-spot-soft); }
 .card {
   max-width: 400px;
   margin: 64px auto;
@@ -717,6 +702,10 @@ footer.foot {
   font-size: 13px;
   text-align: center;
 }
+footer.foot .foot-links { margin: 0 0 8px; }
+footer.foot .foot-ip { margin: 0; font-size: 12px; opacity: 0.85; }
+footer.foot a { color: var(--pk-spot); text-decoration: none; }
+footer.foot a:hover { text-decoration: underline; }
 .deck-shell {
   height: 100dvh;
   max-height: 100dvh;

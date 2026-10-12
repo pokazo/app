@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
+import { SiteFooter } from "../components/SiteFooter";
 import { LandingPromptForm } from "../components/LandingPromptForm";
 import { AUDIENCE_PAGES, audienceBySlug, type AudienceSlug } from "../audience-pages";
 import { apiUrl } from "../safe";
@@ -113,19 +114,8 @@ export function AudienceLanding(props: { slug: AudienceSlug }) {
             ))}
           </div>
         </section>
-        <div className="cta-band">
-          <h2>Создать презентацию</h2>
-          <p>{page.ctaLead}</p>
-          <Link className="pk-btn" data-pk="cta-create" to="/login?next=/app">
-            Создать
-          </Link>
-        </div>
       </main>
-      <footer className="foot">
-        <div className="wrap">
-          <a href="/legal/offer">Оферта</a> · <a href="/legal/privacy">Персональные данные</a>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

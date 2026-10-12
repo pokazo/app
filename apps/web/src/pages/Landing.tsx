@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
+import { SiteFooter } from "../components/SiteFooter";
 import { LandingPromptForm } from "../components/LandingPromptForm";
 import { ExampleThumb, type ExampleThumbId } from "../components/ExampleThumb";
 import { AUDIENCE_PAGES } from "../audience-pages";
@@ -123,19 +124,8 @@ export function Landing() {
             </details>
           </div>
         </section>
-        <div className="cta-band">
-          <h2>Создать презентацию</h2>
-          <p>ИИ онлайн, на русском. Тема — и слайды.</p>
-          <Link className="pk-btn" data-pk="cta-create" to="/login?next=/app">
-            Создать
-          </Link>
-        </div>
       </main>
-      <footer className="foot">
-        <div className="wrap">
-          <a href="/legal/offer">Оферта</a> · <a href="/legal/privacy">Персональные данные</a>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
