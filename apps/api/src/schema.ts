@@ -58,4 +58,26 @@ CREATE TABLE IF NOT EXISTS deck (
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
+
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS credits INT NOT NULL DEFAULT 0;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS free_used BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS plan_until TIMESTAMP;
+
+ALTER TABLE deck ADD COLUMN IF NOT EXISTS billing_kind TEXT;
+
+CREATE TABLE IF NOT EXISTS payment (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  product TEXT NOT NULL,
+  amount_kopecks INT NOT NULL,
+  status TEXT NOT NULL,
+  tochka_operation_id TEXT,
+  payment_url TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  paid_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS payment_user_idx ON payment(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS payment_tochka_op_uidx
+  ON payment(tochka_operation_id) WHERE tochka_operation_id IS NOT NULL;
 `;
