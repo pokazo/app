@@ -1,14 +1,29 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { config } from "./env.js";
 import {
   HttpTochkaClient,
   StubTochkaClient,
   TochkaError,
+  getTochkaClient,
   isTochkaPaidStatus,
   parseTochkaWebhook,
 } from "./tochka.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe("getTochkaClient", () => {
+  it("returns StubTochkaClient when access token is empty", () => {
+    vi.spyOn(config, "tochkaAccessToken", "get").mockReturnValue("   ");
+    expect(getTochkaClient()).toBeInstanceOf(StubTochkaClient);
+  });
+
+  it("returns HttpTochkaClient when access token is set", () => {
+    vi.spyOn(config, "tochkaAccessToken", "get").mockReturnValue("live-token");
+    expect(getTochkaClient()).toBeInstanceOf(HttpTochkaClient);
+  });
 });
 
 describe("StubTochkaClient", () => {
@@ -109,6 +124,14 @@ describe("parseTochkaWebhook", () => {
       paymentLinkId: "pl-1",
       status: "APPROVED",
     });
+  });
+
+  it("prefers operationId over payment_id metadata", async () => {
+    const event = await parseTochkaWebhook(
+      JSON.stringify({ payment_id: "pay-1", operationId: "op-1", status: "APPROVED" }),
+    );
+
+    expect(event?.operationId).toBe("op-1");
   });
 
   it("accepts snake_case JSON fields and rejects invalid JWTs", async () => {

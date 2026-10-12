@@ -209,7 +209,7 @@ function parseJsonWebhook(text: string): TochkaWebhookEvent | null {
 
 function webhookEventFrom(data: Record<string, unknown>): TochkaWebhookEvent {
   return {
-    operationId: stringOrNull(data.payment_id ?? data.operationId ?? data.operation_id),
+    operationId: stringOrNull(data.operationId ?? data.operation_id),
     paymentLinkId: stringOrNull(
       data.payment_link_id ?? data.paymentLinkId ?? data.payment_linkId,
     ),
