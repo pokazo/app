@@ -49,6 +49,59 @@ header.top {
   justify-content: flex-end;
 }
 .head-email { color: var(--pk-ink-muted); font-size: 14px; }
+.head-profile {
+  position: relative;
+}
+.head-profile-summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--pk-r-pill);
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+  user-select: none;
+}
+.head-profile-summary::-webkit-details-marker { display: none; }
+.head-profile-summary::after {
+  content: "";
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  opacity: 0.7;
+}
+.head-profile[open] > .head-profile-summary {
+  background: rgba(109, 40, 217, 0.08);
+  color: var(--pk-ink);
+}
+.head-profile-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  min-width: 220px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-md);
+  box-shadow: var(--pk-shadow);
+}
+.head-profile-billing {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+}
+.head-profile-out {
+  width: 100%;
+  justify-content: flex-start;
+}
 .hero {
   text-align: center;
   padding: 56px 0 72px;
@@ -457,12 +510,6 @@ a.chip:hover { background: #e4dbff; }
 }
 .app-page h1 { margin: 0 0 24px; }
 .app-note { text-align: center; margin: 16px 0 0; }
-.billing-balance {
-  margin: -12px 0 20px;
-  color: var(--pk-ink-muted);
-  text-align: center;
-  font-size: 14px;
-}
 .paywall-overlay {
   position: fixed;
   inset: 0;
@@ -1023,7 +1070,12 @@ footer.foot a:hover { text-decoration: underline; }
   .prompt-card .actions select.pk.slide-count-select { width: auto; }
   .deck-item { flex-direction: column; align-items: stretch; }
   .deck-item .pk-btn { width: 100%; }
-  .head-email { display: none; }
+  .head-email {
+    max-width: 11ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .speech-overlay {

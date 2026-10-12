@@ -8,7 +8,7 @@ import { sanitizeAudience } from "../audience-pages";
 import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
 import { PaywallModal } from "../components/PaywallModal";
-import { BillingMe, formatBillingLabel } from "../billing";
+import { BillingMe } from "../billing";
 
 type Me = { id: string; email: string; name: string };
 
@@ -150,13 +150,10 @@ export function AppHome() {
 
   return (
     <>
-      <PkHeader me={me} onOut={onOut} />
+      <PkHeader me={me} onOut={onOut} billing={billing} />
       <main className="app-page">
         <div className="wrap app-form">
           <h1>Новая презентация</h1>
-          {billing?.paymentsEnabled ? (
-            <p className="billing-balance">{formatBillingLabel(billing)}</p>
-          ) : null}
           <form className="prompt-card" onSubmit={onCreate}>
             <textarea
               className="pk"
