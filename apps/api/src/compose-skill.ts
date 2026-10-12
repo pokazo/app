@@ -1,4 +1,5 @@
 import { layoutCarbonIconHints } from "../slidev-layouts/layout-assert.js";
+import { audienceForPrompt } from "./audience.js";
 
 const LAYOUT_ICON_HINTS = layoutCarbonIconHints().join(", ");
 
@@ -82,7 +83,7 @@ export function outlineUserPrompt(opts: {
 }): string {
   return `Тема: ${opts.topic}
 Язык: ${opts.locale}
-Аудитория: ${opts.audience}
+Аудитория: ${audienceForPrompt(opts.audience)}
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}Составь оглавление презентации.
 
@@ -125,7 +126,7 @@ export function outlineRevisePrompt(opts: {
 
 Тема: ${opts.topic}
 Язык: ${opts.locale}
-Аудитория: ${opts.audience}
+Аудитория: ${audienceForPrompt(opts.audience)}
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}
 Ошибки тестов плана:

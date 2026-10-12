@@ -51,7 +51,7 @@ export function AudienceLanding(props: { slug: AudienceSlug }) {
           <div className="wrap">
             <h1>{page.h1}</h1>
             <p className="lead">{page.lead}</p>
-            <LandingPromptForm placeholder={page.placeholder} />
+            <LandingPromptForm placeholder={page.placeholder} audience={page.slug} />
           </div>
         </section>
         <section className="section alt">

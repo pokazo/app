@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { guardMarkdown } from "./md-guard.js";
-import { layoutPalette, sanitizePickerTheme, slidevThemeId } from "./themes.js";
+import {
+  layoutPalette,
+  sanitizePickerTheme,
+  sanitizeSelectableTheme,
+  SELECTABLE_THEME_IDS,
+  slidevThemeId,
+} from "./themes.js";
 
 describe("picker theme", () => {
   it("accepts official ids, brand packs, and auto", () => {
@@ -9,6 +15,13 @@ describe("picker theme", () => {
     expect(sanitizePickerTheme("ink-dark")).toBe("ink-dark");
     expect(sanitizePickerTheme("brand-auto")).toBe("brand-auto");
     expect(sanitizePickerTheme("nope")).toBe("auto");
+  });
+
+  it("selectable themes exclude auto and sanitize to default", () => {
+    expect(SELECTABLE_THEME_IDS).not.toContain("auto");
+    expect(sanitizeSelectableTheme("bricks")).toBe("bricks");
+    expect(sanitizeSelectableTheme("auto")).toBe("default");
+    expect(sanitizeSelectableTheme("nope")).toBe("default");
   });
 
   it("maps auto and brand packs to the default Slidev package", () => {

@@ -1,4 +1,5 @@
 import { layoutCarbonIconHints } from "../slidev-layouts/layout-assert.js";
+import { audienceForPrompt } from "./audience.js";
 import type { OutlineSlide } from "./outline.js";
 import type { LockedSlideLayout } from "./rewrite-lock.js";
 
@@ -48,7 +49,7 @@ Rewrite меняет только поля внутри текущего layout 
 ${lockedLayoutBlock(opts.locked)}
 Тема: ${opts.topic}
 Язык: ${opts.locale}
-Аудитория: ${opts.audience}
+Аудитория: ${audienceForPrompt(opts.audience)}
 Номер слайда: ${opts.slideIndex}
 ${researchBriefBlock(opts.researchMarkdown)}
 Инструкция пользователя:

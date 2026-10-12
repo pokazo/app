@@ -13,6 +13,7 @@ import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesForView, slidesFromOutline } from "./view-meta.js";
 import { injectPlayerChromeHide, deckAssetCacheControl, deckAssetContentType } from "./player-chrome.js";
 import { sanitizePickerTheme } from "./themes.js";
+import { sanitizeAudience } from "./audience.js";
 import {
   contentDisposition,
   downloadBasename,
@@ -324,7 +325,7 @@ export function createApp() {
         topic,
         fields.locale ?? "ru",
         slideCount,
-        fields.audience ?? "school",
+        sanitizeAudience(fields.audience),
         sanitizePickerTheme(fields.theme),
       ],
     );

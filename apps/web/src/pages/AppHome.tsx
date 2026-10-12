@@ -4,6 +4,7 @@ import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { api, ApiError, apiUrl } from "../api";
 import { deckStatusLabel, deckViewable, sanitizeDeckTheme, sanitizeSlideCount } from "../decks";
+import { sanitizeAudience } from "../audience-pages";
 import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
 import { PaywallModal } from "../components/PaywallModal";
@@ -20,6 +21,7 @@ export function AppHome() {
   const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [theme, setTheme] = useState(() => sanitizeDeckTheme(params.get("theme")));
   const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
+  const [audience] = useState(() => sanitizeAudience(params.get("audience")));
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState("");
   const [err, setErr] = useState("");
@@ -98,7 +100,7 @@ export function AppHome() {
         form.set("topic", topic);
         form.set("locale", "ru");
         form.set("slideCount", String(slideCount));
-        form.set("audience", "school");
+        form.set("audience", audience);
         form.set("theme", theme);
         for (const f of files) form.append("files", f);
         created = await api<{ deckId: string }>("/api/decks", {
@@ -108,7 +110,7 @@ export function AppHome() {
       } else {
         created = await api<{ deckId: string }>("/api/decks", {
           method: "POST",
-          body: JSON.stringify({ topic, locale: "ru", slideCount, audience: "school", theme }),
+          body: JSON.stringify({ topic, locale: "ru", slideCount, audience, theme }),
         });
       }
       for (;;) {

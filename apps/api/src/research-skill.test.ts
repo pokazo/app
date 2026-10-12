@@ -21,8 +21,18 @@ describe("research-skill prompts", () => {
       audience: "business",
     });
     expect(user).toMatch(/УАЗ Патриот/);
-    expect(user).toMatch(/business/);
+    expect(user).toMatch(/бизнес/i);
     expect(user).toMatch(/web-search/);
+  });
+
+  it("expands landing path audience for prompts", () => {
+    const user = researchUserPrompt({
+      topic: "Фотосинтез",
+      locale: "ru",
+      audience: "shkola",
+    });
+    expect(user).toMatch(/\/shkola/);
+    expect(user).toMatch(/школьн/i);
   });
 
   it("unavailable markdown mentions missing keys", () => {

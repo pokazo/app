@@ -25,3 +25,9 @@ export function audienceBySlug(slug: string | undefined): AudiencePage | undefin
 }
 
 export const AUDIENCE_PATHS = AUDIENCE_PAGES.map((p) => p.slug);
+
+/** Create-flow audience: landing slug or default school. */
+export function sanitizeAudience(raw: string | null | undefined): AudienceSlug | "school" {
+  const id = (raw ?? "").trim().toLowerCase();
+  return AUDIENCE_PATHS.includes(id as AudienceSlug) ? (id as AudienceSlug) : "school";
+}

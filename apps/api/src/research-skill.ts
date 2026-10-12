@@ -1,3 +1,5 @@
+import { audienceForPrompt } from "./audience.js";
+
 export function researchSystemPrompt(locale: string): string {
   const lang = locale === "ru" ? "Russian" : locale;
   return `You research a presentation topic BEFORE the outline is written.
@@ -31,7 +33,7 @@ export function researchUserPrompt(opts: {
 }): string {
   return `Тема презентации: ${opts.topic}
 Язык: ${opts.locale}
-Аудитория: ${opts.audience}
+Аудитория: ${audienceForPrompt(opts.audience)}
 
 Найди через web-search проверяемые факты по теме (цифры, даты, названия, сравнения).
 Затем напиши markdown-конспект по шаблону из system prompt.

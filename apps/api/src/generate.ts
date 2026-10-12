@@ -21,6 +21,8 @@ import {
 import { validateOutlinePlan } from "./outline-plan.js";
 import { generateOutlineWithLayoutMcp } from "./outline-layout-agent.js";
 import { runTopicResearch } from "./research.js";
+import { resolveDeckTheme } from "./theme-pick.js";
+import { sanitizePickerTheme, type SelectableThemeId } from "./themes.js";
 import { createPhaseTimer } from "./timing.js";
 import {
   composeStepMayChangeDeck,
@@ -103,10 +105,9 @@ export async function generateDeck(opts: {
   workDir: string;
   /** Called after hero slide is built so the player can open early. */
   onPreviewReady?: () => Promise<void>;
+  /** Called when auto theme is resolved (or user theme confirmed) so DB/UI can update. */
+  onThemeResolved?: (theme: SelectableThemeId, meta: { reason: string; via: string }) => Promise<void>;
 }): Promise<void> {
-  const theme = opts.theme;
-  const skill = composeSkill(theme, opts.locale);
-  const heroSystem = heroSkill(theme, opts.locale);
   const mcpCalls: McpCallLog[] = [];
   const attributions: Array<
     StockToolAttribution | GenToolAttribution | YandexToolAttribution | UploadToolAttribution
@@ -117,6 +118,41 @@ export async function generateDeck(opts: {
 
   await mkdir(join(opts.workDir, "public"), { recursive: true });
   installDeckLayouts(opts.workDir);
+
+  const outlineModel = model(config.outlineModel);
+  const requestedTheme = sanitizePickerTheme(opts.theme);
+  console.info(`[generate] theme-pick start requested=${requestedTheme} topic=${opts.topic}`);
+  const themePick = await resolveDeckTheme({
+    requested: requestedTheme,
+    topic: opts.topic,
+    locale: opts.locale,
+    audience: opts.audience,
+    model: outlineModel,
+  });
+  const theme = themePick.theme;
+  await writeFile(
+    join(opts.workDir, "theme-pick.json"),
+    JSON.stringify(
+      {
+        requested: requestedTheme,
+        theme: themePick.theme,
+        reason: themePick.reason,
+        via: themePick.via,
+      },
+      null,
+      2,
+    ),
+  );
+  if (opts.onThemeResolved) {
+    await opts.onThemeResolved(theme, { reason: themePick.reason, via: themePick.via });
+  }
+  timer.mark("theme-pick");
+  console.info(
+    `[generate] theme-pick done via=${themePick.via} theme=${theme} reason=${themePick.reason}`,
+  );
+
+  const skill = composeSkill(theme, opts.locale);
+  const heroSystem = heroSkill(theme, opts.locale);
 
   const uploadDir = hasUploadImages(config.uploadDataDir, opts.id)
     ? uploadDirForDeck(config.uploadDataDir, opts.id)
@@ -144,7 +180,7 @@ export async function generateDeck(opts: {
     audience: opts.audience,
     apiKey: config.yandexSearchApiKey,
     folderId: config.yandexFolderId,
-    model: model(config.outlineModel),
+    model: outlineModel,
   });
   await writeFile(join(opts.workDir, "research.md"), research.markdown, "utf8");
   await writeFile(
@@ -167,8 +203,8 @@ export async function generateDeck(opts: {
 
   console.info(`[generate] outline via layout MCP start`);
   const outlined = await generateOutlineWithLayoutMcp({
-    model: model(config.outlineModel),
-    reviseModel: model(config.outlineModel),
+    model: outlineModel,
+    reviseModel: outlineModel,
     topic: opts.topic,
     locale: opts.locale,
     audience: opts.audience,
@@ -466,6 +502,9 @@ export async function generateDeck(opts: {
   const trace = {
     outlineModel: config.outlineModel,
     composeModel: config.composeModel,
+    requestedTheme,
+    theme,
+    themePickVia: themePick.via,
     slideCount: outline.object.slides.length,
     visualSlides,
     stockDownloads: attributions.length,

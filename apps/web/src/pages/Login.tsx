@@ -14,6 +14,7 @@ export function Login() {
     const topic = params.get("topic") ?? "";
     const theme = params.get("theme") ?? "";
     const slides = params.get("slides") ?? "";
+    const audience = params.get("audience") ?? "";
     let dest = base;
     if (topic) {
       const join = dest.includes("?") ? "&" : "?";
@@ -26,6 +27,10 @@ export function Login() {
     if (slides) {
       const join = dest.includes("?") ? "&" : "?";
       dest = `${dest}${join}slides=${encodeURIComponent(slides)}`;
+    }
+    if (audience) {
+      const join = dest.includes("?") ? "&" : "?";
+      dest = `${dest}${join}audience=${encodeURIComponent(audience)}`;
     }
     return dest;
   }, [params]);

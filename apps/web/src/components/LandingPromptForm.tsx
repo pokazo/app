@@ -5,8 +5,13 @@ import { ThemePicker } from "./ThemePicker";
 import { SlideCountPicker } from "./SlideCountPicker";
 import { apiUrl } from "../safe";
 import { sanitizeDeckTheme, SLIDE_COUNT_DEFAULT } from "../decks";
+import { sanitizeAudience, type AudienceSlug } from "../audience-pages";
 
-export function LandingPromptForm(props: { placeholder: string }) {
+export function LandingPromptForm(props: {
+  placeholder: string;
+  /** Landing path slug, e.g. shkola from /shkola — shapes create prompts. */
+  audience?: AudienceSlug;
+}) {
   const [topic, setTopic] = useState("");
   const [theme, setTheme] = useState("auto");
   const [slideCount, setSlideCount] = useState(SLIDE_COUNT_DEFAULT);
@@ -16,7 +21,8 @@ export function LandingPromptForm(props: { placeholder: string }) {
     const text = t.trim();
     if (text.length < 5) return;
     const pick = sanitizeDeckTheme(theme);
-    const q = `topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}&slides=${slideCount}`;
+    const audience = sanitizeAudience(props.audience);
+    const q = `topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}&slides=${slideCount}&audience=${encodeURIComponent(audience)}`;
     const dest = `/app?${q}`;
     try {
       const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });

@@ -86,6 +86,20 @@ export async function processDeck(
       audience: deck.audience,
       theme: sanitizePickerTheme(deck.theme),
       workDir,
+      onThemeResolved: async (theme) => {
+        await db.query(`UPDATE deck SET theme=$2, updated_at=now() WHERE id=$1`, [id, theme]);
+        await writeFile(
+          join(workDir, "input.json"),
+          JSON.stringify({
+            topic: deck.topic,
+            locale: deck.locale,
+            slideCount: deck.slide_count,
+            audience: deck.audience,
+            theme,
+            requestedTheme: sanitizePickerTheme(deck.theme),
+          }),
+        );
+      },
       onPreviewReady: async () => {
         await db.query(`UPDATE deck SET status='preview', updated_at=now() WHERE id=$1`, [id]);
       },
