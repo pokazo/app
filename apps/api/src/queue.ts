@@ -8,6 +8,7 @@ import { generateDeck } from "./generate.js";
 import { rewriteSlide } from "./rewrite-slide.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { sanitizePickerTheme } from "./themes.js";
+import { finalizeDeckBilling } from "./billing.js";
 
 let queue: Queue | null = null;
 let workerStarted = false;
@@ -32,7 +33,10 @@ export function startDeckWorker(): Queue | null {
             await processRewriteSlide(id, slide, instruction);
             return;
           }
-          await processDeck(String(job.data.id));
+          const maxAttempts = job.opts.attempts ?? 1;
+          await processDeck(String(job.data.id), {
+            finalAttempt: job.attemptsMade + 1 >= maxAttempts,
+          });
         },
         {
           connection: redis(),
@@ -47,7 +51,11 @@ export function startDeckWorker(): Queue | null {
   }
 }
 
-export async function processDeck(id: string): Promise<void> {
+export async function processDeck(
+  id: string,
+  options: { finalAttempt?: boolean } = {},
+): Promise<void> {
+  const finalAttempt = options.finalAttempt ?? true;
   if (!pool) throw new Error("no db");
   const db = pool;
   await db.query(
@@ -101,11 +109,23 @@ export async function processDeck(id: string): Promise<void> {
     );
     await db.query(`UPDATE deck SET status='ready', updated_at=now() WHERE id=$1`, [id]);
   } catch (err) {
-    await db.query(`UPDATE deck SET status='failed', error=$2, updated_at=now() WHERE id=$1`, [
-      id,
-      String(err),
-    ]);
+    await db.query(
+      `UPDATE deck SET status=$2, error=$3, updated_at=now() WHERE id=$1`,
+      [id, finalAttempt ? "failed" : "queued", String(err)],
+    );
+    if (finalAttempt) {
+      try {
+        await finalizeDeckBilling(id, "failed");
+      } catch (billingError) {
+        console.error(`[billing] failed to finalize failed deck ${id}`, billingError);
+      }
+    }
     throw err;
+  }
+  try {
+    await finalizeDeckBilling(id, "ready");
+  } catch (err) {
+    console.error(`[billing] failed to finalize ready deck ${id}`, err);
   }
 }
 

@@ -23,6 +23,18 @@ import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./spe
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { readPreviewBuild } from "./progressive-preview.js";
 import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
+import {
+  applyPaidPayment,
+  finalizeDeckBilling,
+  getBillingMe,
+  reserveGenerate,
+  type BillingProduct,
+} from "./billing.js";
+import {
+  getTochkaClient,
+  isTochkaPaidStatus,
+  parseTochkaWebhook,
+} from "./tochka.js";
 
 const DECK_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -106,6 +118,111 @@ export function createApp() {
     app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
   }
 
+  app.get("/api/billing/me", async (c) => {
+    if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session?.user) return c.json({ error: "unauthorized" }, 401);
+    return c.json(await getBillingMe(session.user.id));
+  });
+
+  app.post("/api/billing/checkout", async (c) => {
+    if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
+    if (!config.paymentsEnabled) return c.json({ error: "payments disabled" }, 403);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session?.user) return c.json({ error: "unauthorized" }, 401);
+    const body = await c.req.json<{ product?: string }>();
+    if (body.product !== "credit_1" && body.product !== "month_30") {
+      return c.json({ error: "bad product" }, 400);
+    }
+
+    const product: BillingProduct = body.product;
+    const paymentId = randomUUID();
+    const amountKopecks =
+      product === "credit_1" ? config.priceCreditKopecks : config.priceMonthKopecks;
+    await pool.query(
+      `INSERT INTO payment (id, user_id, product, amount_kopecks, status)
+       VALUES ($1, $2, $3, $4, 'pending')`,
+      [paymentId, session.user.id, product, amountKopecks],
+    );
+
+    const successRedirectUrl = `${config.publicBaseUrl}/app?paid=1`;
+    if (config.billingFreeUnlock) {
+      const operationId = `free-${paymentId}`;
+      await applyPaidPayment(paymentId, operationId);
+      await pool.query(
+        `UPDATE payment SET payment_url=$2 WHERE id=$1`,
+        [paymentId, successRedirectUrl],
+      );
+      return c.json({ paymentId, paymentUrl: successRedirectUrl, amountKopecks });
+    }
+
+    const payment = await getTochkaClient().createPaymentLink({
+      amountKopecks,
+      purpose:
+        product === "credit_1"
+          ? "Одна презентация в Показо"
+          : "Безлимит Показо на 30 дней",
+      paymentId,
+      successRedirectUrl,
+      failRedirectUrl: `${config.publicBaseUrl}/app?paid=0`,
+    });
+    await pool.query(
+      `UPDATE payment
+          SET payment_url=$2, tochka_operation_id=$3
+        WHERE id=$1`,
+      [paymentId, payment.paymentUrl, payment.operationId],
+    );
+    return c.json({
+      paymentId,
+      paymentUrl: payment.paymentUrl,
+      amountKopecks,
+    });
+  });
+
+  app.post("/api/payments/tochka/webhook", async (c) => {
+    const rawBody = (await c.req.text()).trim();
+    const stubJson =
+      rawBody.startsWith("{") &&
+      (config.billingFreeUnlock || !config.tochkaAccessToken.trim());
+
+    const event = await parseTochkaWebhook(rawBody);
+    if (!event) return c.json({ error: "bad webhook" }, 400);
+    if (!event.verifiedJwt && !stubJson) return c.json({ error: "bad webhook" }, 400);
+    if (!pool || !isTochkaPaidStatus(event.status)) return c.json({ ok: true });
+
+    try {
+      let paymentId: string | undefined;
+      if (event.paymentLinkId) {
+        const result = await pool.query<{ id: string }>(
+          `SELECT id FROM payment WHERE id=$1 LIMIT 1`,
+          [event.paymentLinkId],
+        );
+        paymentId = result.rows[0]?.id;
+      }
+      if (!paymentId && event.verifiedJwt && event.operationId) {
+        const result = await pool.query<{ id: string }>(
+          `SELECT id FROM payment WHERE tochka_operation_id=$1 LIMIT 1`,
+          [event.operationId],
+        );
+        paymentId = result.rows[0]?.id;
+      }
+      if (paymentId) {
+        await applyPaidPayment(
+          paymentId,
+          event.operationId ?? `stub-payment-${paymentId}`,
+        );
+      } else {
+        console.warn("[billing] Tochka payment not found", {
+          paymentLinkId: event.paymentLinkId,
+          operationId: event.operationId,
+        });
+      }
+    } catch (error) {
+      console.error("[billing] Tochka webhook", error);
+    }
+    return c.json({ ok: true });
+  });
+
   app.post("/api/decks", async (c) => {
     if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -128,13 +245,32 @@ export function createApp() {
         sanitizePickerTheme(fields.theme),
       ],
     );
+    const reserved = await reserveGenerate(session.user.id, id);
+    if (!reserved.ok) {
+      await pool.query(`DELETE FROM deck WHERE id=$1`, [id]);
+      const billing = await getBillingMe(session.user.id);
+      return c.json({ error: "payment_required", billing }, 402);
+    }
     if (files.length > 0) {
-      const manifest = await persistDeckUploads({
-        uploadRoot: config.uploadDataDir,
-        deckId: id,
-        files,
-      });
-      console.info(`[api] deck ${id} uploads=${manifest.files.length}`);
+      try {
+        const manifest = await persistDeckUploads({
+          uploadRoot: config.uploadDataDir,
+          deckId: id,
+          files,
+        });
+        console.info(`[api] deck ${id} uploads=${manifest.files.length}`);
+      } catch (error) {
+        await pool.query(
+          `UPDATE deck SET status='failed', error=$2, updated_at=now() WHERE id=$1`,
+          [id, String(error)],
+        );
+        try {
+          await finalizeDeckBilling(id, "failed");
+        } catch (billingError) {
+          console.error(`[billing] failed to finalize upload failure for deck ${id}`, billingError);
+        }
+        throw error;
+      }
     }
     await enqueueDeck(id);
     return c.json({ deckId: id, status: "queued" }, 201);

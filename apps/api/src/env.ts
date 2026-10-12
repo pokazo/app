@@ -36,4 +36,13 @@ export const config = {
   openaiApiKey: env("OPENAI_API_KEY"),
   openaiImageModel: env("OPENAI_IMAGE_MODEL", "gpt-image-1-mini"),
   openaiImageApiBase: env("OPENAI_IMAGE_API_BASE", "https://api.openai.com/v1"),
+  publicBaseUrl: env("PUBLIC_BASE_URL", "http://localhost:5173"),
+  paymentsEnabled: env("PAYMENTS_ENABLED", "false") === "true",
+  billingFreeUnlock: env("BILLING_FREE_UNLOCK", "false") === "true",
+  tochkaAccessToken: env("TOCHKA_ACCESS_TOKEN"),
+  tochkaCustomerCode: env("TOCHKA_CUSTOMER_CODE"),
+  tochkaMerchantId: env("TOCHKA_MERCHANT_ID"),
+  tochkaApiBaseUrl: env("TOCHKA_API_BASE_URL", "https://enter.tochka.com"),
+  priceCreditKopecks: Number(env("PRICE_CREDIT_KOPECKS", "19900")),
+  priceMonthKopecks: Number(env("PRICE_MONTH_KOPECKS", "39900")),
 };

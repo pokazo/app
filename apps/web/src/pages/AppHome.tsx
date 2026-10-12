@@ -2,17 +2,21 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
-import { api, apiUrl } from "../api";
+import { api, ApiError, apiUrl } from "../api";
 import { deckStatusLabel, deckViewable, sanitizeDeckTheme, sanitizeSlideCount } from "../decks";
 import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
+import { PaywallModal } from "../components/PaywallModal";
+import { BillingMe, formatBillingLabel } from "../billing";
 
 type Me = { id: string; email: string; name: string };
 
 export function AppHome() {
   const nav = useNavigate();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const [me, setMe] = useState<Me | null>(null);
+  const [billing, setBilling] = useState<BillingMe | null>(null);
+  const [paywall, setPaywall] = useState<BillingMe | null>(null);
   const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [theme, setTheme] = useState(() => sanitizeDeckTheme(params.get("theme")));
   const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
@@ -29,6 +33,49 @@ export function AppHome() {
       .then((data: Me) => setMe(data))
       .catch(() => nav(`/login?next=${encodeURIComponent("/app")}`));
   }, [nav]);
+
+  useEffect(() => {
+    if (!me) return;
+    let cancelled = false;
+    const paidReturn = params.get("paid") === "1";
+
+    void (async () => {
+      let baseline: BillingMe | null = null;
+      const attempts = paidReturn ? 8 : 1;
+      for (let attempt = 0; attempt < attempts && !cancelled; attempt += 1) {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+        try {
+          const current = await api<BillingMe>("/api/billing/me");
+          if (cancelled) return;
+          setBilling(current);
+          if (
+            baseline &&
+            (current.credits !== baseline.credits ||
+              current.plan !== baseline.plan ||
+              current.planUntil !== baseline.planUntil)
+          ) {
+            break;
+          }
+          baseline ??= current;
+        } catch {
+          if (!cancelled) setBilling(null);
+        }
+      }
+      if (paidReturn && !cancelled) {
+        setParams((current) => {
+          const next = new URLSearchParams(current);
+          next.delete("paid");
+          return next;
+        }, { replace: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [me, params, setParams]);
 
   async function onOut() {
     await fetch(apiUrl("/api/auth/sign-out"), {
@@ -80,7 +127,16 @@ export function AppHome() {
           return;
         }
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 402) {
+        const body = error.body as { billing?: BillingMe } | null;
+        if (body?.billing) {
+          setBilling(body.billing);
+          setPaywall(body.billing);
+          setStatus("");
+          return;
+        }
+      }
       setErr("Не удалось создать");
       setStatus("");
     }
@@ -96,6 +152,9 @@ export function AppHome() {
       <main className="app-page">
         <div className="wrap app-form">
           <h1>Новая презентация</h1>
+          {billing?.paymentsEnabled ? (
+            <p className="billing-balance">{formatBillingLabel(billing)}</p>
+          ) : null}
           <form className="prompt-card" onSubmit={onCreate}>
             <textarea
               className="pk"
@@ -129,6 +188,7 @@ export function AppHome() {
           {err ? <p className="err app-note">{err}</p> : null}
         </div>
       </main>
+      {paywall ? <PaywallModal billing={paywall} onClose={() => setPaywall(null)} /> : null}
     </>
   );
 }
