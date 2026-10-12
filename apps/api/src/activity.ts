@@ -132,3 +132,40 @@ export function wrapToolsWithActivity(
   }
   return out;
 }
+
+export type ActivityPublisher = {
+  set: (label: string) => Promise<void>;
+  /** Keep the current tool label visible for pollers, then flip to thinking. */
+  thinkAfterHold: () => Promise<void>;
+};
+
+const DEFAULT_HOLD_MS = 2500;
+
+/**
+ * Activity writer that holds short tool labels long enough for a ~1–2s UI poll,
+ * and cancels a pending "Думаю…" if a newer label arrives.
+ */
+export function createActivityPublisher(opts: {
+  write: (label: string) => void | Promise<void>;
+  holdMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+}): ActivityPublisher {
+  const holdMs = opts.holdMs ?? DEFAULT_HOLD_MS;
+  const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let gen = 0;
+
+  return {
+    async set(label: string) {
+      gen += 1;
+      await opts.write(label);
+    },
+    async thinkAfterHold() {
+      const mine = gen;
+      await sleep(holdMs);
+      if (gen !== mine) return;
+      gen += 1;
+      await opts.write(THINKING);
+    },
+  };
+}

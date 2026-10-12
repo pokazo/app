@@ -1,5 +1,10 @@
 import { generateObject, generateText, tool } from "ai";
-import { activityLabelForPhase, wrapToolsWithActivity } from "./activity.js";
+import {
+  activityLabelForPhase,
+  activityLabelForTools,
+  createActivityPublisher,
+  wrapToolsWithActivity,
+} from "./activity.js";
 import { Outline, type OutlineT } from "./outline.js";
 import {
   formatOutlinePlanIssues,
@@ -89,8 +94,13 @@ export async function generateOutlineWithLayoutMcp(opts: {
         ...layoutTools,
         submit_outline,
       };
-      const tools = opts.onActivity ? wrapToolsWithActivity(rawTools, opts.onActivity) : rawTools;
-      if (opts.onActivity) await opts.onActivity(activityLabelForPhase("thinking"));
+      const activity = opts.onActivity
+        ? createActivityPublisher({ write: opts.onActivity })
+        : null;
+      const tools = activity
+        ? wrapToolsWithActivity(rawTools, (label) => activity.set(label))
+        : rawTools;
+      if (activity) await activity.set(activityLabelForPhase("thinking"));
       await generateText({
         model: opts.model,
         system: OUTLINE_LAYOUT_SYSTEM,
@@ -106,9 +116,9 @@ export async function generateOutlineWithLayoutMcp(opts: {
         onStepFinish: async (step) => {
           const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
           console.info(`[llm] outline step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
-          if (opts.onActivity && step.finishReason === "tool-calls") {
-            await opts.onActivity(activityLabelForPhase("thinking"));
-          }
+          if (!activity) return;
+          if (names.length) await activity.set(activityLabelForTools(names));
+          if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
         },
       });
     },

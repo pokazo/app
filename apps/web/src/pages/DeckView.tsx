@@ -29,7 +29,7 @@ type ViewMeta = {
 };
 
 const WAIT_TIMEOUT_MS = 20 * 60 * 1000;
-const POLL_MS = 2000;
+const POLL_MS = 1000;
 
 export function DeckView() {
   const { id = "" } = useParams();

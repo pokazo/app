@@ -27,6 +27,7 @@ import { createPhaseTimer } from "./timing.js";
 import {
   activityLabelForPhase,
   activityLabelForTools,
+  createActivityPublisher,
   writeDeckActivity,
   wrapToolsWithActivity,
 } from "./activity.js";
@@ -121,13 +122,16 @@ export async function generateDeck(opts: {
   const llm: unknown[] = [];
   const timer = createPhaseTimer(`deck=${opts.id}`);
   const stepTimers = new Map<"hero" | "compose" | "repair", number>();
-  const setActivity = async (label: string) => {
-    try {
-      await writeDeckActivity(opts.workDir, label);
-    } catch (err) {
-      console.warn(`[activity] write failed: ${String(err).slice(0, 160)}`);
-    }
-  };
+  const activity = createActivityPublisher({
+    write: async (label) => {
+      try {
+        await writeDeckActivity(opts.workDir, label);
+      } catch (err) {
+        console.warn(`[activity] write failed: ${String(err).slice(0, 160)}`);
+      }
+    },
+  });
+  const setActivity = (label: string) => activity.set(label);
   const withLiveActivity = (tools: Record<string, unknown>) =>
     wrapToolsWithActivity(tools, setActivity);
 
@@ -327,11 +331,8 @@ export async function generateDeck(opts: {
               console.info(
                 `[llm] hero step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
               );
-              if (step.finishReason === "tool-calls") {
-                await setActivity(activityLabelForPhase("thinking"));
-              } else {
-                await setActivity(activityLabelForTools(names));
-              }
+              if (names.length) await setActivity(activityLabelForTools(names));
+              if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
             },
           });
           llm.push(summarizeGenerate("hero", result));
@@ -449,11 +450,8 @@ export async function generateDeck(opts: {
             console.info(
               `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
             );
-            if (step.finishReason === "tool-calls") {
-              await setActivity(activityLabelForPhase("thinking"));
-            } else {
-              await setActivity(activityLabelForTools(names));
-            }
+            if (names.length) await setActivity(activityLabelForTools(names));
+            if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
             if (composeStepMayChangeDeck(names)) {
               // Don't block the LLM on Slidev build — coalesce rebuilds in the background.
               void publishProgressivePreview();
@@ -507,9 +505,8 @@ export async function generateDeck(opts: {
               console.info(
                 `[llm] repair step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
               );
-              if (step.finishReason === "tool-calls") {
-                await setActivity(activityLabelForPhase("thinking"));
-              }
+              if (names.length) await setActivity(activityLabelForTools(names));
+              if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
             },
           });
           llm.push(summarizeGenerate("repair", result));

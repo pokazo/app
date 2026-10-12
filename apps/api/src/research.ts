@@ -1,5 +1,10 @@
 import { generateText } from "ai";
-import { activityLabelForPhase, activityLabelForTools, wrapToolsWithActivity } from "./activity.js";
+import {
+  activityLabelForPhase,
+  activityLabelForTools,
+  createActivityPublisher,
+  wrapToolsWithActivity,
+} from "./activity.js";
 import {
   RESEARCH_UNAVAILABLE_MARKDOWN,
   researchSystemPrompt,
@@ -42,12 +47,13 @@ export async function runTopicResearch(opts: {
       searchCalls += 1;
     },
   });
-  const tools = opts.onActivity
-    ? wrapToolsWithActivity(rawTools, opts.onActivity)
-    : rawTools;
+  const activity = opts.onActivity
+    ? createActivityPublisher({ write: opts.onActivity })
+    : null;
+  const tools = activity ? wrapToolsWithActivity(rawTools, (label) => activity.set(label)) : rawTools;
 
   const generate = opts.generateTextFn ?? generateText;
-  if (opts.onActivity) await opts.onActivity(activityLabelForPhase("thinking"));
+  if (activity) await activity.set(activityLabelForPhase("thinking"));
   const result = await generate({
     model: opts.model as never,
     system: researchSystemPrompt(opts.locale),
@@ -59,13 +65,10 @@ export async function runTopicResearch(opts: {
       audience: opts.audience,
     }),
     onStepFinish: async (step) => {
-      if (!opts.onActivity) return;
+      if (!activity) return;
       const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-      if (step.finishReason === "tool-calls") {
-        await opts.onActivity(activityLabelForPhase("thinking"));
-      } else {
-        await opts.onActivity(activityLabelForTools(names));
-      }
+      if (names.length) await activity.set(activityLabelForTools(names));
+      if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
     },
   });
 

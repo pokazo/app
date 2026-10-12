@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   activityLabelForPhase,
   activityLabelForTools,
+  createActivityPublisher,
   readDeckActivity,
   writeDeckActivity,
   wrapToolsWithActivity,
@@ -69,5 +70,37 @@ describe("wrapToolsWithActivity", () => {
     };
     await tool.execute({});
     expect(labels).toEqual(["Ищу фон", "inside"]);
+  });
+});
+
+describe("createActivityPublisher", () => {
+  it("holds a tool label before flipping back to thinking", async () => {
+    const labels: string[] = [];
+    const pub = createActivityPublisher({
+      write: async (label) => {
+        labels.push(label);
+      },
+      holdMs: 30,
+      sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    });
+    await pub.set("Качаю фото");
+    await pub.thinkAfterHold();
+    expect(labels).toEqual(["Качаю фото", "Думаю…"]);
+  });
+
+  it("cancels delayed thinking when a newer label arrives", async () => {
+    const labels: string[] = [];
+    const pub = createActivityPublisher({
+      write: async (label) => {
+        labels.push(label);
+      },
+      holdMs: 40,
+      sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    });
+    await pub.set("Качаю фото");
+    const pending = pub.thinkAfterHold();
+    await pub.set("Верстаю слайд");
+    await pending;
+    expect(labels).toEqual(["Качаю фото", "Верстаю слайд"]);
   });
 });
