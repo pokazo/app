@@ -55,6 +55,9 @@ importers:
       ioredis:
         specifier: ^5.6.1
         version: 5.11.1
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
       markdown-it:
         specifier: 14.1.0
         version: 14.1.0
