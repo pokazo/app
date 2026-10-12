@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("./migrate.js", () => ({ pool: mocks.pool }));
 
-import { finalizeDeckBilling } from "./billing.js";
+import { applyPaidPayment, finalizeDeckBilling } from "./billing.js";
 
 describe("finalizeDeckBilling free transitions", () => {
   let billingKind: string;
@@ -66,5 +66,34 @@ describe("finalizeDeckBilling free transitions", () => {
 
     expect(billingKind).toBe("free");
     expect(freeUsed).toBe(true);
+  });
+});
+
+describe("applyPaidPayment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    ["credit_1", "credits = credits + 1"],
+    ["month_30", "SET plan = 'month'"],
+  ] as const)("applies %s and marks the payment paid", async (product, entitlementSql) => {
+    const queries: string[] = [];
+    mocks.query.mockImplementation(async (sql: string) => {
+      queries.push(sql);
+      if (sql.includes("SELECT status, product, user_id")) {
+        return {
+          rows: [{ status: "pending", product, user_id: "user-1" }],
+          rowCount: 1,
+        };
+      }
+      return { rows: [], rowCount: 1 };
+    });
+
+    await applyPaidPayment("payment-1", "operation-1");
+
+    expect(queries.some((sql) => sql.includes(entitlementSql))).toBe(true);
+    expect(queries.some((sql) => sql.includes("SET status = 'paid'"))).toBe(true);
+    expect(queries.at(-1)).toBe("COMMIT");
   });
 });

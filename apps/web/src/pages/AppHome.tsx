@@ -36,16 +36,45 @@ export function AppHome() {
 
   useEffect(() => {
     if (!me) return;
-    api<BillingMe>("/api/billing/me")
-      .then((data) => {
-        setBilling(data);
-        if (params.get("paid") === "1") {
-          const next = new URLSearchParams(params);
-          next.delete("paid");
-          setParams(next, { replace: true });
+    let cancelled = false;
+    const paidReturn = params.get("paid") === "1";
+
+    void (async () => {
+      let baseline: BillingMe | null = null;
+      const attempts = paidReturn ? 8 : 1;
+      for (let attempt = 0; attempt < attempts && !cancelled; attempt += 1) {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
-      })
-      .catch(() => setBilling(null));
+        try {
+          const current = await api<BillingMe>("/api/billing/me");
+          if (cancelled) return;
+          setBilling(current);
+          if (
+            baseline &&
+            (current.credits !== baseline.credits ||
+              current.plan !== baseline.plan ||
+              current.planUntil !== baseline.planUntil)
+          ) {
+            break;
+          }
+          baseline ??= current;
+        } catch {
+          if (!cancelled) setBilling(null);
+        }
+      }
+      if (paidReturn && !cancelled) {
+        setParams((current) => {
+          const next = new URLSearchParams(current);
+          next.delete("paid");
+          return next;
+        }, { replace: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [me, params, setParams]);
 
   async function onOut() {

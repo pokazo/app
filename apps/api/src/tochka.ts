@@ -1,4 +1,4 @@
-import { importJWK, jwtVerify, type JWK } from "jose";
+import { compactVerify, importJWK, type JWK } from "jose";
 import { config } from "./env.js";
 
 const TOCHKA_PUBLIC_JWK: JWK = {
@@ -35,6 +35,7 @@ export type TochkaWebhookEvent = {
   operationId: string | null;
   paymentLinkId: string | null;
   status: string;
+  verifiedJwt: boolean;
 };
 
 export type CreatePaymentLinkOptions = {
@@ -179,19 +180,27 @@ export function getTochkaClient(): TochkaClient {
 
 export async function parseTochkaWebhook(rawBody: string): Promise<TochkaWebhookEvent | null> {
   const text = rawBody.trim();
-  if (text.startsWith("{")) return parseJsonWebhook(text);
-
   const token = text.replace(/^"|"$/g, "");
+  if (token.startsWith("{")) return parseJsonWebhook(token);
   if (!token.startsWith("eyJ")) return null;
   try {
-    const { payload } = await jwtVerify(token, await tochkaPublicKey, {
-      algorithms: ["RS256"],
-      clockTolerance: 60,
-    });
-    return webhookEventFrom(payload);
+    const payload = await verifyTochkaWebhookJwt(token);
+    return webhookEventFrom(payload, true);
   } catch {
     return null;
   }
+}
+
+export async function verifyTochkaWebhookJwt(
+  token: string,
+  key?: Awaited<ReturnType<typeof importJWK>>,
+): Promise<Record<string, unknown>> {
+  const { payload } = await compactVerify(token, key ?? await tochkaPublicKey, {
+    algorithms: ["RS256"],
+  });
+  const decoded: unknown = JSON.parse(new TextDecoder().decode(payload));
+  if (!isRecord(decoded)) throw new Error("JWT payload is not an object");
+  return decoded;
 }
 
 export function isTochkaPaidStatus(status: string): boolean {
@@ -201,19 +210,23 @@ export function isTochkaPaidStatus(status: string): boolean {
 function parseJsonWebhook(text: string): TochkaWebhookEvent | null {
   try {
     const data: unknown = JSON.parse(text);
-    return isRecord(data) ? webhookEventFrom(data) : null;
+    return isRecord(data) ? webhookEventFrom(data, false) : null;
   } catch {
     return null;
   }
 }
 
-function webhookEventFrom(data: Record<string, unknown>): TochkaWebhookEvent {
+function webhookEventFrom(
+  data: Record<string, unknown>,
+  verifiedJwt: boolean,
+): TochkaWebhookEvent {
   return {
     operationId: stringOrNull(data.operationId ?? data.operation_id),
     paymentLinkId: stringOrNull(
       data.payment_link_id ?? data.paymentLinkId ?? data.payment_linkId,
     ),
     status: stringOrNull(data.status) ?? "unknown",
+    verifiedJwt,
   };
 }
 

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { generateKeyPair, SignJWT } from "jose";
 import { config } from "./env.js";
 import {
   HttpTochkaClient,
@@ -7,6 +8,7 @@ import {
   getTochkaClient,
   isTochkaPaidStatus,
   parseTochkaWebhook,
+  verifyTochkaWebhookJwt,
 } from "./tochka.js";
 
 afterEach(() => {
@@ -123,6 +125,7 @@ describe("parseTochkaWebhook", () => {
       operationId: "op-1",
       paymentLinkId: "pl-1",
       status: "APPROVED",
+      verifiedJwt: false,
     });
   });
 
@@ -143,8 +146,33 @@ describe("parseTochkaWebhook", () => {
           status: "PAID",
         }),
       ),
-    ).resolves.toEqual({ operationId: "op-2", paymentLinkId: "pl-2", status: "PAID" });
+    ).resolves.toEqual({
+      operationId: "op-2",
+      paymentLinkId: "pl-2",
+      status: "PAID",
+      verifiedJwt: false,
+    });
     await expect(parseTochkaWebhook("eyJ.invalid.signature")).resolves.toBeNull();
+  });
+
+  it("verifies a quoted RS256 JWT without enforcing registered claims", async () => {
+    const { privateKey, publicKey } = await generateKeyPair("RS256");
+    const token = await new SignJWT({
+      operationId: "op-jwt",
+      paymentLinkId: "pay-jwt",
+      status: "APPROVED",
+    })
+      .setProtectedHeader({ alg: "RS256" })
+      .setIssuer("unexpected-issuer")
+      .setAudience("unexpected-audience")
+      .setExpirationTime(1)
+      .setNotBefore("1 hour")
+      .sign(privateKey);
+
+    await expect(verifyTochkaWebhookJwt(token, publicKey)).resolves.toMatchObject({
+      operationId: "op-jwt",
+      paymentLinkId: "pay-jwt",
+    });
   });
 });
 

@@ -127,6 +127,7 @@ export function createApp() {
 
   app.post("/api/billing/checkout", async (c) => {
     if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
+    if (!config.paymentsEnabled) return c.json({ error: "payments disabled" }, 403);
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (!session?.user) return c.json({ error: "unauthorized" }, 401);
     const body = await c.req.json<{ product?: string }>();
@@ -180,34 +181,41 @@ export function createApp() {
 
   app.post("/api/payments/tochka/webhook", async (c) => {
     const rawBody = (await c.req.text()).trim();
-    const verifiedJwt = rawBody.startsWith("eyJ");
     const stubJson =
       rawBody.startsWith("{") &&
       (config.billingFreeUnlock || !config.tochkaAccessToken.trim());
-    if (!verifiedJwt && !stubJson) return c.json({ error: "bad webhook" }, 400);
 
     const event = await parseTochkaWebhook(rawBody);
     if (!event) return c.json({ error: "bad webhook" }, 400);
+    if (!event.verifiedJwt && !stubJson) return c.json({ error: "bad webhook" }, 400);
     if (!pool || !isTochkaPaidStatus(event.status)) return c.json({ ok: true });
 
     try {
-      const lookupId = verifiedJwt ? event.operationId : event.paymentLinkId;
-      if (!lookupId) return c.json({ ok: true });
-      const { rows } = verifiedJwt
-        ? await pool.query<{ id: string }>(
-            `SELECT id FROM payment WHERE tochka_operation_id=$1 LIMIT 1`,
-            [lookupId],
-          )
-        : await pool.query<{ id: string }>(
-            `SELECT id FROM payment WHERE id=$1 LIMIT 1`,
-            [lookupId],
-          );
-      const paymentId = rows[0]?.id;
+      let paymentId: string | undefined;
+      if (event.paymentLinkId) {
+        const result = await pool.query<{ id: string }>(
+          `SELECT id FROM payment WHERE id=$1 LIMIT 1`,
+          [event.paymentLinkId],
+        );
+        paymentId = result.rows[0]?.id;
+      }
+      if (!paymentId && event.verifiedJwt && event.operationId) {
+        const result = await pool.query<{ id: string }>(
+          `SELECT id FROM payment WHERE tochka_operation_id=$1 LIMIT 1`,
+          [event.operationId],
+        );
+        paymentId = result.rows[0]?.id;
+      }
       if (paymentId) {
         await applyPaidPayment(
           paymentId,
           event.operationId ?? `stub-payment-${paymentId}`,
         );
+      } else {
+        console.warn("[billing] Tochka payment not found", {
+          paymentLinkId: event.paymentLinkId,
+          operationId: event.operationId,
+        });
       }
     } catch (error) {
       console.error("[billing] Tochka webhook", error);
@@ -252,7 +260,15 @@ export function createApp() {
         });
         console.info(`[api] deck ${id} uploads=${manifest.files.length}`);
       } catch (error) {
-        await finalizeDeckBilling(id, "failed");
+        await pool.query(
+          `UPDATE deck SET status='failed', error=$2, updated_at=now() WHERE id=$1`,
+          [id, String(error)],
+        );
+        try {
+          await finalizeDeckBilling(id, "failed");
+        } catch (billingError) {
+          console.error(`[billing] failed to finalize upload failure for deck ${id}`, billingError);
+        }
         throw error;
       }
     }

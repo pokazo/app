@@ -48,3 +48,55 @@
 - `GET /api/billing/me` — баланс в `/app`
 - После оплаты return URL: `/app?paid=1` + poll статуса (как payment-status у Госфото)
 - Очередь: failed job → кредит возвращается; free тратится только на первую `ready`
+
+## Ручное освобождение зависшей генерации
+
+Если job окончательно пропал из BullMQ, найдите колоду, которая давно остаётся в
+`queued` / `generating` / `preview`, и выполните транзакцию ниже, подставив UUID.
+Она помечает колоду failed и один раз возвращает кредит либо освобождает free,
+если у пользователя нет другой колоды с активной free-резервацией.
+
+```sql
+BEGIN;
+
+WITH stuck AS (
+  SELECT id, user_id, billing_kind
+    FROM deck
+   WHERE id = 'DECK_UUID'
+     AND status IN ('queued', 'generating', 'preview')
+   FOR UPDATE
+),
+released AS (
+  UPDATE deck d
+     SET status = 'failed',
+         error = 'Released manually after stuck generation',
+         billing_kind = CASE
+           WHEN s.billing_kind = 'free' THEN 'released'
+           WHEN s.billing_kind = 'credit' THEN 'refunded'
+           ELSE s.billing_kind
+         END,
+         updated_at = now()
+    FROM stuck s
+   WHERE d.id = s.id
+  RETURNING d.user_id, s.billing_kind
+)
+UPDATE "user" u
+   SET credits = credits + CASE WHEN r.billing_kind = 'credit' THEN 1 ELSE 0 END,
+       free_used = CASE
+         WHEN r.billing_kind = 'free'
+          AND NOT EXISTS (
+            SELECT 1 FROM deck other
+             WHERE other.user_id = u.id
+               AND other.billing_kind = 'free'
+          )
+         THEN false
+         ELSE free_used
+       END
+  FROM released r
+ WHERE u.id = r.user_id;
+
+COMMIT;
+```
+
+Перед `COMMIT` проверьте изменённые строки; если UUID или состояние неверны —
+выполните `ROLLBACK`.
