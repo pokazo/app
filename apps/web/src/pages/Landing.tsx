@@ -15,8 +15,18 @@ const THUMBS: { id: ExampleThumbId; title: string }[] = [
   { id: "lesson", title: "Урок за вечер" },
 ];
 
+const HOME_TITLE = "Нейросеть для презентаций — Показо";
+const HOME_DESC =
+  "Создайте презентацию по теме онлайн. Русский язык, без VPN. Показ по ссылке в браузере.";
+
 export function Landing() {
   const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
+
+  useEffect(() => {
+    document.title = HOME_TITLE;
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", HOME_DESC);
+  }, []);
 
   useEffect(() => {
     fetch(apiUrl("/api/auth/me"), { credentials: "include" })
