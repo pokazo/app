@@ -495,7 +495,7 @@ export function DeckView() {
                 <button type="submit" className="pk ghost" disabled={!rewriteReady}>
                   {rewriteBusy || (building && rewritingSlide != null)
                     ? "Пересобираем…"
-                    : "Пересобрать"}
+                    : "изменить"}
                 </button>
               </div>
               {rewriteFiles.length ? (
