@@ -23,6 +23,7 @@ type ViewMeta = {
   embedBase: string;
   status?: string;
   building?: boolean;
+  activity?: string | null;
   rewritingSlide?: number;
   rewriteError?: string;
 };
@@ -45,6 +46,7 @@ export function DeckView() {
   const [speechOpen, setSpeechOpen] = useState(false);
   const [embedKey, setEmbedKey] = useState(0);
   const [building, setBuilding] = useState(false);
+  const [activity, setActivity] = useState("");
   const [rewriteText, setRewriteText] = useState("");
   const [rewriteFiles, setRewriteFiles] = useState<File[]>([]);
   const [rewriteBusy, setRewriteBusy] = useState(false);
@@ -140,6 +142,7 @@ export function DeckView() {
         setWaiting(false);
         setErr("");
         setBuilding(isBuilding);
+        setActivity((data.activity ?? "").trim());
         setRewritingSlide(
           typeof data.rewritingSlide === "number" ? data.rewritingSlide : null,
         );
@@ -178,7 +181,12 @@ export function DeckView() {
             return;
           }
           if (dr.ok) {
-            const d = (await dr.json()) as { status?: string; error?: string };
+            const d = (await dr.json()) as {
+              status?: string;
+              error?: string;
+              activity?: string | null;
+            };
+            if (d.activity) setActivity(d.activity.trim());
             if (d.status === "failed") {
               stopWithError(d.error || "Не собралось");
               return;
@@ -400,12 +408,14 @@ export function DeckView() {
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
-      {waiting && !err ? <p className="app-note deck-building">{VIEW_WAITING_NOTE}</p> : null}
+      {waiting && !err ? (
+        <p className="app-note deck-building">{activity || VIEW_WAITING_NOTE}</p>
+      ) : null}
       {building && meta ? (
         <p className="app-note deck-building">
           {rewritingSlide != null
             ? `Пересобираем слайд ${rewritingSlide}…`
-            : "Собираем остальные слайды…"}
+            : activity || "Собираем остальные слайды…"}
         </p>
       ) : null}
       {speechOpen && id && !building ? (

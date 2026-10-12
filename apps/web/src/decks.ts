@@ -23,6 +23,13 @@ export function deckStatusLabel(status: string) {
   return DECK_STATUS_LABEL[status] ?? status;
 }
 
+/** Prefer live 2-word model activity while the deck is busy. */
+export function deckBusyLabel(status: string, activity?: string | null) {
+  const live = (activity ?? "").trim();
+  if (live && deckBusy(status)) return live;
+  return deckStatusLabel(status);
+}
+
 export function deckBusy(status: string) {
   return (
     status === "queued" ||

@@ -25,6 +25,12 @@ import { resolveDeckTheme } from "./theme-pick.js";
 import { sanitizePickerTheme, type SelectableThemeId } from "./themes.js";
 import { createPhaseTimer } from "./timing.js";
 import {
+  activityLabelForPhase,
+  activityLabelForTools,
+  writeDeckActivity,
+  wrapToolsWithActivity,
+} from "./activity.js";
+import {
   composeStepMayChangeDeck,
   shouldRebuildProgressivePreview,
   writePreviewBuild,
@@ -115,12 +121,22 @@ export async function generateDeck(opts: {
   const llm: unknown[] = [];
   const timer = createPhaseTimer(`deck=${opts.id}`);
   const stepTimers = new Map<"hero" | "compose" | "repair", number>();
+  const setActivity = async (label: string) => {
+    try {
+      await writeDeckActivity(opts.workDir, label);
+    } catch (err) {
+      console.warn(`[activity] write failed: ${String(err).slice(0, 160)}`);
+    }
+  };
+  const withLiveActivity = (tools: Record<string, unknown>) =>
+    wrapToolsWithActivity(tools, setActivity);
 
   await mkdir(join(opts.workDir, "public"), { recursive: true });
   installDeckLayouts(opts.workDir);
 
   const outlineModel = model(config.outlineModel);
   const requestedTheme = sanitizePickerTheme(opts.theme);
+  await setActivity(activityLabelForPhase("theme-pick"));
   console.info(`[generate] theme-pick start requested=${requestedTheme} topic=${opts.topic}`);
   const themePick = await resolveDeckTheme({
     requested: requestedTheme,
@@ -173,6 +189,7 @@ export async function generateDeck(opts: {
     `[generate] outline model=${config.outlineModel} compose=${config.composeModel} topic=${opts.topic}`,
   );
 
+  await setActivity(activityLabelForPhase("research"));
   console.info(`[generate] research start topic=${opts.topic}`);
   const research = await runTopicResearch({
     topic: opts.topic,
@@ -181,6 +198,7 @@ export async function generateDeck(opts: {
     apiKey: config.yandexSearchApiKey,
     folderId: config.yandexFolderId,
     model: outlineModel,
+    onActivity: setActivity,
   });
   await writeFile(join(opts.workDir, "research.md"), research.markdown, "utf8");
   await writeFile(
@@ -201,6 +219,7 @@ export async function generateDeck(opts: {
       `chars=${research.markdown.length}`,
   );
 
+  await setActivity(activityLabelForPhase("outline"));
   console.info(`[generate] outline via layout MCP start`);
   const outlined = await generateOutlineWithLayoutMcp({
     model: outlineModel,
@@ -211,6 +230,7 @@ export async function generateDeck(opts: {
     slideCount: opts.slideCount,
     researchMarkdown: research.markdown,
     onMcpCall: (call) => mcpCalls.push(call),
+    onActivity: setActivity,
   });
   timer.mark("outline");
   console.info(
@@ -266,6 +286,7 @@ export async function generateDeck(opts: {
     return withUploadImagesMcp(uploadDir, run, (call) => mcpCalls.push(call));
   };
 
+  await setActivity(activityLabelForPhase("hero"));
   console.info(`[generate] hero-compose start uploads=${Boolean(uploadDir)}`);
   stepTimers.set("hero", Date.now());
   await withOptionalUploadMcp(async (uploadSearchTools) => {
@@ -274,17 +295,20 @@ export async function generateDeck(opts: {
       async (slidevTools) => {
         // Hero catalog MCP is nested here only — outline/compose never open withHeroMcp.
         await withHeroMcp(async (heroCatalogTools) => {
-          const tools = pickHeroTools(
-            mergeComposeTools(
-              slidevTools,
-              heroCatalogTools,
-              uploadSearchTools,
-              uploadUseTools,
-              yandexTools,
-              stockTools,
-              imageGenTools,
+          const tools = withLiveActivity(
+            pickHeroTools(
+              mergeComposeTools(
+                slidevTools,
+                heroCatalogTools,
+                uploadSearchTools,
+                uploadUseTools,
+                yandexTools,
+                stockTools,
+                imageGenTools,
+              ),
             ),
           );
+          await setActivity(activityLabelForPhase("thinking"));
           const result = await generateText({
             model: model(config.composeModel),
             system: heroSystem,
@@ -303,6 +327,11 @@ export async function generateDeck(opts: {
               console.info(
                 `[llm] hero step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
               );
+              if (step.finishReason === "tool-calls") {
+                await setActivity(activityLabelForPhase("thinking"));
+              } else {
+                await setActivity(activityLabelForTools(names));
+              }
             },
           });
           llm.push(summarizeGenerate("hero", result));
@@ -317,6 +346,7 @@ export async function generateDeck(opts: {
 
   const base = `/p/${opts.id}/`;
   const buildAndGate = async (label: string) => {
+    await setActivity(activityLabelForPhase(label === "preview" ? "preview" : "final_build"));
     const t0 = Date.now();
     await buildSlidev(opts.workDir, base);
     const buildMs = Date.now() - t0;
@@ -386,21 +416,25 @@ export async function generateDeck(opts: {
     }
   };
 
+  await setActivity(activityLabelForPhase("compose"));
   stepTimers.set("compose", Date.now());
   await withOptionalUploadMcp(async (uploadSearchTools) => {
     await withSlidevMcp(
       opts.workDir,
       async (slidevTools) => {
-        const tools = stripComposeInspectTools(
-          mergeComposeTools(
-            slidevTools,
-            uploadSearchTools,
-            uploadUseTools,
-            yandexTools,
-            stockTools,
-            imageGenTools,
+        const tools = withLiveActivity(
+          stripComposeInspectTools(
+            mergeComposeTools(
+              slidevTools,
+              uploadSearchTools,
+              uploadUseTools,
+              yandexTools,
+              stockTools,
+              imageGenTools,
+            ),
           ),
         );
+        await setActivity(activityLabelForPhase("thinking"));
         const result = await generateText({
           model: model(config.composeModel),
           system: skill,
@@ -415,6 +449,11 @@ export async function generateDeck(opts: {
             console.info(
               `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
             );
+            if (step.finishReason === "tool-calls") {
+              await setActivity(activityLabelForPhase("thinking"));
+            } else {
+              await setActivity(activityLabelForTools(names));
+            }
             if (composeStepMayChangeDeck(names)) {
               // Don't block the LLM on Slidev build — coalesce rebuilds in the background.
               void publishProgressivePreview();
@@ -437,19 +476,23 @@ export async function generateDeck(opts: {
   } catch (err) {
     repaired = true;
     console.info(`[generate] build failed, MCP repair: ${String(err).slice(0, 400)}`);
+    await setActivity(activityLabelForPhase("repair"));
     stepTimers.set("repair", Date.now());
     await withOptionalUploadMcp(async (uploadSearchTools) => {
       await withSlidevMcp(
         opts.workDir,
         async (slidevTools) => {
-          const tools = mergeComposeTools(
-            slidevTools,
-            uploadSearchTools,
-            uploadUseTools,
-            yandexTools,
-            stockTools,
-            imageGenTools,
+          const tools = withLiveActivity(
+            mergeComposeTools(
+              slidevTools,
+              uploadSearchTools,
+              uploadUseTools,
+              yandexTools,
+              stockTools,
+              imageGenTools,
+            ),
           );
+          await setActivity(activityLabelForPhase("thinking"));
           const result = await generateText({
             model: model(config.composeModel),
             system: skill,
@@ -464,6 +507,9 @@ export async function generateDeck(opts: {
               console.info(
                 `[llm] repair step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
               );
+              if (step.finishReason === "tool-calls") {
+                await setActivity(activityLabelForPhase("thinking"));
+              }
             },
           });
           llm.push(summarizeGenerate("repair", result));

@@ -1,4 +1,5 @@
 import { generateObject, generateText, tool } from "ai";
+import { activityLabelForPhase, wrapToolsWithActivity } from "./activity.js";
 import { Outline, type OutlineT } from "./outline.js";
 import {
   formatOutlinePlanIssues,
@@ -66,6 +67,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
   researchMarkdown?: string;
   maxSteps?: number;
   onMcpCall?: (entry: McpCallLog) => void;
+  onActivity?: (label: string) => void | Promise<void>;
   reviseModel?: Parameters<typeof generateObject>[0]["model"];
 }): Promise<{
   outline: OutlineT;
@@ -83,13 +85,16 @@ export async function generateOutlineWithLayoutMcp(opts: {
           accepted = o;
         },
       });
+      const rawTools = {
+        ...layoutTools,
+        submit_outline,
+      };
+      const tools = opts.onActivity ? wrapToolsWithActivity(rawTools, opts.onActivity) : rawTools;
+      if (opts.onActivity) await opts.onActivity(activityLabelForPhase("thinking"));
       await generateText({
         model: opts.model,
         system: OUTLINE_LAYOUT_SYSTEM,
-        tools: {
-          ...layoutTools,
-          submit_outline,
-        } as never,
+        tools: tools as never,
         maxSteps: opts.maxSteps ?? 24,
         prompt: outlineUserPrompt({
           topic: opts.topic,
@@ -101,6 +106,9 @@ export async function generateOutlineWithLayoutMcp(opts: {
         onStepFinish: async (step) => {
           const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
           console.info(`[llm] outline step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
+          if (opts.onActivity && step.finishReason === "tool-calls") {
+            await opts.onActivity(activityLabelForPhase("thinking"));
+          }
         },
       });
     },

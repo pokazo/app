@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { api, ApiError, apiUrl } from "../api";
-import { deckStatusLabel, deckViewable, sanitizeDeckTheme, sanitizeSlideCount } from "../decks";
+import { deckBusyLabel, deckViewable, sanitizeDeckTheme, sanitizeSlideCount } from "../decks";
 import { sanitizeAudience } from "../audience-pages";
 import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
@@ -24,6 +24,7 @@ export function AppHome() {
   const [audience] = useState(() => sanitizeAudience(params.get("audience")));
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState("");
+  const [activity, setActivity] = useState("");
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -93,6 +94,7 @@ export function AppHome() {
     e.preventDefault();
     setErr("");
     setStatus("queued");
+    setActivity("");
     try {
       let created: { deckId: string };
       if (files.length > 0) {
@@ -115,10 +117,14 @@ export function AppHome() {
       }
       for (;;) {
         await new Promise((r) => setTimeout(r, 2000));
-        const d = await api<{ status: string; viewUrl: string | null; error?: string }>(
-          `/api/decks/${created.deckId}`,
-        );
+        const d = await api<{
+          status: string;
+          viewUrl: string | null;
+          error?: string;
+          activity?: string | null;
+        }>(`/api/decks/${created.deckId}`);
         setStatus(d.status);
+        setActivity(d.activity ?? "");
         if (deckViewable(d.status)) {
           nav(`/view/${created.deckId}`);
           return;
@@ -126,6 +132,7 @@ export function AppHome() {
         if (d.status === "failed") {
           setErr(d.error || "Не собралось");
           setStatus("");
+          setActivity("");
           return;
         }
       }
@@ -136,17 +143,19 @@ export function AppHome() {
           setBilling(body.billing);
           setPaywall(body.billing);
           setStatus("");
+          setActivity("");
           return;
         }
       }
       setErr("Не удалось создать");
       setStatus("");
+      setActivity("");
     }
   }
 
   if (!me) return null;
 
-  const label = deckStatusLabel(status);
+  const label = deckBusyLabel(status, activity);
 
   return (
     <>

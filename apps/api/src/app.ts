@@ -22,6 +22,7 @@ import {
 } from "./deck-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
+import { readDeckActivity } from "./activity.js";
 import { readPreviewBuild } from "./progressive-preview.js";
 import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
 import {
@@ -397,7 +398,15 @@ export function createApp() {
     ]);
     const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
-    return c.json(toDeckDto(deck));
+    const dto = toDeckDto(deck);
+    const activity =
+      deck.status === "queued" ||
+      deck.status === "generating" ||
+      deck.status === "preview" ||
+      deck.status === "building"
+        ? (await readDeckActivity(join(config.deckDataDir, id)))?.label ?? null
+        : null;
+    return c.json({ ...dto, activity });
   });
 
   app.get("/api/view/:id", async (c) => {
@@ -448,6 +457,10 @@ export function createApp() {
       progressive,
       builtSlideCount,
     });
+    const activity =
+      progressive || rewriting
+        ? (await readDeckActivity(dir))?.label ?? null
+        : null;
     return c.json({
       deckId: id,
       topic: outlineTitle(outline, input.topic ?? ""),
@@ -455,6 +468,7 @@ export function createApp() {
       slides,
       status: deckStatus,
       building: progressive || rewriting,
+      activity,
       rewritingSlide: rewriting ? rewrite?.slide : undefined,
       rewriteError: rewrite?.status === "failed" ? rewrite.error ?? "rewrite failed" : undefined,
       embedBase: `${config.apiOrigin}/p/${id}/`,

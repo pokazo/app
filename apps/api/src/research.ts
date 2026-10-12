@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { activityLabelForPhase, activityLabelForTools, wrapToolsWithActivity } from "./activity.js";
 import {
   RESEARCH_UNAVAILABLE_MARKDOWN,
   researchSystemPrompt,
@@ -25,6 +26,7 @@ export async function runTopicResearch(opts: {
   maxSteps?: number;
   generateTextFn?: GenerateTextFn;
   search?: ResearchSearchFn;
+  onActivity?: (label: string) => void | Promise<void>;
 }): Promise<ResearchResult> {
   if (!opts.apiKey || !opts.folderId) {
     console.warn("[research] YANDEX_SEARCH_API_KEY / YANDEX_FOLDER_ID missing — skipping web research");
@@ -32,7 +34,7 @@ export async function runTopicResearch(opts: {
   }
 
   let searchCalls = 0;
-  const tools = createResearchTools({
+  const rawTools = createResearchTools({
     apiKey: opts.apiKey,
     folderId: opts.folderId,
     search: opts.search,
@@ -40,8 +42,12 @@ export async function runTopicResearch(opts: {
       searchCalls += 1;
     },
   });
+  const tools = opts.onActivity
+    ? wrapToolsWithActivity(rawTools, opts.onActivity)
+    : rawTools;
 
   const generate = opts.generateTextFn ?? generateText;
+  if (opts.onActivity) await opts.onActivity(activityLabelForPhase("thinking"));
   const result = await generate({
     model: opts.model as never,
     system: researchSystemPrompt(opts.locale),
@@ -52,6 +58,15 @@ export async function runTopicResearch(opts: {
       locale: opts.locale,
       audience: opts.audience,
     }),
+    onStepFinish: async (step) => {
+      if (!opts.onActivity) return;
+      const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+      if (step.finishReason === "tool-calls") {
+        await opts.onActivity(activityLabelForPhase("thinking"));
+      } else {
+        await opts.onActivity(activityLabelForTools(names));
+      }
+    },
   });
 
   const markdown = (result.text ?? "").trim();

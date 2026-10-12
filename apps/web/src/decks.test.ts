@@ -7,6 +7,7 @@ import {
   SLIDE_COUNT_MIN,
   SLIDE_COUNT_OPTIONS,
   deckBusy,
+  deckBusyLabel,
   deckStatusLabel,
   deckViewable,
   formatWhen,
@@ -31,6 +32,12 @@ describe("deck history screen", () => {
     expect(deckBusy("preview")).toBe(true);
     expect(deckBusy("ready")).toBe(false);
     expect(deckBusy("failed")).toBe(false);
+  });
+
+  it("prefers live activity over coarse status while busy", () => {
+    expect(deckBusyLabel("generating", "Ищу фон")).toBe("Ищу фон");
+    expect(deckBusyLabel("queued", "  ")).toBe("В очереди");
+    expect(deckBusyLabel("ready", "Ищу фон")).toBe("Готово");
   });
 
   it("allows viewing preview and ready", () => {
