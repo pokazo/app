@@ -136,6 +136,7 @@ describe("computeFinalizeBillingAction", () => {
     ["credit", "ready"],
     ["month", "failed"],
     ["off", "failed"],
+    ["released", "failed"],
     ["refunded", "failed"],
     [null, "failed"],
   ] as const)("does nothing for %s + %s", (kind, outcome) => {

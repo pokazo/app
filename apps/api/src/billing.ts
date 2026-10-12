@@ -4,7 +4,7 @@ import { pool } from "./migrate.js";
 
 export type BillingProduct = "credit_1" | "month_30";
 export type BillingKind = "free" | "credit" | "month" | "off";
-type StoredBillingKind = BillingKind | "refunded";
+type StoredBillingKind = BillingKind | "released" | "refunded";
 export type FinalizeBillingAction = "release_free" | "refund_credit" | "none";
 export type BillingMe = {
   paymentsEnabled: boolean;
@@ -205,9 +205,20 @@ export async function finalizeDeckBilling(
 
     const action = computeFinalizeBillingAction(deck.billing_kind, outcome);
     if (action === "release_free") {
-      await client.query(`UPDATE "user" SET free_used = false WHERE id = $1`, [
-        deck.user_id,
-      ]);
+      const released = await client.query<{ user_id: string }>(
+        `UPDATE deck
+            SET billing_kind = 'released'
+          WHERE id = $1 AND billing_kind = 'free'
+        RETURNING user_id`,
+        [deckId],
+      );
+      const releasedUser = released.rows[0];
+      if (releasedUser) {
+        await client.query(
+          `UPDATE "user" SET free_used = false WHERE id = $1`,
+          [releasedUser.user_id],
+        );
+      }
     } else if (action === "refund_credit") {
       const refunded = await client.query<{ user_id: string }>(
         `UPDATE deck
