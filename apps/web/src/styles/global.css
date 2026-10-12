@@ -422,6 +422,12 @@ button.yandex:hover:not(:disabled), a.yandex:hover {
   padding: 8px 16px;
   margin: 4px;
   font-weight: 500;
+  text-decoration: none;
+}
+a.chip:hover { background: #e4dbff; }
+.chip.is-current {
+  background: var(--pk-spot);
+  color: #fff;
 }
 .faq { max-width: 640px; margin: 0 auto; }
 .faq details {

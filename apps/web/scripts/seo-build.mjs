@@ -4,7 +4,8 @@
  * - inject crawler-visible body into index.html
  * - write shell.html (empty #root) for /app|/login|…
  * - write /legal/<doc>/index.html with unique titles
- * - ensure head has canonical / OG / JSON-LD on landing
+ * - write audience landings /urok|/doklad|/shkola|/studenty|/biznes
+ * - ensure head has canonical / OG / JSON-LD
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -66,10 +67,10 @@ const FAQ_JSON_LD = JSON.stringify({
     },
     {
       "@type": "Question",
-      name: "Когда файл PPTX?",
+      name: "Можно скачать PDF или PPTX?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Экспорт в PPTX пока не обещаем в MVP. Сейчас фокус на онлайн-показе по ссылке.",
+        text: "Да. В готовой презентации есть «Скачать PDF» и «Скачать PPTX». PPTX — слайды как картинки.",
       },
     },
     {
@@ -77,7 +78,7 @@ const FAQ_JSON_LD = JSON.stringify({
       name: "На каком языке слайды?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "На русском: тема, структура и тексты слайдов под российскую школу, вуз и работу.",
+        text: "На русском: тема, структура и тексты слайдов под урок, доклад, школу, студентов и бизнес.",
       },
     },
   ],
@@ -85,6 +86,18 @@ const FAQ_JSON_LD = JSON.stringify({
 
 function escapeAttr(s) {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
+function faqJsonLd(faq) {
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  });
 }
 
 function injectHead(html, { title, description, canonical, jsonLd = [], noindex = false }) {
@@ -163,17 +176,18 @@ function injectRoot(html, bodyInner) {
   );
 }
 
-async function writeLegal(distDir, { pathSeg, title, description, bodyFile }) {
+async function writePrerender(distDir, { dirParts, title, description, bodyFile, jsonLd = [] }) {
   const template = await readFile(join(distDir, "shell.html"), "utf8");
   const body = await readFile(join(seo, bodyFile), "utf8");
-  const canonical = `${SITE}/legal/${pathSeg}`;
-  // shell has noindex — strip it for legal pages
+  const pathSeg = dirParts.join("/");
+  const canonical = `${SITE}/${pathSeg}`;
   let html = template.replace(/\s*<meta name="robots" content="noindex"\s*\/?>/, "");
-  html = injectHead(html, { title, description, canonical });
+  html = injectHead(html, { title, description, canonical, jsonLd });
   html = injectRoot(html, body);
-  const dir = join(distDir, "legal", pathSeg);
+  const dir = join(distDir, ...dirParts);
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "index.html"), html, "utf8");
+  return html;
 }
 
 export async function runSeoBuild(distDir = defaultDist) {
@@ -198,18 +212,36 @@ export async function runSeoBuild(distDir = defaultDist) {
   indexHtml = injectRoot(indexHtml, landingBody);
   await writeFile(indexPath, indexHtml, "utf8");
 
-  await writeLegal(distDir, {
-    pathSeg: "offer",
+  await writePrerender(distDir, {
+    dirParts: ["legal", "offer"],
     title: "Публичная оферта — Показо",
     description: "Публичная оферта сервиса Показо для создания презентаций онлайн.",
     bodyFile: "offer-body.html",
   });
-  await writeLegal(distDir, {
-    pathSeg: "privacy",
+  await writePrerender(distDir, {
+    dirParts: ["legal", "privacy"],
     title: "Политика персональных данных — Показо",
     description: "Политика обработки персональных данных сервиса Показо.",
     bodyFile: "privacy-body.html",
   });
+
+  const audience = JSON.parse(await readFile(join(webRoot, "src/audience.json"), "utf8"));
+  const audienceResults = [];
+  for (const page of audience) {
+    const html = await writePrerender(distDir, {
+      dirParts: [page.slug],
+      title: page.title,
+      description: page.description,
+      bodyFile: `${page.slug}-body.html`,
+      jsonLd: [faqJsonLd(page.faq)],
+    });
+    audienceResults.push({
+      slug: page.slug,
+      hasH1: html.includes(`<h1>${page.h1}</h1>`),
+      hasCanonical: html.includes(`href="${SITE}/${page.slug}"`),
+      notMainH1: !html.includes("<h1>Нейросеть для презентаций</h1>"),
+    });
+  }
 
   await writeFile(
     join(distDir, "indexnow-key.json"),
@@ -221,6 +253,8 @@ export async function runSeoBuild(distDir = defaultDist) {
     landingHasH1: indexHtml.includes("<h1>Нейросеть для презентаций</h1>"),
     hasCanonical: indexHtml.includes('rel="canonical"'),
     hasFaqLd: indexHtml.includes("FAQPage"),
+    audienceOk: audienceResults.every((r) => r.hasH1 && r.hasCanonical && r.notMainH1),
+    audienceResults,
   };
 }
 
@@ -228,7 +262,7 @@ const isMain =
   process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   const result = await runSeoBuild();
-  if (!result.landingHasH1 || !result.hasCanonical || !result.hasFaqLd) {
+  if (!result.landingHasH1 || !result.hasCanonical || !result.hasFaqLd || !result.audienceOk) {
     console.error("seo-build: sanity check failed", result);
     process.exit(1);
   }

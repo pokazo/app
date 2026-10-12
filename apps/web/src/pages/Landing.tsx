@@ -1,12 +1,10 @@
-import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
-import { PkButton } from "../components/PkButton";
-import { apiUrl } from "../safe";
-import { sanitizeDeckTheme, SLIDE_COUNT_DEFAULT } from "../decks";
-import { ThemePicker } from "../components/ThemePicker";
-import { SlideCountPicker } from "../components/SlideCountPicker";
+import { LandingPromptForm } from "../components/LandingPromptForm";
 import { ExampleThumb, type ExampleThumbId } from "../components/ExampleThumb";
+import { AUDIENCE_PAGES } from "../audience-pages";
+import { apiUrl } from "../safe";
 
 const THUMBS: { id: ExampleThumbId; title: string }[] = [
   { id: "photosynthesis", title: "Фотосинтез" },
@@ -18,11 +16,7 @@ const THUMBS: { id: ExampleThumbId; title: string }[] = [
 ];
 
 export function Landing() {
-  const [topic, setTopic] = useState("");
-  const [theme, setTheme] = useState("auto");
-  const [slideCount, setSlideCount] = useState(SLIDE_COUNT_DEFAULT);
   const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
-  const nav = useNavigate();
 
   useEffect(() => {
     fetch(apiUrl("/api/auth/me"), { credentials: "include" })
@@ -32,26 +26,6 @@ export function Landing() {
       })
       .catch(() => {});
   }, []);
-
-  async function goCreate(t: string) {
-    const text = t.trim();
-    if (text.length < 5) return;
-    const pick = sanitizeDeckTheme(theme);
-    const q = `topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}&slides=${slideCount}`;
-    const dest = `/app?${q}`;
-    try {
-      const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });
-      if (res.ok) nav(dest);
-      else nav(`/login?next=/app&${q}`);
-    } catch {
-      nav(`/login?next=/app&${q}`);
-    }
-  }
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    await goCreate(topic);
-  }
 
   return (
     <>
@@ -63,21 +37,7 @@ export function Landing() {
               <span className="accent">Нейросеть</span> для презентаций
             </h1>
             <p className="lead">Тема — слайды в браузере за пару минут. Ссылку можно отправить.</p>
-            <form className="prompt-card" onSubmit={onSubmit}>
-              <textarea
-                className="pk"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="Например: «Фотосинтез, 8 слайдов, 8 класс»"
-              />
-              <div className="actions">
-                <SlideCountPicker value={slideCount} onChange={setSlideCount} />
-                <PkButton data-pk="cta-create" disabled={topic.trim().length < 5} type="submit">
-                  Создать
-                </PkButton>
-              </div>
-            </form>
-            <ThemePicker value={theme} onChange={setTheme} />
+            <LandingPromptForm placeholder="Например: «Фотосинтез, 8 слайдов, 8 класс»" />
           </div>
         </section>
         <section className="section alt">
@@ -121,9 +81,11 @@ export function Landing() {
         <section className="section alt who">
           <div className="wrap">
             <h2>Для кого</h2>
-            <span className="chip">Школа</span>
-            <span className="chip">Вуз</span>
-            <span className="chip">Работа</span>
+            {AUDIENCE_PAGES.map((p) => (
+              <Link key={p.slug} className="chip" to={`/${p.slug}`}>
+                {p.chip}
+              </Link>
+            ))}
           </div>
         </section>
         <section className="section wrap">
@@ -147,7 +109,7 @@ export function Landing() {
             </details>
             <details>
               <summary>На каком языке слайды?</summary>
-              <p>На русском: тема, структура и тексты слайдов под российскую школу, вуз и работу.</p>
+              <p>На русском: тема, структура и тексты слайдов под урок, доклад, школу, студентов и бизнес.</p>
             </details>
           </div>
         </section>
