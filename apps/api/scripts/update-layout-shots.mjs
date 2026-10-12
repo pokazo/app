@@ -45,7 +45,6 @@ const heroVariantNames = [
   "hero-corner",
   "hero-inset",
   "hero-fullbleed",
-  "hero-editorial",
   "hero-product",
 ];
 

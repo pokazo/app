@@ -266,8 +266,12 @@ describe("assertHeroLayout", () => {
     expect(() => assertHeroLayout({ variant: "corner" })).toThrow(/requires local image/);
     expect(() => assertHeroLayout({ variant: "inset" })).toThrow(/requires local image/);
   });
+  it("rejects removed editorial variant", () => {
+    expect(() => assertHeroLayout({ variant: "editorial", image: "/slide-1.jpg" })).toThrow(
+      /LayoutError\[hero\]/,
+    );
+  });
   it("passes valid variants", () => {
-    expect(() => assertHeroLayout({ variant: "editorial" })).not.toThrow();
     expect(() =>
       assertHeroLayout({ variant: "ribbon", image: "/slide-1.jpg" }),
     ).not.toThrow();

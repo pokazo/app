@@ -19,7 +19,7 @@ server.registerTool(
   "hero-list",
   {
     description:
-      "List Pokazo hero variants with summary, whenToUse, and needs (what data each variant requires). Call before choosing variant.",
+      "List Pokazo hero variants. Each row has summary, whenToUse, needs, and fields[] — the exact frontmatter/body props the hero Vue block expects (name, required, in, type, expects, limit). Call BEFORE choosing a variant.",
     inputSchema: {
       // Empty object — OpenAI strict tools still need a defined schema.
       _: z.string().describe("Unused; pass empty string"),
@@ -36,11 +36,11 @@ server.registerTool(
   "hero-get",
   {
     description:
-      "Full hero variant contract: when to use, anti-patterns, needs, frontmatter/body, what it displays.",
+      "Full hero variant contract. Read fields[] carefully before slidev-update-slide: layout=hero, variant=<id>, image (local path, required), optional brand/kicker/source; body = H1 + 1–2 sentence promise (no bullets). Also returns whenToUse, antiPatterns, needs, frontmatter, body, displays.",
     inputSchema: {
       id: z
         .string()
-        .describe("Hero variant id: ribbon|corner|inset|fullbleed|editorial|product"),
+        .describe("Hero variant id: ribbon|corner|inset|fullbleed|product"),
     },
   },
   async ({ id }) => {

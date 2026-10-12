@@ -35,7 +35,7 @@ export const HERO_VARIANT_SHOT_ORDER = HERO_VARIANTS.map(
 );
 export type HeroVariantShotName = (typeof HERO_VARIANT_SHOT_ORDER)[number];
 
-/** Half-and-half scene PNG so editorial crop / fullbleed / product stage read differently. */
+/** Half-and-half scene PNG so fullbleed / product / inset crop read differently. */
 export function heroFixturePng(width = 640, height = 360): Buffer {
   const raw = Buffer.alloc((width * 3 + 1) * height);
   for (let y = 0; y < height; y++) {

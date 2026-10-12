@@ -7,18 +7,18 @@ import {
 } from "./layout-fixtures.js";
 
 describe("HERO_VARIANTS", () => {
-  it("includes six variants and excludes split/interactive/centered", () => {
+  it("includes five variants and excludes split/interactive/centered/editorial", () => {
     expect(HERO_VARIANTS).toEqual([
       "ribbon",
       "corner",
       "inset",
       "fullbleed",
-      "editorial",
       "product",
     ]);
     expect(HERO_VARIANTS).not.toContain("split");
     expect(HERO_VARIANTS).not.toContain("interactive");
     expect(HERO_VARIANTS).not.toContain("centered");
+    expect(HERO_VARIANTS).not.toContain("editorial");
   });
 
   it("maps to screenshot golden names", () => {
@@ -27,7 +27,6 @@ describe("HERO_VARIANTS", () => {
       "hero-corner",
       "hero-inset",
       "hero-fullbleed",
-      "hero-editorial",
       "hero-product",
     ]);
   });
@@ -37,7 +36,7 @@ describe("HERO_VARIANTS", () => {
     for (const v of HERO_VARIANTS) {
       expect(md).toMatch(new RegExp(`variant: ${v}`));
     }
-    expect(md.match(/layout: hero/g)?.length).toBe(6);
+    expect(md.match(/layout: hero/g)?.length).toBe(5);
   });
 
   it("heroFixturePng is a valid PNG", () => {
@@ -55,7 +54,10 @@ describe("heroSkill", () => {
     expect(skill).toMatch(/hero-list/);
     expect(skill).toMatch(/hero-get/);
     expect(skill).toMatch(/Call hero-list BEFORE choosing/i);
-    expect(skill).toMatch(/ribbon \| corner \| inset \| fullbleed \| editorial \| product/);
+    expect(skill).toMatch(/fields\[\]/);
+    expect(skill).toMatch(/Hero block fields/i);
+    expect(skill).toMatch(/overflow:hidden/);
+    expect(skill).toMatch(/ribbon \| corner \| inset \| fullbleed \| product/);
     expect(skill).toMatch(/never use split, interactive, or centered/i);
     expect(skill).toMatch(/upload-image-search/);
     expect(skill).toMatch(/upload-image-use/);
@@ -96,8 +98,10 @@ describe("heroUserPrompt", () => {
     });
     expect(prompt).toContain("УАЗ Патриот");
     expect(prompt).toMatch(/FIRST call hero-list/i);
+    expect(prompt).toMatch(/fields\[\]/);
+    expect(prompt).toMatch(/clipped titles/i);
     expect(prompt).toMatch(
-      /ribbon \| corner \| inset \| fullbleed \| editorial \| product/,
+      /ribbon \| corner \| inset \| fullbleed \| product/,
     );
     expect(prompt).toMatch(/Never use split/i);
     expect(prompt).toMatch(/centered/);

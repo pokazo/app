@@ -3,7 +3,7 @@ import { guardMarkdown, sanitizeHeroVariantFrontmatter } from "./md-guard.js";
 
 describe("sanitizeHeroVariantFrontmatter", () => {
   it("keeps known variants", () => {
-    for (const v of ["ribbon", "corner", "inset", "fullbleed", "editorial", "product"]) {
+    for (const v of ["ribbon", "corner", "inset", "fullbleed", "product"]) {
       expect(sanitizeHeroVariantFrontmatter(`variant: ${v}`)).toBe(`variant: ${v}`);
     }
   });
@@ -18,7 +18,7 @@ describe("sanitizeHeroVariantFrontmatter", () => {
 describe("guardMarkdown hero variant", () => {
   it("pins known hero variants and rewrites banned ones", () => {
     expect(guardMarkdown(`---\nlayout: hero\nvariant: editorial\n---\n\n# H`)).toMatch(
-      /variant: editorial/,
+      /variant: fullbleed/,
     );
     expect(guardMarkdown(`---\nlayout: hero\nvariant: split\n---\n\n# H`)).toMatch(
       /variant: fullbleed/,

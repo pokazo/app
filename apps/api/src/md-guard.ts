@@ -87,7 +87,6 @@ const HERO_VARIANTS = new Set([
   "corner",
   "inset",
   "fullbleed",
-  "editorial",
   "product",
 ]);
 

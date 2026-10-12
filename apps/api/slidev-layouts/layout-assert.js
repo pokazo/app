@@ -194,21 +194,18 @@ const HERO_VARIANTS = new Set([
   "corner",
   "inset",
   "fullbleed",
-  "editorial",
   "product",
 ]);
-
-const HERO_NEEDS_IMAGE = new Set(["ribbon", "corner", "inset", "fullbleed", "product"]);
 
 export function assertHeroLayout(props) {
   const v = props.variant?.trim() || "";
   if (!HERO_VARIANTS.has(v)) {
     throw layoutError(
       "hero",
-      `variant must be ribbon|corner|inset|fullbleed|editorial|product, got ${JSON.stringify(props.variant)}`,
+      `variant must be ribbon|corner|inset|fullbleed|product, got ${JSON.stringify(props.variant)}`,
     );
   }
-  if (HERO_NEEDS_IMAGE.has(v) && !isLocalImagePath(props.image)) {
+  if (!isLocalImagePath(props.image)) {
     throw layoutError("hero", `${v} requires local image:`);
   }
 }

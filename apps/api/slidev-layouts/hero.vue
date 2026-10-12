@@ -7,7 +7,7 @@ const props = defineProps<{
   brand?: string
   image?: string
   palette?: string
-  /** ribbon | corner | inset | fullbleed | editorial | product — never split/centered */
+  /** ribbon | corner | inset | fullbleed | product — never split/centered/editorial */
   variant?: string
 }>()
 
@@ -120,7 +120,7 @@ function photoSrc(image?: string) {
 .pk-brick__pane > .pk-brand {
   flex: none;
 }
-/* Default: plate is transparent pass-through (no photo / editorial pane already solid). */
+/* Default: plate is transparent pass-through. */
 .pk-hero__plate {
   display: flex;
   flex-direction: column;
@@ -355,62 +355,6 @@ function photoSrc(image?: string) {
 /* Fullbleed: dark gradient already; add text shadow so pale image type cannot compete. */
 .pk-hero--fullbleed.pk-hero--photo .pk-hero__plate {
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
-}
-
-/* --- editorial: asymmetric type, photo as right-biased crop --- */
-.pk-hero--editorial .pk-hero__photo {
-  inset: 0 0 0 42%;
-  clip-path: polygon(6% 0, 100% 0, 100% 100%, 0 100%);
-}
-.pk-hero--editorial .pk-hero__veil {
-  /* Near-opaque wash — any baked-in slogan must be unreadable */
-  background: linear-gradient(
-    90deg,
-    var(--pk-paper) 0%,
-    rgba(18, 18, 20, 0.82) 16%,
-    rgba(18, 18, 20, 0.88) 100%
-  );
-}
-.pk-hero--editorial .pk-hero__photo img {
-  object-position: 82% center;
-  filter: blur(6px) brightness(0.62) saturate(1.1);
-  transform: scale(1.08);
-}
-.pk-hero--editorial .pk-brick__pane {
-  width: 52%;
-  background: var(--pk-paper);
-  justify-content: center;
-  padding-right: 36px;
-}
-.pk-hero--editorial .pk-hero__plate {
-  width: 100%;
-  align-items: flex-start;
-  text-align: left;
-}
-.pk-hero--editorial .pk-brand {
-  margin-bottom: 28px;
-}
-.pk-hero--editorial .pk-kicker {
-  margin-bottom: 18px;
-}
-.pk-hero--editorial .pk-hero__body {
-  margin: 0;
-}
-.pk-hero--editorial .pk-hero__body :deep(h1) {
-  font-size: 42px;
-  line-height: 1.16;
-  max-width: none;
-  width: 100%;
-  letter-spacing: -0.03em;
-}
-.pk-hero--editorial .pk-hero__body :deep(p) {
-  max-width: none;
-  width: 100%;
-  font-size: 18px;
-  line-height: 1.4;
-}
-.pk-hero--editorial:not(.pk-hero--photo) .pk-brick__pane {
-  width: 100%;
 }
 
 /* --- product: large visual stage + promise band --- */

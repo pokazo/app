@@ -5,7 +5,6 @@ export const HERO_VARIANTS = [
   "corner",
   "inset",
   "fullbleed",
-  "editorial",
   "product",
 ] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
@@ -15,7 +14,7 @@ export function heroSkill(theme: string, locale: string): string {
   return `You compose ONLY the first Slidev slide (hero/cover). Never dump or rewrite the whole slides.md as text.
 
 Tools:
-- Hero MCP (variant catalog — THIS PHASE ONLY): hero-list, hero-get. Call hero-list BEFORE choosing a variant; call hero-get on 1–2 finalists if needs are unclear.
+- Hero MCP (variant catalog — THIS PHASE ONLY): hero-list, hero-get. Call hero-list BEFORE choosing a variant; call hero-get on the chosen id and OBEY its fields[] contract before slidev-update-slide.
 - Slidev MCP: slidev-update-slide only (slide 1 already exists as scaffold)
 - User uploads (FIRST when present): upload-image-search, upload-image-use. Prefer originalName over vague caption. If suggestedId is set → IMMEDIATELY upload-image-use BEFORE yandex/stock. Do not reject uploads for "solid/abstract" captions.
 - Yandex Images (SECOND): yandex-image-search, yandex-image-download. Prefer natural Russian query. Judge title/domain/pageUrl (title may be synthesized from URL — still valid).
@@ -26,22 +25,26 @@ Do NOT insert, remove, or move slides. Do NOT create slide 2+. Only update slide
 Do NOT call slidev-get-info, slidev-list-slides, or slidev-get-slide — outline + topic are enough.
 
 Variant decision (required):
-1) Call hero-list (pass _="") and read summary / whenToUse / needs for each variant.
-2) Optionally hero-get(id) for a shortlist when still unsure.
-3) Pick ONE id from: ribbon | corner | inset | fullbleed | editorial | product
+1) Call hero-list (pass _="") and read summary / whenToUse / needs / fields for each variant.
+2) Call hero-get(id) on the chosen variant (or 1–2 finalists) and treat fields[] as the block contract.
+3) Pick ONE id from: ribbon | corner | inset | fullbleed | product
 4) Never use split, interactive, or centered.
 5) Vary intentionally across decks — do not default to the same variant every time.
-6) Only after the variant is chosen, run the photo pipeline, then slidev-update-slide.
+6) Only after the variant is chosen, run the photo pipeline, then slidev-update-slide using ONLY fields from the contract.
 
-Frontmatter for slide 1:
-  layout: hero
-  variant: <chosen id>
-  image: /slide-1.jpg or /slide-1-gen.png
-  kicker: SHORT UPPERCASE LABEL (optional but preferred)
-  brand: short brand/name (optional)
-  source: only if citing a fact (usually "")
-
-Body: H1 + 1–2 sentences (or one short paragraph). No bullet lists. No emoji.
+Hero block fields (slide 1 — every variant):
+  Frontmatter REQUIRED:
+    layout: hero
+    variant: <chosen id>
+    image: /slide-1.jpg or /slide-1-gen.png  (local path only; never http(s))
+  Frontmatter OPTIONAL:
+    kicker: SHORT UPPERCASE LABEL (preferred)
+    brand: short brand/name
+    source: only if citing a fact (usually omit)
+  Do NOT set or change palette/theme — already set by the pipeline.
+  Body REQUIRED:
+    # H1   ← respect fields[].limit for that variant (long titles CLIP — overflow:hidden)
+    1–2 short sentences under H1. No bullet lists. No emoji.
 
 Photo pipeline (one photo for slide 1):
   1) If upload tools exist: ONE upload-image-search (not only list). If suggestedId → IMMEDIATELY upload-image-use (filename slide-1.jpg). Else use the hit with the best originalName match. Never go to Yandex while a usable upload hit exists.
@@ -73,9 +76,11 @@ First outline slide (content source; YOU choose variant via hero-list / hero-get
 ${JSON.stringify(first ?? null)}
 
 Rules:
-- FIRST call hero-list, then pick exactly one variant: ribbon | corner | inset | fullbleed | editorial | product (required — missing/invalid variant throws LayoutError[hero])
+- FIRST call hero-list, then hero-get on the chosen id and follow its fields[] (required/optional frontmatter + body limits)
+- Pick exactly one variant: ribbon | corner | inset | fullbleed | product (missing/invalid variant throws LayoutError[hero])
 - Never use split / interactive / centered / image-right / image-left for the hero
 - Match outline intent to variant needs from the catalog before searching photos
+- Keep H1 within the variant's fields[].limit — clipped titles are a hard fail
 - ONE yandex-image-search → prefer suggestedId → yandex-image-download; only then stock/image-generate → slidev-update-slide
 - Body: H1 + 1–2 sentences, no bullets
 - Leave all other slides untouched`;
