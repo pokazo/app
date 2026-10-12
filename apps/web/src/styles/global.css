@@ -457,6 +457,46 @@ a.chip:hover { background: #e4dbff; }
 }
 .app-page h1 { margin: 0 0 24px; }
 .app-note { text-align: center; margin: 16px 0 0; }
+.billing-balance {
+  margin: -12px 0 20px;
+  color: var(--pk-ink-muted);
+  text-align: center;
+  font-size: 14px;
+}
+.paywall-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 16, 28, 0.5);
+}
+.paywall-modal {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 32px;
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-md);
+  background: #fff;
+  box-shadow: var(--pk-shadow);
+  text-align: center;
+}
+.paywall-modal h2 { margin: 0 24px 24px; font-size: 26px; }
+.paywall-actions { display: grid; gap: 12px; }
+.paywall-actions .pk { width: 100%; }
+.paywall-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 28px/1 sans-serif;
+  cursor: pointer;
+}
+.paywall-error { margin: 16px 0 0; font-size: 14px; }
 .app-empty {
   text-align: center;
   color: var(--pk-ink-muted);

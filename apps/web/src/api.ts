@@ -3,6 +3,16 @@ export const apiUrl = (path: string) => {
   return `${base}${path}`;
 };
 
+export class ApiError<T = unknown> extends Error {
+  constructor(
+    public status: number,
+    public body: T | null,
+  ) {
+    super(String(status));
+    this.name = "ApiError";
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
   const res = await fetch(apiUrl(path), {
@@ -14,9 +24,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!res.ok) {
-    const err = new Error(String(res.status));
-    (err as Error & { status: number }).status = res.status;
-    throw err;
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body);
   }
   return res.json() as Promise<T>;
 }
