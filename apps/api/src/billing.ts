@@ -4,6 +4,8 @@ import { pool } from "./migrate.js";
 
 export type BillingProduct = "credit_1" | "month_30";
 export type BillingKind = "free" | "credit" | "month" | "off";
+type StoredBillingKind = BillingKind | "refunded";
+export type FinalizeBillingAction = "release_free" | "refund_credit" | "none";
 export type BillingMe = {
   paymentsEnabled: boolean;
   credits: number;
@@ -66,6 +68,15 @@ export function computeReserveKind(
   if (!u.free_used) return "free";
   if (u.credits > 0) return "credit";
   return "deny";
+}
+
+export function computeFinalizeBillingAction(
+  kind: StoredBillingKind | null,
+  outcome: "ready" | "failed",
+): FinalizeBillingAction {
+  if (outcome === "failed" && kind === "free") return "release_free";
+  if (outcome === "failed" && kind === "credit") return "refund_credit";
+  return "none";
 }
 
 export async function getBillingMe(userId: string): Promise<BillingMe> {
@@ -146,7 +157,14 @@ export async function reserveGenerate(
       return { ok: false, code: "payment_required" };
     }
 
-    if (kind === "credit") {
+    if (kind === "free") {
+      await client.query(
+        `UPDATE "user"
+            SET free_used = true
+          WHERE id = $1`,
+        [userId],
+      );
+    } else if (kind === "credit") {
       await client.query(
         `UPDATE "user"
             SET credits = credits - 1
@@ -173,7 +191,7 @@ export async function finalizeDeckBilling(
   try {
     await client.query("BEGIN");
     const result = await client.query<{
-      billing_kind: BillingKind | null;
+      billing_kind: StoredBillingKind | null;
       user_id: string;
     }>(
       `SELECT billing_kind, user_id
@@ -185,15 +203,26 @@ export async function finalizeDeckBilling(
     const deck = result.rows[0];
     if (!deck) throw new Error(`Deck not found: ${deckId}`);
 
-    if (outcome === "ready" && deck.billing_kind === "free") {
-      await client.query(`UPDATE "user" SET free_used = true WHERE id = $1`, [
+    const action = computeFinalizeBillingAction(deck.billing_kind, outcome);
+    if (action === "release_free") {
+      await client.query(`UPDATE "user" SET free_used = false WHERE id = $1`, [
         deck.user_id,
       ]);
-    } else if (outcome === "failed" && deck.billing_kind === "credit") {
-      await client.query(
-        `UPDATE "user" SET credits = credits + 1 WHERE id = $1`,
-        [deck.user_id],
+    } else if (action === "refund_credit") {
+      const refunded = await client.query<{ user_id: string }>(
+        `UPDATE deck
+            SET billing_kind = 'refunded'
+          WHERE id = $1 AND billing_kind = 'credit'
+        RETURNING user_id`,
+        [deckId],
       );
+      const refundedUser = refunded.rows[0];
+      if (refundedUser) {
+        await client.query(
+          `UPDATE "user" SET credits = credits + 1 WHERE id = $1`,
+          [refundedUser.user_id],
+        );
+      }
     }
 
     await client.query("COMMIT");

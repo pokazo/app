@@ -133,7 +133,7 @@ export async function enqueueDeck(id: string): Promise<void> {
   try {
     const q = startDeckWorker();
     if (q) {
-      await q.add("generate", { id }, { jobId: id, attempts: 2 });
+      await q.add("generate", { id }, { jobId: id, attempts: 1 });
       return;
     }
   } catch (err) {

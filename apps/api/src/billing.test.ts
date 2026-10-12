@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { billingLabel, computeReserveKind } from "./billing.js";
+import {
+  billingLabel,
+  computeFinalizeBillingAction,
+  computeReserveKind,
+} from "./billing.js";
 
 describe("billingLabel", () => {
   it("shows free available", () => {
@@ -111,5 +115,30 @@ describe("computeReserveKind", () => {
         now,
       ),
     ).toBe("credit");
+  });
+});
+
+describe("computeFinalizeBillingAction", () => {
+  it("releases an optimistically reserved free generation on failure", () => {
+    expect(computeFinalizeBillingAction("free", "failed")).toBe(
+      "release_free",
+    );
+  });
+
+  it("refunds a charged credit on failure", () => {
+    expect(computeFinalizeBillingAction("credit", "failed")).toBe(
+      "refund_credit",
+    );
+  });
+
+  it.each([
+    ["free", "ready"],
+    ["credit", "ready"],
+    ["month", "failed"],
+    ["off", "failed"],
+    ["refunded", "failed"],
+    [null, "failed"],
+  ] as const)("does nothing for %s + %s", (kind, outcome) => {
+    expect(computeFinalizeBillingAction(kind, outcome)).toBe("none");
   });
 });
