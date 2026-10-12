@@ -83,7 +83,7 @@ export const OutlineSlide = z.object({
 
 export const Outline = z.object({
   title: z.string(),
-  slides: z.array(OutlineSlide).min(4).max(16),
+  slides: z.array(OutlineSlide).min(3).max(16),
 });
 
 export type OutlineT = z.infer<typeof Outline>;

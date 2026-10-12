@@ -77,7 +77,8 @@ describe("slide count picker", () => {
   it("clamps and rounds raw values", () => {
     expect(sanitizeSlideCount(10)).toBe(10);
     expect(sanitizeSlideCount("12")).toBe(12);
-    expect(sanitizeSlideCount(3)).toBe(SLIDE_COUNT_MIN);
+    expect(sanitizeSlideCount(3)).toBe(3);
+    expect(sanitizeSlideCount(2)).toBe(SLIDE_COUNT_MIN);
     expect(sanitizeSlideCount(99)).toBe(SLIDE_COUNT_MAX);
     expect(sanitizeSlideCount("nope")).toBe(SLIDE_COUNT_DEFAULT);
     expect(sanitizeSlideCount(null)).toBe(SLIDE_COUNT_DEFAULT);

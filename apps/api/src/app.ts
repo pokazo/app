@@ -113,7 +113,7 @@ export function createApp() {
     const { fields, files } = await parseDeckCreateRequest(c);
     const topic = (fields.topic ?? "").trim();
     if (topic.length < 5 || topic.length > 500) return c.json({ error: "bad topic" }, 400);
-    const slideCount = Math.min(16, Math.max(6, Number(fields.slideCount ?? 8)));
+    const slideCount = Math.min(16, Math.max(3, Number(fields.slideCount ?? 8)));
     const id = randomUUID();
     await pool.query(
       `INSERT INTO deck (id, user_id, topic, locale, slide_count, audience, theme, status)

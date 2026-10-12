@@ -75,7 +75,7 @@ export function sanitizeDeckTheme(raw: string | null | undefined) {
 }
 
 /** Matches API clamp in POST /api/decks. */
-export const SLIDE_COUNT_MIN = 6;
+export const SLIDE_COUNT_MIN = 3;
 export const SLIDE_COUNT_MAX = 16;
 export const SLIDE_COUNT_DEFAULT = 8;
 
