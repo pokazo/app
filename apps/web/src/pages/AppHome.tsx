@@ -16,8 +16,10 @@ import {
 import { sanitizeAudience } from "../audience-pages";
 import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
+import { UploadAttach } from "../components/UploadAttach";
 import { PaywallModal } from "../components/PaywallModal";
 import { BillingMe } from "../billing";
+import { clearPendingUploadFiles, getPendingUploadFiles } from "../pending-uploads";
 
 type Me = { id: string; email: string; name: string };
 
@@ -37,7 +39,7 @@ export function AppHome() {
   const [theme, setTheme] = useState(() => sanitizeDeckTheme(params.get("theme")));
   const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
   const [audience] = useState(() => sanitizeAudience(params.get("audience")));
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>(() => getPendingUploadFiles());
   const [status, setStatus] = useState("");
   const [activity, setActivity] = useState("");
   const [err, setErr] = useState("");
@@ -136,6 +138,7 @@ export function AppHome() {
     const slideCountNow = slideCountRef.current;
     const audienceNow = audienceRef.current;
     const filesNow = filesRef.current;
+    clearPendingUploadFiles();
     setErr("");
     setStatus("queued");
     setActivity("Создаём…");
@@ -277,40 +280,11 @@ export function AppHome() {
             />
             <div className="actions">
               <div className="prompt-card-actions-left">
-                <label
-                  className="upload-attach"
-                  title={
-                    files.length
-                      ? `Прикреплено: ${files.map((f) => f.name).join(", ")}`
-                      : "Прикрепить картинки"
-                  }
-                >
-                  <span className="upload-attach-icon" aria-hidden>
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                    </svg>
-                  </span>
-                  {files.length ? (
-                    <span className="upload-attach-badge">{files.length}</span>
-                  ) : null}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    disabled={Boolean(status)}
-                    aria-label="Картинки (опционально)"
-                    onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 20))}
-                  />
-                </label>
+                <UploadAttach
+                  files={files}
+                  onChange={setFiles}
+                  disabled={Boolean(status)}
+                />
                 <SlideCountPicker
                   value={slideCount}
                   onChange={setSlideCount}
