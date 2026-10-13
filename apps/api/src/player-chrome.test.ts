@@ -33,9 +33,18 @@ describe("deckAssetContentType", () => {
 });
 
 describe("deckAssetCacheControl", () => {
-  it("caches slide images and hashed assets", () => {
-    expect(deckAssetCacheControl(".jpg")).toBe("public, max-age=86400, immutable");
-    expect(deckAssetCacheControl(".js")).toBe("public, max-age=86400, immutable");
+  it("does not immutably cache plain slide photos (rewritten in place)", () => {
+    expect(deckAssetCacheControl(".jpg", "slide-4.jpg")).toBe("no-cache");
+    expect(deckAssetCacheControl(".jpg")).toBe("no-cache");
+  });
+
+  it("immutably caches content-hashed slide photos and vite assets", () => {
+    expect(deckAssetCacheControl(".jpg", "slide-4-abc123def0.jpg")).toBe(
+      "public, max-age=86400, immutable",
+    );
+    expect(deckAssetCacheControl(".js", "assets/index-DGXFAP9u.js")).toBe(
+      "public, max-age=86400, immutable",
+    );
     expect(deckAssetCacheControl(".css")).toBe("public, max-age=86400, immutable");
   });
 

@@ -709,7 +709,7 @@ export function createApp() {
     const body = ext === ".html" ? injectPlayerChromeHide(raw.toString("utf8")) : new Uint8Array(raw);
     return c.body(body, 200, {
       "content-type": deckAssetContentType(ext),
-      "cache-control": deckAssetCacheControl(ext),
+      "cache-control": deckAssetCacheControl(ext, rel),
     });
   });
 

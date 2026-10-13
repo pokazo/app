@@ -78,11 +78,6 @@ export function deckAssetContentType(ext: string): string {
 }
 
 const LONG_CACHE = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".webp",
-  ".gif",
   ".js",
   ".css",
   ".woff",
@@ -90,8 +85,23 @@ const LONG_CACHE = new Set([
   ".svg",
 ]);
 
-/** HTML shell must revalidate; hashed assets and slide photos can be cached. */
-export function deckAssetCacheControl(ext: string): string {
+const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+
+/** Content-hashed slide photo: slide-4-<hash>.jpg (see image-cache-bust.ts). */
+const VERSIONED_IMAGE = /-[a-f0-9]{8,12}\.(?:jpe?g|png|webp|gif)$/i;
+
+/**
+ * HTML shell must revalidate.
+ * Vite-hashed JS/CSS and content-hashed slide photos may be immutable.
+ * Plain `/slide-N.jpg` is rewritten in place on rewrite — must NOT be immutable
+ * or the player keeps showing the old picture after «сделай другую картинку».
+ */
+export function deckAssetCacheControl(ext: string, relPath = ""): string {
+  const base = relPath.replace(/^.*\//, "");
+  if (IMAGE_EXTS.has(ext)) {
+    if (VERSIONED_IMAGE.test(base)) return "public, max-age=86400, immutable";
+    return "no-cache";
+  }
   if (LONG_CACHE.has(ext)) return "public, max-age=86400, immutable";
   return "no-cache";
 }

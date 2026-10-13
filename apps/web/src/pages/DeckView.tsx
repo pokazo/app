@@ -467,7 +467,11 @@ export function DeckView() {
                 embedCacheKey={embedKey}
                 index={s.slidevIndex ?? s.index}
                 heading={s.heading || `Слайд ${s.index}`}
-                imageUrl={s.image ? apiUrl(`/p/${id}${s.image}`) : null}
+                imageUrl={
+                  s.image
+                    ? `${apiUrl(`/p/${id}${s.image}`)}${embedKey ? `?_r=${embedKey}` : ""}`
+                    : null
+                }
                 enabled={stageReady}
               />
             </button>
