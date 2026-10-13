@@ -2,24 +2,30 @@ import { useEffect, useRef, useState } from "react";
 import {
   thumbEmbedSrc,
   thumbPlaceholderLayers,
+  thumbShouldMountIframe,
   thumbShouldResetReady,
 } from "../deck-thumb-preview";
 
-/** Scaled Slidev slide preview — mounts iframe only when near the filmstrip viewport. */
+const HOVER_UNMOUNT_MS = 200;
+
+/** Scaled Slidev slide preview — iframe only for active / hover; else light cover thumb. */
 export function DeckThumbPreview(props: {
   embedBase: string;
   index: number;
   heading: string;
   imageUrl?: string | null;
   enabled: boolean;
+  /** Selected filmstrip page — mounts iframe for a live preview. */
+  active?: boolean;
   /** Bumps when preview dist rebuilds — refreshes iframe without remounting the thumb. */
   embedCacheKey?: number;
 }) {
-  const rootRef = useRef<HTMLSpanElement>(null);
   const cacheKey = props.embedCacheKey ?? 0;
   const cacheKeyRef = useRef(cacheKey);
-  const [visible, setVisible] = useState(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hovered, setHovered] = useState(false);
   const [ready, setReady] = useState(false);
+  const active = Boolean(props.active);
 
   useEffect(() => {
     if (thumbShouldResetReady(cacheKeyRef.current, cacheKey)) {
@@ -29,29 +35,44 @@ export function DeckThumbPreview(props: {
   }, [cacheKey]);
 
   useEffect(() => {
-    if (!props.enabled) return;
-    const el = rootRef.current;
-    if (!el) return;
-    const root = el.closest(".deck-thumbs");
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) setVisible(true);
-      },
-      { root: root instanceof Element ? root : null, rootMargin: "120px 0px", threshold: 0.01 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [props.enabled]);
+    return () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    };
+  }, []);
+
+  const mountIframe = thumbShouldMountIframe({
+    enabled: props.enabled,
+    active,
+    hovered,
+  });
+
+  useEffect(() => {
+    if (!mountIframe) setReady(false);
+  }, [mountIframe]);
 
   const layers = thumbPlaceholderLayers({
-    ready,
+    ready: ready && mountIframe,
     heading: props.heading || `Слайд ${props.index}`,
     imageUrl: props.imageUrl,
   });
 
   return (
-    <span ref={rootRef} className="deck-thumb-frame" aria-hidden>
-      {!ready ? (
+    <span
+      className="deck-thumb-frame"
+      aria-hidden
+      onMouseEnter={() => {
+        if (hoverTimer.current) {
+          clearTimeout(hoverTimer.current);
+          hoverTimer.current = null;
+        }
+        setHovered(true);
+      }}
+      onMouseLeave={() => {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
+        hoverTimer.current = setTimeout(() => setHovered(false), HOVER_UNMOUNT_MS);
+      }}
+    >
+      {!ready || !mountIframe ? (
         <span className="deck-thumb-ph-wrap">
           {layers.showImage && props.imageUrl ? (
             <img
@@ -69,7 +90,7 @@ export function DeckThumbPreview(props: {
           ) : null}
         </span>
       ) : null}
-      {props.enabled && visible ? (
+      {mountIframe ? (
         <span className="deck-thumb-scaler">
           <iframe
             title=""

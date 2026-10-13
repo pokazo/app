@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  thumbCoverPath,
   thumbEmbedSrc,
   thumbPlaceholderLayers,
   thumbReactKey,
+  thumbShouldMountIframe,
   thumbShouldResetReady,
 } from "./deck-thumb-preview";
 
@@ -34,6 +36,23 @@ describe("thumbPlaceholderLayers", () => {
         imageUrl: "/slide-1.jpg",
       }),
     ).toEqual({ showHeading: false, showImage: false, label: "Hero" });
+  });
+});
+
+describe("thumbCoverPath", () => {
+  it("prefers imageThumb over full image", () => {
+    expect(thumbCoverPath({ imageThumb: "/a.thumb.webp", image: "/a.jpg" })).toBe("/a.thumb.webp");
+    expect(thumbCoverPath({ imageThumb: null, image: "/a.jpg" })).toBe("/a.jpg");
+    expect(thumbCoverPath({ imageThumb: null, image: null })).toBe(null);
+  });
+});
+
+describe("thumbShouldMountIframe", () => {
+  it("mounts only when enabled and active or hovered", () => {
+    expect(thumbShouldMountIframe({ enabled: true, active: true, hovered: false })).toBe(true);
+    expect(thumbShouldMountIframe({ enabled: true, active: false, hovered: true })).toBe(true);
+    expect(thumbShouldMountIframe({ enabled: true, active: false, hovered: false })).toBe(false);
+    expect(thumbShouldMountIframe({ enabled: false, active: true, hovered: true })).toBe(false);
   });
 });
 

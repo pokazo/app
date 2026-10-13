@@ -1,9 +1,13 @@
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   outlineTitle,
   parseSlideImages,
   slidesForView,
   slidesFromOutline,
+  withImageThumbs,
   withSlideImages,
 } from "./view-meta.js";
 
@@ -15,15 +19,15 @@ describe("slidesFromOutline", () => {
         slides: [{ heading: "Свет" }, { heading: "Вода" }],
       }),
     ).toEqual([
-      { index: 1, heading: "Свет", image: null, slidevIndex: 1 },
-      { index: 2, heading: "Вода", image: null, slidevIndex: 2 },
+      { index: 1, heading: "Свет", image: null, imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "Вода", image: null, imageThumb: null, slidevIndex: 2 },
     ]);
   });
 
   it("falls back to numbered slides", () => {
     expect(slidesFromOutline(null, 2)).toEqual([
-      { index: 1, heading: "Слайд 1", image: null, slidevIndex: 1 },
-      { index: 2, heading: "Слайд 2", image: null, slidevIndex: 2 },
+      { index: 1, heading: "Слайд 1", image: null, imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "Слайд 2", image: null, imageThumb: null, slidevIndex: 2 },
     ]);
   });
 });
@@ -65,19 +69,36 @@ image: https://evil.example/x.jpg
   });
 });
 
+describe("withImageThumbs", () => {
+  it("sets imageThumb when .thumb.webp exists under asset dir", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pokazo-view-thumb-"));
+    await mkdir(join(dir, "dist"), { recursive: true });
+    await writeFile(join(dir, "dist", "slide-1.thumb.webp"), Buffer.from("x"));
+    const slides = withImageThumbs(
+      [
+        { index: 1, heading: "A", image: "/slide-1.jpg", imageThumb: null, slidevIndex: 1 },
+        { index: 2, heading: "B", image: "/slide-2.jpg", imageThumb: null, slidevIndex: 2 },
+      ],
+      join(dir, "dist"),
+    );
+    expect(slides[0]?.imageThumb).toBe("/slide-1.thumb.webp");
+    expect(slides[1]?.imageThumb).toBe(null);
+  });
+});
+
 describe("withSlideImages", () => {
   it("merges images onto outline slides by index", () => {
     expect(
       withSlideImages(
         [
-          { index: 1, heading: "A", image: null, slidevIndex: 1 },
-          { index: 2, heading: "B", image: null, slidevIndex: 2 },
+          { index: 1, heading: "A", image: null, imageThumb: null, slidevIndex: 1 },
+          { index: 2, heading: "B", image: null, imageThumb: null, slidevIndex: 2 },
         ],
         ["/slide-1.jpg"],
       ),
     ).toEqual([
-      { index: 1, heading: "A", image: "/slide-1.jpg", slidevIndex: 1 },
-      { index: 2, heading: "B", image: null, slidevIndex: 2 },
+      { index: 1, heading: "A", image: "/slide-1.jpg", imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "B", image: null, imageThumb: null, slidevIndex: 2 },
     ]);
   });
 
@@ -85,17 +106,17 @@ describe("withSlideImages", () => {
     expect(
       withSlideImages(
         [
-          { index: 1, heading: "Timeline", image: null, slidevIndex: 1 },
-          { index: 2, heading: "Features", image: null, slidevIndex: 2 },
-          { index: 3, heading: "Songs", image: null, slidevIndex: 3 },
+          { index: 1, heading: "Timeline", image: null, imageThumb: null, slidevIndex: 1 },
+          { index: 2, heading: "Features", image: null, imageThumb: null, slidevIndex: 2 },
+          { index: 3, heading: "Songs", image: null, imageThumb: null, slidevIndex: 3 },
         ],
         ["/hero.jpg", null, null, "/slide-4.jpg"],
         { mdImageOffset: 1 },
       ),
     ).toEqual([
-      { index: 1, heading: "Timeline", image: null, slidevIndex: 2 },
-      { index: 2, heading: "Features", image: null, slidevIndex: 3 },
-      { index: 3, heading: "Songs", image: "/slide-4.jpg", slidevIndex: 4 },
+      { index: 1, heading: "Timeline", image: null, imageThumb: null, slidevIndex: 2 },
+      { index: 2, heading: "Features", image: null, imageThumb: null, slidevIndex: 3 },
+      { index: 3, heading: "Songs", image: "/slide-4.jpg", imageThumb: null, slidevIndex: 4 },
     ]);
   });
 });
@@ -109,9 +130,9 @@ describe("outlineTitle", () => {
 
 describe("slidesForView", () => {
   const outline = [
-    { index: 1, heading: "Hero", image: null, slidevIndex: 1 },
-    { index: 2, heading: "Body", image: null, slidevIndex: 2 },
-    { index: 3, heading: "End", image: null, slidevIndex: 3 },
+    { index: 1, heading: "Hero", image: null, imageThumb: null, slidevIndex: 1 },
+    { index: 2, heading: "Body", image: null, imageThumb: null, slidevIndex: 2 },
+    { index: 3, heading: "End", image: null, imageThumb: null, slidevIndex: 3 },
   ];
   const md = `---
 layout: hero
@@ -149,7 +170,7 @@ layout: default
         progressive: true,
         builtSlideCount: 1,
       }),
-    ).toEqual([{ index: 1, heading: "Hero", image: "/h.jpg", slidevIndex: 1 }]);
+    ).toEqual([{ index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 }]);
   });
 
   it("reproduces bug: md grew but dist still hero → must not list unbuilt slides", () => {
@@ -160,7 +181,7 @@ layout: default
         progressive: true,
         builtSlideCount: 1,
       }),
-    ).toEqual([{ index: 1, heading: "Hero", image: "/h.jpg", slidevIndex: 1 }]);
+    ).toEqual([{ index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 }]);
   });
 
   it("reveals each new page after progressive dist rebuild", () => {
@@ -172,8 +193,8 @@ layout: default
         builtSlideCount: 2,
       }),
     ).toEqual([
-      { index: 1, heading: "Hero", image: "/h.jpg", slidevIndex: 1 },
-      { index: 2, heading: "Body", image: "/b.jpg", slidevIndex: 2 },
+      { index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "Body", image: "/b.jpg", imageThumb: null, slidevIndex: 2 },
     ]);
     expect(
       slidesForView({
@@ -183,31 +204,31 @@ layout: default
         builtSlideCount: 3,
       }),
     ).toEqual([
-      { index: 1, heading: "Hero", image: "/h.jpg", slidevIndex: 1 },
-      { index: 2, heading: "Body", image: "/b.jpg", slidevIndex: 2 },
-      { index: 3, heading: "End", image: null, slidevIndex: 3 },
+      { index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "Body", image: "/b.jpg", imageThumb: null, slidevIndex: 2 },
+      { index: 3, heading: "End", image: null, imageThumb: null, slidevIndex: 3 },
     ]);
   });
 
   it("defaults progressive to hero-only when builtSlideCount omitted", () => {
     expect(slidesForView({ outlineSlides: outline, markdown: growing, progressive: true })).toEqual([
-      { index: 1, heading: "Hero", image: "/h.jpg", slidevIndex: 1 },
+      { index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 },
     ]);
   });
 
   it("returns full deck when not progressive", () => {
     expect(slidesForView({ outlineSlides: outline, markdown: md, progressive: false })).toEqual([
-      { index: 1, heading: "Hero", image: "/h.jpg", slidevIndex: 1 },
-      { index: 2, heading: "Body", image: null, slidevIndex: 2 },
-      { index: 3, heading: "End", image: null, slidevIndex: 3 },
+      { index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "Body", image: null, imageThumb: null, slidevIndex: 2 },
+      { index: 3, heading: "End", image: null, imageThumb: null, slidevIndex: 3 },
     ]);
   });
 
   it("keeps orphan leading hero as slide 1, then outline body slides", () => {
     const bodyOutline = [
-      { index: 1, heading: "История", image: null, slidevIndex: 1 },
-      { index: 2, heading: "Успех", image: null, slidevIndex: 2 },
-      { index: 3, heading: "Песни", image: null, slidevIndex: 3 },
+      { index: 1, heading: "История", image: null, imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "Успех", image: null, imageThumb: null, slidevIndex: 2 },
+      { index: 3, heading: "Песни", image: null, imageThumb: null, slidevIndex: 3 },
     ];
     const orphanHero = `---
 layout: hero
@@ -238,10 +259,10 @@ image: /songs.jpg
     expect(
       slidesForView({ outlineSlides: bodyOutline, markdown: orphanHero, progressive: false }),
     ).toEqual([
-      { index: 1, heading: "Cover", image: "/hero.jpg", slidevIndex: 1 },
-      { index: 2, heading: "История", image: null, slidevIndex: 2 },
-      { index: 3, heading: "Успех", image: null, slidevIndex: 3 },
-      { index: 4, heading: "Песни", image: "/songs.jpg", slidevIndex: 4 },
+      { index: 1, heading: "Cover", image: "/hero.jpg", imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "История", image: null, imageThumb: null, slidevIndex: 2 },
+      { index: 3, heading: "Успех", image: null, imageThumb: null, slidevIndex: 3 },
+      { index: 4, heading: "Песни", image: "/songs.jpg", imageThumb: null, slidevIndex: 4 },
     ]);
   });
 });

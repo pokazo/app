@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
 import { safePublicPath } from "./assets-stock.js";
+import { writeImageThumb } from "./image-variants.js";
 import { resolveUploadFilePath } from "./upload-images-catalog.js";
 import { timedTool } from "./timing.js";
 
@@ -40,6 +41,7 @@ export function createUploadImageUseTools(
             const target = safePublicPath(workDir, filename);
             await mkdir(dirname(target), { recursive: true });
             await copyFile(resolved.absPath, target);
+            await writeImageThumb(target);
             const rel = `/${filename.replace(/^\//, "")}`;
             opts?.onAttribution?.({
               source: "upload",

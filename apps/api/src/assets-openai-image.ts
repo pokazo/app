@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { safePublicPath } from "./assets-stock.js";
+import { writeImageThumb } from "./image-variants.js";
 
 export type ImageGenAttribution = {
   source: "openai";
@@ -79,6 +80,7 @@ export async function generateOpenAiImageToPublic(opts: {
   }
 
   await writeFile(target, bytes);
+  await writeImageThumb(target);
   const webPath = `/${opts.filename.replace(/^\/+/, "")}`;
   return {
     path: webPath,

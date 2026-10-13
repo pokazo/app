@@ -10,7 +10,7 @@ import { createAuth } from "./auth.js";
 import { deckBusyForRewrite, enqueueDeck, enqueueRewriteSlide } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
-import { outlineTitle, slidesForView, slidesFromOutline } from "./view-meta.js";
+import { outlineTitle, slidesForView, slidesFromOutline, withImageThumbs } from "./view-meta.js";
 import { injectPlayerChromeHide, deckAssetCacheControl, deckAssetContentType } from "./player-chrome.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { sanitizeAudience } from "./audience.js";
@@ -452,12 +452,15 @@ export function createApp() {
     const { builtSlideCount } = progressive
       ? await readPreviewBuild(dir)
       : { builtSlideCount: outlineSlides.length };
-    const slides = slidesForView({
-      outlineSlides,
-      markdown,
-      progressive,
-      builtSlideCount,
-    });
+    const slides = withImageThumbs(
+      slidesForView({
+        outlineSlides,
+        markdown,
+        progressive,
+        builtSlideCount,
+      }),
+      join(dir, "dist"),
+    );
     const activity =
       progressive || rewriting
         ? (await readDeckActivity(dir))?.label ?? null

@@ -12,12 +12,18 @@ import {
   VIEW_WAITING_NOTE,
 } from "../deck-view-poll";
 import { APP_HISTORY_PATH } from "../decks";
-import { thumbReactKey } from "../deck-thumb-preview";
+import { thumbCoverPath, thumbReactKey } from "../deck-thumb-preview";
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
 
 type Me = { id: string; email: string; name: string };
-type Slide = { index: number; heading: string; image?: string | null; slidevIndex?: number };
+type Slide = {
+  index: number;
+  heading: string;
+  image?: string | null;
+  imageThumb?: string | null;
+  slidevIndex?: number;
+};
 type ViewMeta = {
   topic: string;
   slides: Slide[];
@@ -456,7 +462,9 @@ export function DeckView() {
       ) : null}
       <div className="deck-layout">
         <nav className="deck-thumbs" aria-label="Страницы">
-          {slides.map((s) => (
+          {slides.map((s) => {
+            const cover = thumbCoverPath(s);
+            return (
             <button
               key={s.index}
               type="button"
@@ -473,14 +481,16 @@ export function DeckView() {
                 index={s.slidevIndex ?? s.index}
                 heading={s.heading || `Слайд ${s.index}`}
                 imageUrl={
-                  s.image
-                    ? `${apiUrl(`/p/${id}${s.image}`)}${embedKey ? `?_r=${embedKey}` : ""}`
+                  cover
+                    ? `${apiUrl(`/p/${id}${cover}`)}${embedKey ? `?_r=${embedKey}` : ""}`
                     : null
                 }
                 enabled={stageReady}
+                active={s.index === current}
               />
             </button>
-          ))}
+            );
+          })}
         </nav>
         <div
           className={`deck-stage${me && meta?.status === "ready" ? " has-rewrite" : ""}`}

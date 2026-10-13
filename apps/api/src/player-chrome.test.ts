@@ -42,6 +42,10 @@ describe("deckAssetCacheControl", () => {
     expect(deckAssetCacheControl(".jpg", "slide-4-abc123def0.jpg")).toBe(
       "public, max-age=86400, immutable",
     );
+    expect(deckAssetCacheControl(".webp", "slide-4-abc123def0.thumb.webp")).toBe(
+      "public, max-age=86400, immutable",
+    );
+    expect(deckAssetCacheControl(".webp", "slide-4.thumb.webp")).toBe("no-cache");
     expect(deckAssetCacheControl(".js", "assets/index-DGXFAP9u.js")).toBe(
       "public, max-age=86400, immutable",
     );

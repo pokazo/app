@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join, normalize, sep } from "node:path";
+import { writeImageThumb } from "./image-variants.js";
 
 export type StockHit = {
   id: string;
@@ -127,6 +128,7 @@ export async function downloadStockToPublic(opts: {
   }
   const buf = Buffer.from(await res.arrayBuffer());
   await writeFile(file, buf);
+  await writeImageThumb(file);
   return {
     path: `/${basename(file)}`,
     attribution: opts.attribution,

@@ -1,6 +1,7 @@
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import {
   bustSlideImageCache,
@@ -9,6 +10,7 @@ import {
   replaceNthSlideImage,
   versionedImageBasename,
 } from "./image-cache-bust.js";
+import { thumbVariantBasename } from "./image-variants.js";
 
 describe("versionedImageBasename", () => {
   it("appends content hash", () => {
@@ -61,8 +63,13 @@ describe("bustSlideImageCache", () => {
   it("renames public image and patches slides.md", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pokazo-bust-"));
     await mkdir(join(dir, "public"), { recursive: true });
-    const bytes = Buffer.from("fake-jpeg-bytes-for-hash");
+    const bytes = await sharp({
+      create: { width: 64, height: 48, channels: 3, background: { r: 10, g: 20, b: 30 } },
+    })
+      .jpeg()
+      .toBuffer();
     await writeFile(join(dir, "public", "slide-4.jpg"), bytes);
+    await writeFile(join(dir, "public", "slide-4.thumb.webp"), Buffer.from("old-thumb"));
     await writeFile(
       join(dir, "slides.md"),
       `---
@@ -89,6 +96,10 @@ image: /slide-4.jpg
     const md = await readFile(join(dir, "slides.md"), "utf8");
     expect(md).toContain(`image: /slide-4-${hash}.jpg`);
     await expect(readFile(join(dir, "public", `slide-4-${hash}.jpg`))).resolves.toEqual(bytes);
+
+    const nextThumb = join(dir, "public", thumbVariantBasename(`slide-4-${hash}.jpg`));
+    await expect(access(nextThumb)).resolves.toBeUndefined();
+    await expect(access(join(dir, "public", "slide-4.thumb.webp"))).rejects.toThrow();
 
     const again = await bustSlideImageCache({ workDir: dir, slidevIndex: 2 });
     expect(again.changed).toBe(false);

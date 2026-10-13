@@ -87,8 +87,8 @@ const LONG_CACHE = new Set([
 
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
 
-/** Content-hashed slide photo: slide-4-<hash>.jpg (see image-cache-bust.ts). */
-const VERSIONED_IMAGE = /-[a-f0-9]{8,12}\.(?:jpe?g|png|webp|gif)$/i;
+/** Content-hashed slide photo: slide-4-<hash>.jpg or .thumb.webp (see image-cache-bust.ts). */
+const VERSIONED_IMAGE = /-[a-f0-9]{8,12}(?:\.(?:jpe?g|png|webp|gif)|\.thumb\.webp)$/i;
 
 /**
  * HTML shell must revalidate.

@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { thumbVariantPath } from "./image-variants.js";
 import { parseSlideBlocks } from "./layout-md-assert.js";
 import { hasOrphanLeadingHero } from "./rewrite-lock.js";
 
@@ -5,6 +8,8 @@ export type ViewSlide = {
   index: number;
   heading: string;
   image: string | null;
+  /** Small WebP next to the cover image, when present in dist/public. */
+  imageThumb: string | null;
   /** Slidev page number for iframe navigate / thumb embed (may differ from index). */
   slidevIndex: number;
 };
@@ -24,6 +29,7 @@ export function slidesFromOutline(raw: unknown, fallbackCount = 0): ViewSlide[] 
       index,
       heading: heading || `Слайд ${index}`,
       image: null,
+      imageThumb: null,
       slidevIndex: index,
     };
   });
@@ -33,6 +39,7 @@ export function slidesFromOutline(raw: unknown, fallbackCount = 0): ViewSlide[] 
     index: i + 1,
     heading: `Слайд ${i + 1}`,
     image: null,
+    imageThumb: null,
     slidevIndex: i + 1,
   }));
 }
@@ -59,8 +66,22 @@ export function withSlideImages(
   return slides.map((s, i) => ({
     ...s,
     image: images[i + offset] ?? null,
+    imageThumb: null,
     slidevIndex: s.index + offset,
   }));
+}
+
+/**
+ * Attach `imageThumb` when the `.thumb.webp` sibling exists under dist (or public).
+ * Call after slidesForView with the built player asset root.
+ */
+export function withImageThumbs(slides: ViewSlide[], assetDir: string): ViewSlide[] {
+  return slides.map((s) => {
+    const thumb = thumbVariantPath(s.image);
+    if (!thumb) return { ...s, imageThumb: null };
+    const abs = join(assetDir, thumb.replace(/^\//, ""));
+    return { ...s, imageThumb: existsSync(abs) ? thumb : null };
+  });
 }
 
 /** How many Slidev slides are present in markdown (frontmatter blocks). */
@@ -100,6 +121,7 @@ export function slidesForView(opts: {
       index: 1,
       heading: heroHeading,
       image: images[0] ?? null,
+      imageThumb: null,
       slidevIndex: 1,
     };
     const body = withSlideImages(outlineSlides, images, { mdImageOffset: 1 }).map((s, i) => ({

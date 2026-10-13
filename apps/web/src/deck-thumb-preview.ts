@@ -36,3 +36,20 @@ export function thumbReactKey(index: number): string {
 export function thumbShouldResetReady(prevCacheKey: number, nextCacheKey: number): boolean {
   return prevCacheKey !== nextCacheKey;
 }
+
+/** Prefer small WebP; fall back to full cover path. */
+export function thumbCoverPath(opts: {
+  imageThumb?: string | null;
+  image?: string | null;
+}): string | null {
+  return opts.imageThumb || opts.image || null;
+}
+
+/** Filmstrip mounts a Slidev iframe only for the current page or hover/focus. */
+export function thumbShouldMountIframe(opts: {
+  enabled: boolean;
+  active: boolean;
+  hovered: boolean;
+}): boolean {
+  return opts.enabled && (opts.active || opts.hovered);
+}

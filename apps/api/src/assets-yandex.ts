@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { safePublicPath } from "./assets-stock.js";
+import { writeImageThumb } from "./image-variants.js";
 
 export type YandexImageHit = {
   id: string;
@@ -130,5 +131,6 @@ export async function downloadYandexImageToPublic(opts: {
   const res = await fetchImpl(opts.url, { signal: withTimeout(opts.timeoutMs ?? 15_000) });
   if (!res.ok) throw new Error(`yandex-images download ${res.status}`);
   await writeFile(file, Buffer.from(await res.arrayBuffer()));
+  await writeImageThumb(file);
   return { path: `/${basename(file)}`, file };
 }

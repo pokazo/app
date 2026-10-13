@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { copyFile, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
+import { removeImageThumb, writeImageThumb } from "./image-variants.js";
 import { parseSlideImages } from "./view-meta.js";
 
 const HASH_LEN = 10;
@@ -92,5 +93,7 @@ export async function bustSlideImageCache(opts: {
     return { changed: false };
   }
   await writeFile(mdFile, updated, "utf8");
+  await removeImageThumb(abs);
+  await writeImageThumb(nextAbs);
   return { changed: true, from: current, to: nextPath };
 }
