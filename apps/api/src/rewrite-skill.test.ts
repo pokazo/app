@@ -165,8 +165,9 @@ describe("rewrite-skill prompts", () => {
       },
     });
     expect(p).toMatch(/FULL REDO/);
-    expect(p).toMatch(/ДРУГОЙ visual/);
+    expect(p).toMatch(/image-right → image-left|photo-layout/i);
     expect(p).toMatch(/imageQuery/);
+    expect(p).toMatch(/features ровно 3/);
   });
 
   it("body repair prompt forbids hero tools", () => {

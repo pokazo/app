@@ -29,6 +29,7 @@ import {
   composeOneSlideMaxSteps,
   composeOneSlideSkill,
   composeOneSlideUserPrompt,
+  isFullRedoInstruction,
   reviseOutlineSlidePrompt,
   rewriteHeroMaxSteps,
   rewriteHeroRepairPrompt,
@@ -241,11 +242,13 @@ export async function reviseOutlineSlide(opts: {
     return lockVisual(result.object);
   }
 
-  let slide = await once(prompt);
-  const issues = [
-    ...emptySlideIssues(opts.slideIndex, slide),
-    ...(opts.isHero ? [] : textOnlySlideIssues(opts.slideIndex, slide)),
+  const check = (s: OutlineSlide) => [
+    ...emptySlideIssues(opts.slideIndex, s),
+    ...(opts.isHero ? [] : textOnlySlideIssues(opts.slideIndex, s)),
   ];
+
+  let slide = await once(prompt);
+  let issues = check(slide);
   if (!issues.length) return slide;
 
   slide = await once(`${prompt}
@@ -254,14 +257,23 @@ export async function reviseOutlineSlide(opts: {
 ${formatOutlinePlanIssues(issues)}
 
 Исправленный OutlineSlide:`);
-  const again = [
-    ...emptySlideIssues(opts.slideIndex, slide),
-    ...(opts.isHero ? [] : textOnlySlideIssues(opts.slideIndex, slide)),
-  ];
-  if (again.length) {
-    throw new Error(`outline slide revise failed: ${formatOutlinePlanIssues(again)}`);
+  issues = check(slide);
+  if (!issues.length) return slide;
+
+  // Full redo often picks structured visuals with incomplete payload — force a photo flip.
+  if (!opts.isHero && isFullRedoInstruction(opts.instruction)) {
+    const current = opts.locked?.visual || opts.previous.visual;
+    const alt = current === "image-left" ? "image-right" : "image-left";
+    slide = await once(`${prompt}
+
+FALLBACK FULL REDO: верни OutlineSlide с visual="${alt}" (не features/stats/timeline).
+heading новый, points 3–5 полных предложений, imageQuery новый под тему, intent обновлён.
+Полный валидный payload для ${alt}.`);
+    issues = check(slide);
+    if (!issues.length) return slide;
   }
-  return slide;
+
+  throw new Error(`outline slide revise failed: ${formatOutlinePlanIssues(issues)}`);
 }
 
 type RewriteCtx = {

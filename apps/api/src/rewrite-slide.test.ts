@@ -104,4 +104,47 @@ describe("reviseOutlineSlide", () => {
     });
     expect(out.visual).toBe("timeline");
   });
+
+  it("full-redo falls back to photo layout after two invalid structured attempts", async () => {
+    const badFeatures = {
+      ...goodSlide,
+      visual: "features" as const,
+      features: [
+        { title: "A", body: "a", iconHint: "carbon-idea" },
+        { title: "B", body: "b", iconHint: "carbon-star" },
+      ],
+    };
+    const flipped = {
+      ...goodSlide,
+      visual: "image-left" as const,
+      heading: "Новый ракурс",
+      points: ["Один", "Два", "Три"],
+      imageQuery: "volgodonsk canal aerial",
+    };
+    const generateObjectFn = vi
+      .fn()
+      .mockResolvedValueOnce({ object: badFeatures })
+      .mockResolvedValueOnce({ object: badFeatures })
+      .mockResolvedValueOnce({ object: flipped });
+    const out = await reviseOutlineSlide({
+      topic: "Волгодонск",
+      locale: "ru",
+      audience: "school",
+      slideIndex: 2,
+      previous: goodSlide,
+      instruction: "полностью переделай, мне не нравится",
+      isHero: false,
+      locked: {
+        layout: "image-right",
+        variant: "",
+        image: "/slide-2.jpg",
+        visual: "image-right",
+      },
+      generateObjectFn: generateObjectFn as never,
+    });
+    expect(out.visual).toBe("image-left");
+    expect(out.heading).toBe("Новый ракурс");
+    expect(generateObjectFn).toHaveBeenCalledTimes(3);
+    expect(String(generateObjectFn.mock.calls[2]?.[0]?.prompt ?? "")).toMatch(/FALLBACK FULL REDO/);
+  });
 });

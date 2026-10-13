@@ -67,7 +67,7 @@ export function reviseOutlineSlidePrompt(opts: {
       ? `- Это hero/cover FULL REDO: visual ОБЯЗАН остаться hero или cover. Существенно перепиши heading/intent и imageQuery — не парафраз. Не уводи в image-right|timeline|stats.`
       : `- Это hero/cover: visual ОБЯЗАН остаться hero или cover. Не уводи в image-right|timeline|stats и т.п.`
     : fullRedo
-      ? `- FULL REDO: пользователь хочет ДРУГОЙ слайд. Выбери ДРУГОЙ visual (не «${currentVisual}»). Существенно перепиши heading/points/intent — не парафраз предыдущего. Для photo-layouts обнови imageQuery под новый ракурс/сюжет. Нельзя вернуть почти тот же текст и тот же visual.`
+      ? `- FULL REDO: пользователь хочет ДРУГОЙ слайд. Предпочтительно смени photo-layout: если сейчас image-right → image-left (и наоборот); иначе другой BODY visual ТОЛЬКО с полным payload (features ровно 3 с title+iconHint из allowlist; stats ≥2; timeline ≥3; cards ≥2; process ≥3; skills ≥2). Существенно перепиши heading/points/intent — не парафраз. Для photo-layouts обязательно новый imageQuery. Нельзя вернуть почти тот же текст и тот же visual.`
       : `- По умолчанию сохрани visual=${currentVisual} (layout ${opts.locked?.layout || "текущий"}).
 - Меняй visual/layout ТОЛЬКО если инструкция явно просит другой макет/visual ИЛИ контент не лезет в текущий layout.
 - Не делай visual none|default|center|section|intro|end (запрещены «только текст»).`;
