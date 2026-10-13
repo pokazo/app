@@ -55,6 +55,14 @@ export function hasOrphanLeadingHero(md: string, outlineSlideCount: number): boo
   return blocks.length === outlineSlideCount + 1 && isHeroOrCoverLayout(first);
 }
 
+/** View/filmstrip slide count (outline length, +1 when orphan leading hero). */
+export function maxViewSlideCount(md: string, outlineSlideCount: number): number {
+  if (outlineSlideCount < 1) return 0;
+  return hasOrphanLeadingHero(md, outlineSlideCount)
+    ? outlineSlideCount + 1
+    : outlineSlideCount;
+}
+
 /**
  * Outline index → Slidev page (both 1-based).
  * When compose left an extra leading hero/cover and then all outline slides,
@@ -155,4 +163,22 @@ export function resolveRewriteSlideTargets(opts: {
   );
   const isHero = isHeroOrCoverLayout(locked.layout);
   return { slidevIndex, locked, isHero };
+}
+
+/** Whether rewrite for this view index should use the hero flow (not body/layout MCP). */
+export function isHeroRewriteTarget(
+  md: string,
+  viewSlideIndex: number,
+  outlineSlideCount: number,
+  fallbackVisual: OutlineSlide["visual"] = "hero",
+): boolean {
+  const mapping = mapViewSlideToOutline(md, viewSlideIndex, outlineSlideCount);
+  if (mapping.kind === "orphan-hero") return true;
+  const { isHero } = resolveRewriteSlideTargets({
+    md,
+    outlineSlideIndex: mapping.outlineSlideIndex,
+    outlineSlideCount,
+    fallbackVisual,
+  });
+  return isHero;
 }

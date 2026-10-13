@@ -6,18 +6,22 @@ import { config } from "./env.js";
 import { buildSlidev } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp } from "./slidev-mcp.js";
+import { withLayoutMcp } from "./layout-mcp.js";
+import { withHeroMcp } from "./hero-mcp.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
 import { createYandexImageTools, type YandexToolAttribution } from "./assets-yandex-tools.js";
-import { mergeComposeTools, pickRewriteTools } from "./generate-helpers.js";
+import { mergeComposeTools, pickHeroTools, pickRewriteTools } from "./generate-helpers.js";
 import { Outline, OutlineSlide, type OutlineT } from "./outline.js";
 import { emptySlideIssues, formatOutlinePlanIssues, textOnlySlideIssues } from "./outline-plan.js";
 import { parseSlideBlocks } from "./layout-md-assert.js";
 import {
   applyLockedVisual,
-  hasOrphanLeadingHero,
+  isHeroRewriteTarget,
+  layoutToOutlineVisual,
   lockedSlideLayoutFromMarkdown,
   mapViewSlideToOutline,
+  maxViewSlideCount,
   resolveRewriteSlideTargets,
   type LockedSlideLayout,
 } from "./rewrite-lock.js";
@@ -26,6 +30,10 @@ import {
   composeOneSlideSkill,
   composeOneSlideUserPrompt,
   reviseOutlineSlidePrompt,
+  rewriteHeroMaxSteps,
+  rewriteHeroRepairPrompt,
+  rewriteHeroSkill,
+  rewriteHeroUserPrompt,
   rewriteRepairPrompt,
 } from "./rewrite-skill.js";
 import { writeRewriteStatus } from "./rewrite-status.js";
@@ -55,6 +63,124 @@ async function guardWorkSlides(workDir: string, theme: string): Promise<string> 
   return md;
 }
 
+type Attribution =
+  | StockToolAttribution
+  | GenToolAttribution
+  | YandexToolAttribution
+  | UploadToolAttribution;
+
+async function prepareImageTools(opts: {
+  workDir: string;
+  deckId: string;
+  attributions: Attribution[];
+}): Promise<{
+  yandexTools: Record<string, unknown>;
+  stockTools: Record<string, unknown>;
+  imageGenTools: Record<string, unknown>;
+  uploadUseTools: Record<string, unknown>;
+  withOptionalUploadMcp: <T>(
+    run: (uploadSearchTools: Record<string, unknown>) => Promise<T>,
+  ) => Promise<T>;
+}> {
+  const yandexTools = createYandexImageTools(opts.workDir, {
+    baseUrl: config.yandexImagesUrl,
+    onAttribution: (entry) => opts.attributions.push(entry),
+  });
+  const stockTools = createStockTools(opts.workDir, {
+    accessKey: config.unsplashAccessKey,
+    apiBase: config.unsplashApiBase,
+    imagesBase: config.unsplashImagesBase,
+    onAttribution: (entry) => opts.attributions.push(entry),
+  });
+  const imageGenTools = createImageGenTools(opts.workDir, {
+    apiKey: config.openaiApiKey,
+    model: config.openaiImageModel,
+    apiBase: config.openaiImageApiBase,
+    onAttribution: (entry) => opts.attributions.push(entry),
+  });
+
+  const uploadDir = hasUploadImages(config.uploadDataDir, opts.deckId)
+    ? uploadDirForDeck(config.uploadDataDir, opts.deckId)
+    : null;
+  if (uploadDir) {
+    await ensureUploadIndex({
+      uploadRoot: config.uploadDataDir,
+      deckId: opts.deckId,
+      apiKey: config.openrouterKey || config.openaiApiKey,
+      apiBase: config.openrouterKey ? config.openrouterBaseUrl : config.openaiImageApiBase,
+      model: config.openrouterKey ? "openai/gpt-4o-mini" : "gpt-4o-mini",
+    });
+  }
+  const uploadUseTools = uploadDir
+    ? createUploadImageUseTools(opts.workDir, uploadDir, {
+        onAttribution: (entry) => opts.attributions.push(entry),
+      })
+    : {};
+  const withOptionalUploadMcp = async <T>(
+    run: (uploadSearchTools: Record<string, unknown>) => Promise<T>,
+  ): Promise<T> => {
+    if (!uploadDir) return run({});
+    return withUploadImagesMcp(uploadDir, run);
+  };
+
+  return {
+    yandexTools,
+    stockTools,
+    imageGenTools,
+    uploadUseTools,
+    withOptionalUploadMcp,
+  };
+}
+
+async function persistAttributions(workDir: string, attributions: Attribution[]): Promise<void> {
+  if (!attributions.length) return;
+  try {
+    const prev = JSON.parse(await readFile(join(workDir, "assets.json"), "utf8")) as {
+      attributions?: unknown[];
+    };
+    const list = Array.isArray(prev.attributions) ? prev.attributions : [];
+    await writeFile(
+      join(workDir, "assets.json"),
+      JSON.stringify({ attributions: [...list, ...attributions] }, null, 2),
+      "utf8",
+    );
+  } catch {
+    await writeFile(
+      join(workDir, "assets.json"),
+      JSON.stringify({ attributions }, null, 2),
+      "utf8",
+    );
+  }
+}
+
+/** Sync outline.visual from the actual Slidev layout after body rewrite. */
+async function syncOutlineVisualFromMarkdown(opts: {
+  workDir: string;
+  outline: OutlineT;
+  outlineSlot: number;
+  outlineCount: number;
+  fallbackVisual: OutlineSlide["visual"];
+}): Promise<void> {
+  let md = "";
+  try {
+    md = await readFile(join(opts.workDir, "slides.md"), "utf8");
+  } catch {
+    return;
+  }
+  const locked = lockedSlideLayoutFromMarkdown(
+    md,
+    opts.outlineSlot,
+    opts.fallbackVisual,
+    opts.outlineCount,
+  );
+  if (!locked.layout) return;
+  const visual = layoutToOutlineVisual(locked.layout, opts.fallbackVisual);
+  const prev = opts.outline.slides[opts.outlineSlot - 1];
+  if (!prev || prev.visual === visual) return;
+  opts.outline.slides[opts.outlineSlot - 1] = { ...prev, visual };
+  await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(opts.outline, null, 2), "utf8");
+}
+
 export type ReviseOutlineSlideFn = (args: {
   model: unknown;
   schema: typeof OutlineSlide;
@@ -75,8 +201,9 @@ export async function reviseOutlineSlide(opts: {
   generateObjectFn?: ReviseOutlineSlideFn;
 }): Promise<OutlineSlide> {
   const prompt = reviseOutlineSlidePrompt(opts);
+  // Hero: keep hero/cover visual. Body: allow visual change from the model.
   const lockVisual = (slide: OutlineSlide) =>
-    opts.locked ? applyLockedVisual(slide, opts.locked) : slide;
+    opts.isHero && opts.locked ? applyLockedVisual(slide, opts.locked) : slide;
 
   async function once(p: string): Promise<OutlineSlide> {
     if (opts.generateObjectFn) {
@@ -118,6 +245,273 @@ ${formatOutlinePlanIssues(issues)}
   return slide;
 }
 
+type RewriteCtx = {
+  id: string;
+  workDir: string;
+  slideIndex: number;
+  instruction: string;
+  theme: string;
+  locale: string;
+  topic: string;
+  audience: string;
+  researchMarkdown?: string;
+  outline: OutlineT;
+  outlineCount: number;
+  previous: OutlineSlide;
+  locked: LockedSlideLayout;
+  slidevIndex: number;
+  outlineSlot: number | null;
+};
+
+async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
+  const {
+    id,
+    workDir,
+    slideIndex,
+    instruction,
+    theme,
+    locale,
+    topic,
+    audience,
+    researchMarkdown,
+    previous,
+    locked,
+    outlineSlot,
+    outline,
+  } = ctx;
+
+  console.info(
+    `[rewrite] hero view=${slideIndex} slidev=1 deck=${id} variant=${locked.variant || "-"}`,
+  );
+
+  const revised = await reviseOutlineSlide({
+    topic,
+    locale,
+    audience,
+    slideIndex,
+    previous,
+    instruction,
+    researchMarkdown,
+    isHero: true,
+    locked,
+  });
+  if (outlineSlot != null) {
+    // Keep hero visual; merge text/imageQuery into outline slot 1 when present.
+    outline.slides[outlineSlot - 1] = {
+      ...revised,
+      visual: locked.visual === "cover" ? "cover" : "hero",
+    };
+    await writeFile(join(workDir, "outline.json"), JSON.stringify(outline, null, 2), "utf8");
+  }
+
+  const attributions: Attribution[] = [];
+  const images = await prepareImageTools({ workDir, deckId: id, attributions });
+
+  const runHeroMcp = async (system: string, prompt: string, maxSteps: number) => {
+    await images.withOptionalUploadMcp(async (uploadSearchTools) => {
+      await withHeroMcp(async (heroTools) => {
+        await withSlidevMcp(workDir, async (slidevTools) => {
+          const tools = pickHeroTools(
+            mergeComposeTools(
+              heroTools,
+              slidevTools,
+              uploadSearchTools,
+              images.uploadUseTools,
+              images.yandexTools,
+              images.stockTools,
+              images.imageGenTools,
+            ),
+          );
+          await generateText({
+            model: model(config.composeModel),
+            system,
+            tools: tools as never,
+            maxSteps,
+            prompt,
+          });
+        });
+      });
+    });
+  };
+
+  await runHeroMcp(
+    rewriteHeroSkill(theme, locale),
+    rewriteHeroUserPrompt({
+      slide: revised,
+      locale,
+      topic,
+      instruction,
+      locked,
+    }),
+    rewriteHeroMaxSteps(),
+  );
+
+  let md = await guardWorkSlides(workDir, theme);
+  const base = `/p/${id}/`;
+  const buildAndGate = async () => {
+    await buildSlidev(workDir, base);
+    if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+      const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
+      await assertDeckLayoutsRender(workDir, id);
+    }
+  };
+
+  try {
+    await buildAndGate();
+  } catch (err) {
+    console.info(`[rewrite] hero build failed, repair deck=${id}: ${String(err).slice(0, 400)}`);
+    await runHeroMcp(
+      rewriteHeroSkill(theme, locale),
+      rewriteHeroRepairPrompt({ error: String(err), md, locked }),
+      12,
+    );
+    md = await guardWorkSlides(workDir, theme);
+    await buildAndGate();
+  }
+
+  await persistAttributions(workDir, attributions);
+  await writeRewriteStatus(workDir, {
+    slide: slideIndex,
+    status: "done",
+    instruction,
+    updatedAt: new Date().toISOString(),
+  });
+  console.info(`[rewrite] hero done slide=${slideIndex} deck=${id}`);
+}
+
+async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
+  const {
+    id,
+    workDir,
+    slideIndex,
+    instruction,
+    theme,
+    locale,
+    topic,
+    audience,
+    researchMarkdown,
+    previous,
+    locked,
+    slidevIndex,
+    outlineSlot,
+    outline,
+    outlineCount,
+  } = ctx;
+
+  console.info(
+    `[rewrite] body view=${slideIndex} outline=${outlineSlot} slidev=${slidevIndex} deck=${id} layout=${locked.layout || "?"}`,
+  );
+
+  const revised = await reviseOutlineSlide({
+    topic,
+    locale,
+    audience,
+    slideIndex,
+    previous,
+    instruction,
+    researchMarkdown,
+    isHero: false,
+    locked,
+  });
+  if (outlineSlot != null) {
+    outline.slides[outlineSlot - 1] = revised;
+    await writeFile(join(workDir, "outline.json"), JSON.stringify(outline, null, 2), "utf8");
+  }
+
+  const attributions: Attribution[] = [];
+  const images = await prepareImageTools({ workDir, deckId: id, attributions });
+
+  const runBodyMcp = async (system: string, prompt: string, maxSteps: number) => {
+    await images.withOptionalUploadMcp(async (uploadSearchTools) => {
+      await withLayoutMcp(async (layoutTools) => {
+        await withSlidevMcp(workDir, async (slidevTools) => {
+          const tools = pickRewriteTools(
+            mergeComposeTools(
+              layoutTools,
+              slidevTools,
+              uploadSearchTools,
+              images.uploadUseTools,
+              images.yandexTools,
+              images.stockTools,
+              images.imageGenTools,
+            ),
+          );
+          await generateText({
+            model: model(config.composeModel),
+            system,
+            tools: tools as never,
+            maxSteps,
+            prompt,
+          });
+        });
+      });
+    });
+  };
+
+  await runBodyMcp(
+    composeOneSlideSkill(theme, locale),
+    composeOneSlideUserPrompt({
+      slideIndex: slidevIndex,
+      slide: revised,
+      locale,
+      topic,
+      instruction,
+      locked,
+    }),
+    composeOneSlideMaxSteps(),
+  );
+
+  let md = await guardWorkSlides(workDir, theme);
+  const base = `/p/${id}/`;
+  const buildAndGate = async () => {
+    await buildSlidev(workDir, base);
+    if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+      const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
+      await assertDeckLayoutsRender(workDir, id);
+    }
+  };
+
+  try {
+    await buildAndGate();
+  } catch (err) {
+    console.info(
+      `[rewrite] body build failed, repair outline=${slideIndex} slidev=${slidevIndex}: ${String(err).slice(0, 400)}`,
+    );
+    await runBodyMcp(
+      composeOneSlideSkill(theme, locale),
+      rewriteRepairPrompt({
+        slideIndex: slidevIndex,
+        error: String(err),
+        md,
+        locked,
+      }),
+      14,
+    );
+    md = await guardWorkSlides(workDir, theme);
+    await buildAndGate();
+  }
+
+  if (outlineSlot != null) {
+    await syncOutlineVisualFromMarkdown({
+      workDir,
+      outline,
+      outlineSlot,
+      outlineCount,
+      fallbackVisual: revised.visual,
+    });
+  }
+
+  await persistAttributions(workDir, attributions);
+  await writeRewriteStatus(workDir, {
+    slide: slideIndex,
+    status: "done",
+    instruction,
+    updatedAt: new Date().toISOString(),
+  });
+  console.info(`[rewrite] body done slide=${slideIndex} deck=${id}`);
+}
+
+/** Entry: dispatch hero vs body rewrite flows. */
 export async function rewriteSlide(opts: {
   id: string;
   workDir: string;
@@ -136,9 +530,7 @@ export async function rewriteSlide(opts: {
     slidesMd = "";
   }
   const outlineCount = outline.slides.length;
-  const maxView = hasOrphanLeadingHero(slidesMd, outlineCount)
-    ? outlineCount + 1
-    : outlineCount;
+  const maxView = maxViewSlideCount(slidesMd, outlineCount);
   if (opts.slideIndex < 1 || opts.slideIndex > maxView) {
     throw new Error("bad slide index");
   }
@@ -173,7 +565,6 @@ export async function rewriteSlide(opts: {
   let previous: OutlineSlide;
   let locked: LockedSlideLayout;
   let slidevIndex: number;
-  let isHero: boolean;
   let outlineSlot: number | null;
 
   if (mapping.kind === "orphan-hero") {
@@ -200,12 +591,11 @@ export async function rewriteSlide(opts: {
       process: [],
     };
     slidevIndex = 1;
-    isHero = true;
     outlineSlot = null;
   } else {
     outlineSlot = mapping.outlineSlideIndex;
     previous = outline.slides[outlineSlot - 1]!;
-    ({ locked, slidevIndex, isHero } = resolveRewriteSlideTargets({
+    ({ locked, slidevIndex } = resolveRewriteSlideTargets({
       md: slidesMd,
       outlineSlideIndex: outlineSlot,
       outlineSlideCount: outlineCount,
@@ -213,173 +603,33 @@ export async function rewriteSlide(opts: {
     }));
   }
 
-  console.info(
-    `[rewrite] revise view=${opts.slideIndex} outline=${outlineSlot ?? "hero"} slidev=${slidevIndex} deck=${opts.id} lock=${locked.layout || "?"} variant=${locked.variant || "-"}`,
-  );
-  const revised = await reviseOutlineSlide({
-    topic,
-    locale,
-    audience,
+  const ctx: RewriteCtx = {
+    id: opts.id,
+    workDir: opts.workDir,
     slideIndex: opts.slideIndex,
-    previous,
     instruction,
+    theme,
+    locale,
+    topic,
+    audience,
     researchMarkdown,
-    isHero,
+    outline,
+    outlineCount,
+    previous,
     locked,
-  });
-  if (outlineSlot != null) {
-    outline.slides[outlineSlot - 1] = revised;
-    await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(outline, null, 2), "utf8");
-  }
-
-  const attributions: Array<
-    StockToolAttribution | GenToolAttribution | YandexToolAttribution | UploadToolAttribution
-  > = [];
-  const yandexTools = createYandexImageTools(opts.workDir, {
-    baseUrl: config.yandexImagesUrl,
-    onAttribution: (entry) => attributions.push(entry),
-  });
-  const stockTools = createStockTools(opts.workDir, {
-    accessKey: config.unsplashAccessKey,
-    apiBase: config.unsplashApiBase,
-    imagesBase: config.unsplashImagesBase,
-    onAttribution: (entry) => attributions.push(entry),
-  });
-  const imageGenTools = createImageGenTools(opts.workDir, {
-    apiKey: config.openaiApiKey,
-    model: config.openaiImageModel,
-    apiBase: config.openaiImageApiBase,
-    onAttribution: (entry) => attributions.push(entry),
-  });
-
-  const uploadDir = hasUploadImages(config.uploadDataDir, opts.id)
-    ? uploadDirForDeck(config.uploadDataDir, opts.id)
-    : null;
-  if (uploadDir) {
-    await ensureUploadIndex({
-      uploadRoot: config.uploadDataDir,
-      deckId: opts.id,
-      apiKey: config.openrouterKey || config.openaiApiKey,
-      apiBase: config.openrouterKey ? config.openrouterBaseUrl : config.openaiImageApiBase,
-      model: config.openrouterKey ? "openai/gpt-4o-mini" : "gpt-4o-mini",
-    });
-  }
-  const uploadUseTools = uploadDir
-    ? createUploadImageUseTools(opts.workDir, uploadDir, {
-        onAttribution: (entry) => attributions.push(entry),
-      })
-    : {};
-  const withOptionalUploadMcp = async <T>(
-    run: (uploadSearchTools: Record<string, unknown>) => Promise<T>,
-  ): Promise<T> => {
-    if (!uploadDir) return run({});
-    return withUploadImagesMcp(uploadDir, run);
+    slidevIndex,
+    outlineSlot,
   };
 
-  // Fields-only rewrite: same layout/variant for hero and body slides (no hero catalog).
-  console.info(
-    `[rewrite] compose-one outline=${opts.slideIndex} slidev=${slidevIndex} deck=${opts.id} layout=${locked.layout || "?"}`,
+  const useHero = isHeroRewriteTarget(
+    slidesMd,
+    opts.slideIndex,
+    outlineCount,
+    previous.visual,
   );
-  await withOptionalUploadMcp(async (uploadSearchTools) => {
-    await withSlidevMcp(opts.workDir, async (slidevTools) => {
-      const tools = pickRewriteTools(
-        mergeComposeTools(
-          slidevTools,
-          uploadSearchTools,
-          uploadUseTools,
-          yandexTools,
-          stockTools,
-          imageGenTools,
-        ),
-      );
-      await generateText({
-        model: model(config.composeModel),
-        system: composeOneSlideSkill(theme, locale),
-        tools: tools as never,
-        maxSteps: composeOneSlideMaxSteps(),
-        prompt: composeOneSlideUserPrompt({
-          slideIndex: slidevIndex,
-          slide: revised,
-          locale,
-          topic,
-          instruction,
-          locked,
-        }),
-      });
-    });
-  });
-
-  let md = await guardWorkSlides(opts.workDir, theme);
-  const base = `/p/${opts.id}/`;
-  const buildAndGate = async () => {
-    await buildSlidev(opts.workDir, base);
-    if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
-      const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
-      await assertDeckLayoutsRender(opts.workDir, opts.id);
-    }
-  };
-
-  try {
-    await buildAndGate();
-  } catch (err) {
-    console.info(
-      `[rewrite] build failed, MCP repair outline=${opts.slideIndex} slidev=${slidevIndex}: ${String(err).slice(0, 400)}`,
-    );
-    await withOptionalUploadMcp(async (uploadSearchTools) => {
-      await withSlidevMcp(opts.workDir, async (slidevTools) => {
-        const tools = pickRewriteTools(
-          mergeComposeTools(
-            slidevTools,
-            uploadSearchTools,
-            uploadUseTools,
-            yandexTools,
-            stockTools,
-            imageGenTools,
-          ),
-        );
-        await generateText({
-          model: model(config.composeModel),
-          system: composeOneSlideSkill(theme, locale),
-          tools: tools as never,
-          maxSteps: 12,
-          prompt: rewriteRepairPrompt({
-            slideIndex: slidevIndex,
-            error: String(err),
-            md,
-            locked,
-          }),
-        });
-      });
-    });
-    md = await guardWorkSlides(opts.workDir, theme);
-    await buildAndGate();
+  if (useHero) {
+    await rewriteHeroSlide(ctx);
+  } else {
+    await rewriteBodySlide(ctx);
   }
-
-  if (attributions.length) {
-    try {
-      const prev = JSON.parse(await readFile(join(opts.workDir, "assets.json"), "utf8")) as {
-        attributions?: unknown[];
-      };
-      const list = Array.isArray(prev.attributions) ? prev.attributions : [];
-      await writeFile(
-        join(opts.workDir, "assets.json"),
-        JSON.stringify({ attributions: [...list, ...attributions] }, null, 2),
-        "utf8",
-      );
-    } catch {
-      await writeFile(
-        join(opts.workDir, "assets.json"),
-        JSON.stringify({ attributions }, null, 2),
-        "utf8",
-      );
-    }
-  }
-
-  await writeRewriteStatus(opts.workDir, {
-    slide: opts.slideIndex,
-    status: "done",
-    instruction,
-    updatedAt: new Date().toISOString(),
-  });
-  console.info(`[rewrite] done slide=${opts.slideIndex} deck=${opts.id}`);
 }

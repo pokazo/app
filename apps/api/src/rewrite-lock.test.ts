@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   applyLockedVisual,
+  isHeroRewriteTarget,
   layoutToOutlineVisual,
   lockedSlideLayoutFromMarkdown,
   mapViewSlideToOutline,
+  maxViewSlideCount,
   resolveRewriteSlideTargets,
   slidevIndexForOutlineSlide,
 } from "./rewrite-lock.js";
@@ -204,6 +206,31 @@ image: /b.jpg
         outlineSlideIndex: 2,
         slidevIndex: 2,
       });
+    });
+
+    it("maxViewSlideCount includes orphan hero", () => {
+      expect(maxViewSlideCount(orphanHeroMd, 3)).toBe(4);
+      const aligned = `---
+layout: hero
+image: /h.jpg
+---
+
+# Hero
+
+---
+layout: image-left
+image: /b.jpg
+---
+
+# Body
+`;
+      expect(maxViewSlideCount(aligned, 2)).toBe(2);
+    });
+
+    it("isHeroRewriteTarget: orphan hero and body last slide", () => {
+      expect(isHeroRewriteTarget(orphanHeroMd, 1, 3)).toBe(true);
+      expect(isHeroRewriteTarget(orphanHeroMd, 4, 3, "image-left")).toBe(false);
+      expect(isHeroRewriteTarget(orphanHeroMd, 2, 3, "timeline")).toBe(false);
     });
   });
 });

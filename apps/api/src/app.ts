@@ -22,6 +22,7 @@ import {
 } from "./deck-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
+import { maxViewSlideCount } from "./rewrite-lock.js";
 import { readDeckActivity } from "./activity.js";
 import { readPreviewBuild } from "./progressive-preview.js";
 import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
@@ -496,16 +497,23 @@ export function createApp() {
     if (!existsSync(join(dir, "outline.json")) || !existsSync(join(dir, "slides.md"))) {
       return c.json({ error: "not found" }, 404);
     }
-    let slideCount = 0;
+    let outlineCount = 0;
     try {
       const outline = JSON.parse(await readFile(join(dir, "outline.json"), "utf8")) as {
         slides?: unknown[];
       };
-      slideCount = Array.isArray(outline.slides) ? outline.slides.length : 0;
+      outlineCount = Array.isArray(outline.slides) ? outline.slides.length : 0;
     } catch {
       return c.json({ error: "not found" }, 404);
     }
-    if (n > slideCount) return c.json({ error: "bad slide" }, 400);
+    let slidesMd = "";
+    try {
+      slidesMd = await readFile(join(dir, "slides.md"), "utf8");
+    } catch {
+      return c.json({ error: "not found" }, 404);
+    }
+    const maxView = maxViewSlideCount(slidesMd, outlineCount);
+    if (n < 1 || n > maxView) return c.json({ error: "bad slide" }, 400);
 
     const contentType = c.req.header("content-type") ?? "";
     let instruction = "";

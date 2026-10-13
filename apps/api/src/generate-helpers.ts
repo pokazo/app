@@ -52,9 +52,13 @@ export function stripComposeInspectTools(tools: Record<string, unknown>): Record
   return out;
 }
 
+/** Body-slide rewrite: get/update + layout catalog + assets — no hero catalog, no insert/remove/move. */
 const REWRITE_TOOL_ALLOW = new Set([
   "slidev-get-slide",
   "slidev-update-slide",
+  "layout-list",
+  "layout-get",
+  "layout-match",
   "upload-image-list",
   "upload-image-search",
   "upload-image-use",
@@ -65,7 +69,7 @@ const REWRITE_TOOL_ALLOW = new Set([
   "image-generate",
 ]);
 
-/** Single-slide rewrite: get/update target slide + assets — no insert/remove/move/list. */
+/** Body rewrite only — hero rewrite uses pickHeroTools. */
 export function pickRewriteTools(tools: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [name, tool] of Object.entries(tools)) {

@@ -55,7 +55,7 @@ describe("reviseOutlineSlide", () => {
     expect(generateObjectFn).toHaveBeenCalledTimes(2);
   });
 
-  it("forces locked visual even if model changes it", async () => {
+  it("forces locked visual on hero rewrite even if model changes it", async () => {
     const generateObjectFn = vi.fn(async () => ({
       object: { ...goodSlide, visual: "timeline" as const },
     }));
@@ -76,5 +76,32 @@ describe("reviseOutlineSlide", () => {
       generateObjectFn: generateObjectFn as never,
     });
     expect(out.visual).toBe("hero");
+  });
+
+  it("allows body visual change when model revises layout", async () => {
+    const generateObjectFn = vi.fn(async () => ({
+      object: { ...goodSlide, visual: "timeline" as const, steps: [
+        { phase: "1", title: "A", body: "a", state: "done" as const },
+        { phase: "2", title: "B", body: "b", state: "current" as const },
+        { phase: "3", title: "C", body: "c", state: "todo" as const },
+      ] },
+    }));
+    const out = await reviseOutlineSlide({
+      topic: "Тема",
+      locale: "ru",
+      audience: "school",
+      slideIndex: 2,
+      previous: goodSlide,
+      instruction: "сделай timeline",
+      isHero: false,
+      locked: {
+        layout: "image-right",
+        variant: "",
+        image: "/slide-2.jpg",
+        visual: "image-right",
+      },
+      generateObjectFn: generateObjectFn as never,
+    });
+    expect(out.visual).toBe("timeline");
   });
 });

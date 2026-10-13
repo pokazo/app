@@ -3,6 +3,9 @@ import {
   composeOneSlideSkill,
   composeOneSlideUserPrompt,
   reviseOutlineSlidePrompt,
+  rewriteHeroRepairPrompt,
+  rewriteHeroSkill,
+  rewriteHeroUserPrompt,
   rewriteRepairPrompt,
 } from "./rewrite-skill.js";
 
@@ -33,8 +36,15 @@ const lockedHero = {
   visual: "hero" as const,
 };
 
+const lockedStats = {
+  layout: "stats",
+  variant: "",
+  image: "",
+  visual: "stats" as const,
+};
+
 describe("rewrite-skill prompts", () => {
-  it("revise prompt locks visual and scopes to one slide", () => {
+  it("revise body prompt soft-locks visual and allows layout change", () => {
     const p = reviseOutlineSlidePrompt({
       topic: "Тема",
       locale: "ru",
@@ -43,54 +53,112 @@ describe("rewrite-skill prompts", () => {
       previous: sampleSlide,
       instruction: "сделай крупнее цифры",
       isHero: false,
-      locked: {
-        layout: "stats",
-        variant: "",
-        image: "",
-        visual: "stats",
-      },
+      locked: lockedStats,
     });
     expect(p).toMatch(/ОДИН слайд/);
     expect(p).toMatch(/сделай крупнее цифры/);
     expect(p).toMatch(/Номер слайда: 3/);
-    expect(p).toMatch(/visual ОБЯЗАН остаться ровно «stats»/);
-    expect(p).not.toMatch(/сделай timeline/);
+    expect(p).toMatch(/По умолчанию сохрани visual=stats/);
+    expect(p).toMatch(/Меняй visual\/layout ТОЛЬКО если/);
+    expect(p).not.toMatch(/visual ОБЯЗАН остаться ровно «stats»/);
   });
 
-  it("compose-one skill forbids layout change and forced photo pipeline", () => {
+  it("revise hero prompt keeps hero/cover visual", () => {
+    const p = reviseOutlineSlidePrompt({
+      topic: "Тема",
+      locale: "ru",
+      audience: "school",
+      slideIndex: 1,
+      previous: { ...sampleSlide, visual: "hero" },
+      instruction: "короче заголовок",
+      isHero: true,
+      locked: lockedHero,
+    });
+    expect(p).toMatch(/visual ОБЯЗАН остаться hero или cover/);
+  });
+
+  it("compose-one body skill allows layout MCP and forbids hero tools", () => {
     const s = composeOneSlideSkill("default", "ru");
     expect(s).toMatch(/slidev-get-slide/);
     expect(s).toMatch(/slidev-update-slide ONLY/i);
+    expect(s).toMatch(/layout-list/);
+    expect(s).toMatch(/layout-get/);
+    expect(s).toMatch(/soft lock/i);
+    expect(s).toMatch(/do NOT call hero-list/i);
     expect(s).toMatch(/Do NOT insert/);
-    expect(s).toMatch(/HARD LOCK/);
-    expect(s).toMatch(/Do NOT call hero-list/);
     expect(s).toMatch(/only asked for text/);
+    expect(s).not.toMatch(/HARD LOCK/);
   });
 
-  it("compose-one user prompt pins slide index and locked layout", () => {
+  it("compose-one user prompt soft-locks current body layout", () => {
     const p = composeOneSlideUserPrompt({
-      slideIndex: 1,
-      slide: { ...sampleSlide, visual: "hero" },
+      slideIndex: 3,
+      slide: sampleSlide,
       locale: "ru",
       topic: "Тема",
-      instruction: "История Легенды Яндекса замени на История Легенды",
+      instruction: "Поменяй картинку на атоммаш",
+      locked: {
+        layout: "image-right",
+        variant: "",
+        image: "/slide-4.jpg",
+        visual: "image-right",
+      },
+    });
+    expect(p).toMatch(/slide 3/);
+    expect(p).toMatch(/no=3/);
+    expect(p).toMatch(/CURRENT: layout=image-right/);
+    expect(p).toMatch(/Never use hero\/cover/);
+    expect(p).toMatch(/Поменяй картинку на атоммаш/);
+  });
+
+  it("body repair prompt forbids hero tools", () => {
+    const p = rewriteRepairPrompt({
+      slideIndex: 3,
+      error: "LayoutError[image-right]",
+      md: "---\nlayout: image-right\n---\n",
+      locked: {
+        layout: "image-right",
+        variant: "",
+        image: "/slide-4.jpg",
+        visual: "image-right",
+      },
+    });
+    expect(p).toMatch(/layout-get/);
+    expect(p).toMatch(/Не вызывай hero-list/);
+  });
+
+  it("hero rewrite skill uses hero catalog and forbids layout MCP", () => {
+    const s = rewriteHeroSkill("default", "ru");
+    expect(s).toMatch(/hero-list/);
+    expect(s).toMatch(/hero-get/);
+    expect(s).toMatch(/slidev-update-slide/);
+    expect(s).toMatch(/do NOT call layout-list/i);
+    expect(s).toMatch(/Keep layout: hero forever/);
+    expect(s).toMatch(/yandex-image-search/);
+  });
+
+  it("hero rewrite user prompt pins slide 1 and soft-locks variant", () => {
+    const p = rewriteHeroUserPrompt({
+      slide: { ...sampleSlide, visual: "hero", heading: "Город" },
+      locale: "ru",
+      topic: "Волгодонск",
+      instruction: "Поменяй картинку на набережную",
       locked: lockedHero,
     });
     expect(p).toMatch(/slide 1/);
-    expect(p).toMatch(/no=1/);
-    expect(p).toMatch(/LOCKED: layout=hero variant=ribbon/);
-    expect(p).toMatch(/Do not change layout or variant/);
-    expect(p).not.toMatch(/FIRST call hero-list/i);
+    expect(p).toMatch(/variant=ribbon/);
+    expect(p).toMatch(/Keep layout: hero/);
+    expect(p).toMatch(/Поменяй картинку на набережную/);
   });
 
-  it("repair prompt keeps layout lock", () => {
-    const p = rewriteRepairPrompt({
-      slideIndex: 1,
+  it("hero repair keeps hero layout", () => {
+    const p = rewriteHeroRepairPrompt({
       error: "LayoutError[hero]",
-      md: "---\nlayout: hero\n---\n",
+      md: "---\nlayout: hero\nvariant: ribbon\n---\n",
       locked: lockedHero,
     });
-    expect(p).toMatch(/Сохрани layout=hero variant=ribbon/);
-    expect(p).not.toMatch(/hero-list/);
+    expect(p).toMatch(/layout: hero/);
+    expect(p).toMatch(/variant=ribbon/);
+    expect(p).toMatch(/Не вызывай layout-list/);
   });
 });

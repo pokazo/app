@@ -61,7 +61,7 @@ describe("stripComposeInspectTools", () => {
 });
 
 describe("pickRewriteTools", () => {
-  it("keeps get/update + assets and drops insert/remove/move/list", () => {
+  it("keeps get/update + layout catalog + assets; drops hero catalog and insert/remove/move", () => {
     const picked = pickRewriteTools({
       "slidev-get-slide": 1,
       "slidev-update-slide": 2,
@@ -70,6 +70,11 @@ describe("pickRewriteTools", () => {
       "slidev-move-slide": 5,
       "slidev-list-slides": 6,
       "slidev-get-info": 7,
+      "layout-list": 16,
+      "layout-get": 17,
+      "layout-match": 18,
+      "hero-list": 19,
+      "hero-get": 20,
       "upload-image-list": 13,
       "upload-image-search": 14,
       "upload-image-use": 15,
@@ -81,6 +86,9 @@ describe("pickRewriteTools", () => {
     });
     expect(Object.keys(picked).sort()).toEqual([
       "image-generate",
+      "layout-get",
+      "layout-list",
+      "layout-match",
       "slidev-get-slide",
       "slidev-update-slide",
       "stock-download",
@@ -91,6 +99,8 @@ describe("pickRewriteTools", () => {
       "yandex-image-download",
       "yandex-image-search",
     ]);
+    expect(picked["hero-list"]).toBeUndefined();
+    expect(picked["hero-get"]).toBeUndefined();
   });
 });
 
