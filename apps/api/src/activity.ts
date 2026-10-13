@@ -13,6 +13,9 @@ const PHASE_LABELS: Record<string, string> = {
   compose: "Пишу слайды",
   repair: "Чиню слайды",
   final_build: "Собираю показ",
+  rewrite: "Правлю слайд",
+  "rewrite-plan": "Правлю текст",
+  "rewrite-build": "Собираю показ",
 };
 
 /** Higher priority wins when a step calls several tools at once. */

@@ -23,7 +23,7 @@ import {
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
 import { maxViewSlideCount } from "./rewrite-lock.js";
-import { readDeckActivity } from "./activity.js";
+import { activityLabelForPhase, readDeckActivity, writeDeckActivity } from "./activity.js";
 import { readPreviewBuild } from "./progressive-preview.js";
 import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
 import {
@@ -566,6 +566,11 @@ export function createApp() {
       instruction,
       updatedAt: new Date().toISOString(),
     });
+    try {
+      await writeDeckActivity(dir, activityLabelForPhase("rewrite"));
+    } catch {
+      /* non-fatal for UI poll */
+    }
     await enqueueRewriteSlide({ id, slide: n, instruction });
     return c.json({ deckId: id, slide: n, status: "accepted", attached: attachedIds }, 202);
   });

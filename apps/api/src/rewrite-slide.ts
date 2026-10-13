@@ -42,6 +42,25 @@ import { ensureUploadIndex } from "./upload-index.js";
 import { withUploadImagesMcp } from "./upload-images-mcp.js";
 import { createUploadImageUseTools, type UploadToolAttribution } from "./upload-images-tools.js";
 import { hasUploadImages, uploadDirForDeck } from "./upload-store.js";
+import {
+  activityLabelForPhase,
+  activityLabelForTools,
+  createActivityPublisher,
+  wrapToolsWithActivity,
+  writeDeckActivity,
+} from "./activity.js";
+
+function rewriteActivityPublisher(workDir: string) {
+  return createActivityPublisher({
+    write: async (label) => {
+      try {
+        await writeDeckActivity(workDir, label);
+      } catch (err) {
+        console.warn(`[activity] rewrite write failed: ${String(err).slice(0, 160)}`);
+      }
+    },
+  });
+}
 
 function model(id: string) {
   const openai = createOpenAI({
@@ -284,6 +303,9 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
     `[rewrite] hero view=${slideIndex} slidev=1 deck=${id} variant=${locked.variant || "-"}`,
   );
 
+  const activity = rewriteActivityPublisher(workDir);
+  await activity.set(activityLabelForPhase("rewrite-plan"));
+
   const revised = await reviseOutlineSlide({
     topic,
     locale,
@@ -308,19 +330,23 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
   const images = await prepareImageTools({ workDir, deckId: id, attributions });
 
   const runHeroMcp = async (system: string, prompt: string, maxSteps: number) => {
+    await activity.set(activityLabelForPhase("rewrite"));
     await images.withOptionalUploadMcp(async (uploadSearchTools) => {
       await withHeroMcp(async (heroTools) => {
         await withSlidevMcp(workDir, async (slidevTools) => {
-          const tools = pickHeroTools(
-            mergeComposeTools(
-              heroTools,
-              slidevTools,
-              uploadSearchTools,
-              images.uploadUseTools,
-              images.yandexTools,
-              images.stockTools,
-              images.imageGenTools,
+          const tools = wrapToolsWithActivity(
+            pickHeroTools(
+              mergeComposeTools(
+                heroTools,
+                slidevTools,
+                uploadSearchTools,
+                images.uploadUseTools,
+                images.yandexTools,
+                images.stockTools,
+                images.imageGenTools,
+              ),
             ),
+            (label) => activity.set(label),
           );
           await generateText({
             model: model(config.composeModel),
@@ -328,6 +354,11 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
             tools: tools as never,
             maxSteps,
             prompt,
+            onStepFinish: async (step) => {
+              const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+              if (names.length) await activity.set(activityLabelForTools(names));
+              if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
+            },
           });
         });
       });
@@ -349,6 +380,7 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
   let md = await guardWorkSlides(workDir, theme);
   const base = `/p/${id}/`;
   const buildAndGate = async () => {
+    await activity.set(activityLabelForPhase("rewrite-build"));
     await buildSlidev(workDir, base);
     if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
       const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
@@ -360,6 +392,7 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
     await buildAndGate();
   } catch (err) {
     console.info(`[rewrite] hero build failed, repair deck=${id}: ${String(err).slice(0, 400)}`);
+    await activity.set(activityLabelForPhase("repair"));
     await runHeroMcp(
       rewriteHeroSkill(theme, locale),
       rewriteHeroRepairPrompt({ error: String(err), md, locked }),
@@ -402,6 +435,9 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
     `[rewrite] body view=${slideIndex} outline=${outlineSlot} slidev=${slidevIndex} deck=${id} layout=${locked.layout || "?"}`,
   );
 
+  const activity = rewriteActivityPublisher(workDir);
+  await activity.set(activityLabelForPhase("rewrite-plan"));
+
   const revised = await reviseOutlineSlide({
     topic,
     locale,
@@ -422,19 +458,23 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
   const images = await prepareImageTools({ workDir, deckId: id, attributions });
 
   const runBodyMcp = async (system: string, prompt: string, maxSteps: number) => {
+    await activity.set(activityLabelForPhase("rewrite"));
     await images.withOptionalUploadMcp(async (uploadSearchTools) => {
       await withLayoutMcp(async (layoutTools) => {
         await withSlidevMcp(workDir, async (slidevTools) => {
-          const tools = pickRewriteTools(
-            mergeComposeTools(
-              layoutTools,
-              slidevTools,
-              uploadSearchTools,
-              images.uploadUseTools,
-              images.yandexTools,
-              images.stockTools,
-              images.imageGenTools,
+          const tools = wrapToolsWithActivity(
+            pickRewriteTools(
+              mergeComposeTools(
+                layoutTools,
+                slidevTools,
+                uploadSearchTools,
+                images.uploadUseTools,
+                images.yandexTools,
+                images.stockTools,
+                images.imageGenTools,
+              ),
             ),
+            (label) => activity.set(label),
           );
           await generateText({
             model: model(config.composeModel),
@@ -442,6 +482,11 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
             tools: tools as never,
             maxSteps,
             prompt,
+            onStepFinish: async (step) => {
+              const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+              if (names.length) await activity.set(activityLabelForTools(names));
+              if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
+            },
           });
         });
       });
@@ -464,6 +509,7 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
   let md = await guardWorkSlides(workDir, theme);
   const base = `/p/${id}/`;
   const buildAndGate = async () => {
+    await activity.set(activityLabelForPhase("rewrite-build"));
     await buildSlidev(workDir, base);
     if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
       const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
@@ -477,6 +523,7 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
     console.info(
       `[rewrite] body build failed, repair outline=${slideIndex} slidev=${slidevIndex}: ${String(err).slice(0, 400)}`,
     );
+    await activity.set(activityLabelForPhase("repair"));
     await runBodyMcp(
       composeOneSlideSkill(theme, locale),
       rewriteRepairPrompt({

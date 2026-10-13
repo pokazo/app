@@ -32,6 +32,9 @@ describe("activityLabelForPhase", () => {
     expect(activityLabelForPhase("preview")).toBe("Собираю превью");
     expect(activityLabelForPhase("compose")).toBe("Пишу слайды");
     expect(activityLabelForPhase("thinking")).toBe("Думаю…");
+    expect(activityLabelForPhase("rewrite")).toBe("Правлю слайд");
+    expect(activityLabelForPhase("rewrite-plan")).toBe("Правлю текст");
+    expect(activityLabelForPhase("rewrite-build")).toBe("Собираю показ");
   });
 });
 

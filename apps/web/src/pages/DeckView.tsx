@@ -161,6 +161,11 @@ export function DeckView() {
           setStageReady(false);
           setEmbedKey((k) => k + 1);
           setRewriteBusy(false);
+          if (!data.rewriteError) {
+            setRewriteText("");
+            setRewriteFiles([]);
+            if (rewriteFileRef.current) rewriteFileRef.current.value = "";
+          }
           const stay = stayOnSlideRef.current;
           stayOnSlideRef.current = null;
           const max = data.slides.length || 1;
@@ -299,6 +304,7 @@ export function DeckView() {
     }
     setRewriteErr("");
     setRewriteBusy(true);
+    setActivity("Правлю слайд…");
     stayOnSlideRef.current = current;
     forcePollRef.current = true;
     setBuilding(true);
@@ -323,9 +329,7 @@ export function DeckView() {
         });
       }
       if (res.status === 202) {
-        setRewriteText("");
-        setRewriteFiles([]);
-        if (rewriteFileRef.current) rewriteFileRef.current.value = "";
+        // Keep instruction text visible while «Пересобираем…» — clear after success.
         return;
       }
       const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -414,7 +418,7 @@ export function DeckView() {
       {building && meta ? (
         <p className="app-note deck-building">
           {rewritingSlide != null
-            ? `Пересобираем слайд ${rewritingSlide}…`
+            ? activity || `Правлю слайд ${rewritingSlide}…`
             : activity || "Собираем остальные слайды…"}
         </p>
       ) : null}
@@ -505,7 +509,7 @@ export function DeckView() {
                 </label>
                 <button type="submit" className="pk ghost" disabled={!rewriteReady}>
                   {rewriteBusy || (building && rewritingSlide != null)
-                    ? "Пересобираем…"
+                    ? activity || "Правлю слайд…"
                     : "изменить"}
                 </button>
               </div>
