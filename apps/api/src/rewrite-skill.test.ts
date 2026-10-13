@@ -99,6 +99,7 @@ describe("rewrite-skill prompts", () => {
     expect(s).toMatch(/slidev-update-slide ONLY/i);
     expect(s).toMatch(/layout-list/);
     expect(s).toMatch(/layout-get/);
+    expect(s).toMatch(/fields\[\]\.limit/);
     expect(s).toMatch(/soft lock/i);
     expect(s).toMatch(/do NOT call hero-list/i);
     expect(s).toMatch(/Do NOT insert/);

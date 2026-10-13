@@ -12,7 +12,9 @@ import {
   assertStatsLayout,
   assertTimelineLayout,
   assertTwoColsLayout,
+  layoutError,
 } from "../slidev-layouts/layout-assert.js";
+import { IMAGE_SPLIT_CONTENT_LIMITS } from "./layout-catalog.js";
 
 type Fm = Record<string, unknown>;
 
@@ -104,6 +106,27 @@ function asList(v: unknown): Record<string, string>[] {
 
 export type SlideBlock = { fm: Fm; body: string };
 
+/** Half-pane image-* copy budget (mirrors layout catalog fields[].limit). */
+export function assertImageSplitContent(
+  layout: "image-right" | "image-left",
+  opts: { kicker?: string; body: string },
+): void {
+  const kicker = (opts.kicker || "").trim();
+  if (kicker.length > IMAGE_SPLIT_CONTENT_LIMITS.maxKickerChars) {
+    throw layoutError(
+      layout,
+      `kicker too long (${kicker.length}>${IMAGE_SPLIT_CONTENT_LIMITS.maxKickerChars}); use 2–5 short words (layout-get fields[].limit)`,
+    );
+  }
+  const bullets = [...opts.body.matchAll(/^\s*[-*+]\s+\S/gm)];
+  if (bullets.length > IMAGE_SPLIT_CONTENT_LIMITS.maxBullets) {
+    throw layoutError(
+      layout,
+      `at most ${IMAGE_SPLIT_CONTENT_LIMITS.maxBullets} bullets (got ${bullets.length}); half-pane clips overflow — see layout-get fields[].limit`,
+    );
+  }
+}
+
 /** Each `---` … `---` frontmatter block + following body until next `---`. */
 export function parseSlideBlocks(md: string): SlideBlock[] {
   const src = md.replace(/^\uFEFF/, "");
@@ -144,9 +167,17 @@ export function assertLayoutsInMarkdown(md: string): void {
         break;
       case "image-left":
         assertImageLayout("image-left", { image: String(fm.image || "") });
+        assertImageSplitContent("image-left", {
+          kicker: fm.kicker != null ? String(fm.kicker) : "",
+          body,
+        });
         break;
       case "image-right":
         assertImageLayout("image-right", { image: String(fm.image || "") });
+        assertImageSplitContent("image-right", {
+          kicker: fm.kicker != null ? String(fm.kicker) : "",
+          body,
+        });
         break;
       case "hero":
         assertHeroLayout({

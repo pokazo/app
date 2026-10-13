@@ -52,17 +52,21 @@ const paletteClass =
 .pk-split__pane {
   background: var(--pk-paper, #f7f3ec);
   color: var(--pk-ink, #161616);
-  padding: 48px 44px;
+  padding: 40px 40px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .pk-kicker {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  min-width: 0;
+  flex: none;
 }
 .pk-kicker__line {
   width: 36px;
@@ -77,6 +81,16 @@ const paletteClass =
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #c45c26;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pk-split__body {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
 }
 .pk-split__body :deep(h1),
 .pk-split__body :deep(h2),
@@ -86,16 +100,16 @@ const paletteClass =
   opacity: 1;
 }
 .pk-split__body :deep(h1) {
-  margin: 0 0 16px;
-  font-size: 36px;
+  margin: 0 0 14px;
+  font-size: 32px;
   line-height: 1.15;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 .pk-split__body :deep(p),
 .pk-split__body :deep(li) {
-  font-size: 18px;
-  line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.4;
 }
 .pk-split__body :deep(ul) {
   margin: 0;

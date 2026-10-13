@@ -110,10 +110,11 @@ Tools:
 
 Layout (soft lock, unless FULL REDO — see user prompt):
 - Call slidev-get-slide first.
+- Always layout-get the target layout id (even when keeping it) and OBEY every fields[].limit before slidev-update-slide — overflow clips.
 - DEFAULT: keep the SAME layout; only edit fields (H1, bullets, kicker, brand, source, iconHint, items/steps/stats/cards/features/process, optional image:).
 - CHANGE layout if the user asked for a different layout/visual, content cannot fit, OR the user prompt says FULL REDO MODE:
   1) layout-match and/or layout-get on the chosen id (FULL REDO: pick a DIFFERENT body layout than current)
-  2) ONE slidev-update-slide with the new layout + required fields from that contract
+  2) ONE slidev-update-slide with the new layout + required fields from that contract (honor fields[].limit)
 - Never switch this body slide to layout: hero or cover (hero has a separate rewrite flow).
 
 Photo pipeline (if user asked to change/replace the image, attached a photo, current image: is empty/missing while this layout requires a local image, OR FULL REDO MODE):
@@ -126,14 +127,14 @@ If the user only asked for text/field changes (not FULL REDO), did not attach a 
 Do NOT insert, remove, or move slides. Do NOT touch any slide except the target number.
 Do NOT change theme/palette in headmatter.
 
-Field rules (match chosen layout contract):
+Field rules (match chosen layout contract from layout-get fields[]):
 - two-cols: H1 ABOVE ::left::, then ::left:: / ::right::; no emoji
 - quote | fact | icon | statement: matching fields; icon needs iconHint from allowlist
 - cards: frontmatter items: (not cards:); body = H1 only
 - timeline: steps in frontmatter; body = H1
 - stats: items: (not stats:); body = H1
 - skills | features | process: frontmatter items/steps; body = H1
-- image-right | image-left: local image: path when updating photo
+- image-right | image-left: local image: path when updating photo; honor fields[].limit (short kicker/H1, ≤3 short bullets)
 iconHint allowlist: ${LAYOUT_ICON_HINTS}.
 Local image paths only. At most ONE upload-image-search, ONE yandex-image-search and ONE stock-search when photo pipeline runs.
 

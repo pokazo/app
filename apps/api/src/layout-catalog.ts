@@ -5,6 +5,20 @@ import { layoutCarbonIconHints } from "../slidev-layouts/layout-assert.js";
 const ICON_HINTS = layoutCarbonIconHints();
 const ICON_HINTS_FIELD = `iconHint ONLY from: ${ICON_HINTS.join(", ")}`;
 
+/** One frontmatter or body field the layout accepts (mirror hero-catalog). */
+export type LayoutFieldSpec = {
+  name: string;
+  required: boolean;
+  /** Where the model sets it */
+  in: "frontmatter" | "body";
+  /** Short type hint for the agent */
+  type: string;
+  /** What the layout reads / validates */
+  expects: string;
+  /** Soft limit the agent should respect (overflow clips) */
+  limit?: string;
+};
+
 export type LayoutCatalogEntry = {
   id: string;
   summary: string;
@@ -16,9 +30,103 @@ export type LayoutCatalogEntry = {
   displays: string;
   example: string;
   tags: string[];
+  /** Exact fields — call layout-get before slidev-update-slide; honor limit. */
+  fields: LayoutFieldSpec[];
   /** Allowed carbon-* iconHints for icon|features|process */
   iconHints?: string[];
 };
+
+/**
+ * Content caps for image-right/left half-pane — keep in sync with fields[].limit.
+ * Used by markdown assert so overflow fails the gate instead of clipping silently.
+ */
+export const IMAGE_SPLIT_CONTENT_LIMITS = {
+  maxBullets: 3,
+  /** Uppercase + letter-spacing makes long kickers clip; keep well under half-pane width. */
+  maxKickerChars: 28,
+} as const;
+
+const f = {
+  layout: (id: string): LayoutFieldSpec => ({
+    name: "layout",
+    required: true,
+    in: "frontmatter",
+    type: `"${id}"`,
+    expects: `Must be exactly "${id}"`,
+  }),
+  kicker: (limit = "2–5 words, ALL CAPS"): LayoutFieldSpec => ({
+    name: "kicker",
+    required: false,
+    in: "frontmatter",
+    type: "string",
+    expects: "Uppercase label above H1",
+    limit,
+  }),
+  source: (): LayoutFieldSpec => ({
+    name: "source",
+    required: false,
+    in: "frontmatter",
+    type: "string",
+    expects: "Citation when stating a fact; omit when unused",
+    limit: "≤8 words",
+  }),
+  image: (): LayoutFieldSpec => ({
+    name: "image",
+    required: true,
+    in: "frontmatter",
+    type: "local path",
+    expects: "Local path only (/slide-N.jpg or /slide-N-gen.png). Never http(s).",
+  }),
+  h1: (limit: string, expects = "Single H1 as first body line"): LayoutFieldSpec => ({
+    name: "H1",
+    required: true,
+    in: "body",
+    type: "markdown # heading",
+    expects,
+    limit,
+  }),
+  bullets: (limit: string): LayoutFieldSpec => ({
+    name: "bullets",
+    required: true,
+    in: "body",
+    type: "markdown list",
+    expects: "Bullet list under H1",
+    limit,
+  }),
+  iconHint: (): LayoutFieldSpec => ({
+    name: "iconHint",
+    required: true,
+    in: "frontmatter",
+    type: "carbon-*",
+    expects: "Must be copied from this layout's iconHints allowlist",
+  }),
+  items: (limit: string, expects: string): LayoutFieldSpec => ({
+    name: "items",
+    required: true,
+    in: "frontmatter",
+    type: "YAML list",
+    expects,
+    limit,
+  }),
+  steps: (limit: string, expects: string): LayoutFieldSpec => ({
+    name: "steps",
+    required: true,
+    in: "frontmatter",
+    type: "YAML list",
+    expects,
+    limit,
+  }),
+};
+
+const IMAGE_SPLIT_FIELDS = (id: "image-right" | "image-left"): LayoutFieldSpec[] => [
+  f.layout(id),
+  f.image(),
+  f.kicker(
+    `2–5 short words, ALL CAPS (≤${IMAGE_SPLIT_CONTENT_LIMITS.maxKickerChars} chars; letter-spacing clips)`,
+  ),
+  f.h1("≈2–8 words / 1–2 lines"),
+  f.bullets(`≤${IMAGE_SPLIT_CONTENT_LIMITS.maxBullets} items; each ≤≈12 words`),
+];
 
 export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
   {
@@ -32,6 +140,27 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     displays: "Large title on cream/ink; photo for fullbleed/product",
     example: '{ "visual": "hero", "heading": "Pokazo", "points": ["Decks from a brief"], "imageQuery": "presentation stage", "kicker": "BRAND" }',
     tags: ["open", "photo", "brand"],
+    fields: [
+      f.layout("hero"),
+      {
+        name: "variant",
+        required: true,
+        in: "frontmatter",
+        type: "ribbon|corner|inset|fullbleed|product",
+        expects: "Use hero MCP (hero-get) for variant-specific fields[].limit",
+      },
+      f.image(),
+      f.kicker(),
+      f.h1("≈2–8 words; longer titles clip", "Cover title — see hero-get for variant limit"),
+      {
+        name: "promise",
+        required: true,
+        in: "body",
+        type: "1–2 sentences",
+        expects: "Short paragraph under H1; no bullets",
+        limit: "1–2 sentences",
+      },
+    ],
   },
   {
     id: "cover",
@@ -44,30 +173,51 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     displays: "Opening slide",
     example: '{ "visual": "cover", "heading": "Title", "imageQuery": "topic object", "kicker": "INTRO" }',
     tags: ["open", "photo", "brand"],
+    fields: [
+      {
+        name: "visual",
+        required: true,
+        in: "frontmatter",
+        type: '"cover"',
+        expects: "Outline visual=cover; compose maps to layout: hero — use hero-get for limits",
+      },
+      f.kicker(),
+      f.h1("≈2–8 words"),
+      {
+        name: "promise",
+        required: true,
+        in: "body",
+        type: "1–2 sentences",
+        expects: "Short promise under H1",
+        limit: "1–2 sentences",
+      },
+    ],
   },
   {
     id: "image-right",
     summary: "Text left, local photo right",
     whenToUse: "Concrete subject worth showing; narrative + photo",
-    antiPatterns: "Abstract marketing with no real object for imageQuery",
-    outlineFields: "visual=image-right; imageQuery; points≥1",
+    antiPatterns: "Abstract marketing with no real object for imageQuery; 4+ long bullets (half-pane clips)",
+    outlineFields: "visual=image-right; imageQuery; points 1–3 short",
     frontmatter: "layout: image-right; image: /slide-N.jpg; kicker?",
-    body: "H1 + bullets",
+    body: "H1 + ≤3 short bullets",
     displays: "Two columns: copy | photo",
-    example: '{ "visual": "image-right", "heading": "On the factory floor", "points": ["Line A"], "imageQuery": "assembly line robots" }',
+    example: '{ "visual": "image-right", "heading": "On the factory floor", "points": ["Line A", "Line B", "Line C"], "imageQuery": "assembly line robots", "kicker": "FACTORY" }',
     tags: ["photo", "story"],
+    fields: IMAGE_SPLIT_FIELDS("image-right"),
   },
   {
     id: "image-left",
     summary: "Local photo left, text right",
     whenToUse: "Same as image-right; vary photo side for rhythm",
-    antiPatterns: "Same as image-right",
-    outlineFields: "visual=image-left; imageQuery; points≥1",
+    antiPatterns: "Same as image-right; 4+ long bullets",
+    outlineFields: "visual=image-left; imageQuery; points 1–3 short",
     frontmatter: "layout: image-left; image: /slide-N.jpg",
-    body: "H1 + bullets",
+    body: "H1 + ≤3 short bullets",
     displays: "Two columns: photo | copy",
-    example: '{ "visual": "image-left", "heading": "In the field", "points": ["Detail"], "imageQuery": "field technician" }',
+    example: '{ "visual": "image-left", "heading": "In the field", "points": ["Detail A", "Detail B"], "imageQuery": "field technician", "kicker": "FIELD" }',
     tags: ["photo", "story"],
+    fields: IMAGE_SPLIT_FIELDS("image-left"),
   },
   {
     id: "two-cols",
@@ -80,6 +230,27 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     displays: "Title + two short columns",
     example: '{ "visual": "two-cols", "heading": "Buy vs build", "points": ["Speed", "Control", "Cost", "Risk"] }',
     tags: ["compare", "list"],
+    fields: [
+      f.layout("two-cols"),
+      f.kicker(),
+      f.h1("≈2–8 words"),
+      {
+        name: "left",
+        required: true,
+        in: "body",
+        type: "::left:: column",
+        expects: "Bullets after ::left::; H1 must stay ABOVE ::left::",
+        limit: "≤4 short bullets",
+      },
+      {
+        name: "right",
+        required: true,
+        in: "body",
+        type: "::right:: column",
+        expects: "Bullets after ::right::",
+        limit: "≤4 short bullets",
+      },
+    ],
   },
   {
     id: "quote",
@@ -92,6 +263,19 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     displays: "Accent bar + large type + attribution",
     example: '{ "visual": "quote", "heading": "Speed is a feature", "points": ["— Engineering proverb"], "kicker": "VOICE" }',
     tags: ["voice", "editorial"],
+    fields: [
+      f.layout("quote"),
+      f.kicker(),
+      f.h1("≈4–14 words (one memorable line)"),
+      {
+        name: "attribution",
+        required: false,
+        in: "body",
+        type: "bullet or short line",
+        expects: "Who said it / source line under the quote",
+        limit: "≤8 words",
+      },
+    ],
   },
   {
     id: "fact",
@@ -104,6 +288,20 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     displays: "Split KPI / editorial fact",
     example: '{ "visual": "fact", "heading": "3× faster delivery", "points": ["One metric. Full slide."], "source": "Internal benchmark", "kicker": "FACT" }',
     tags: ["number", "kpi"],
+    fields: [
+      f.layout("fact"),
+      f.kicker(),
+      f.source(),
+      f.h1("≤12 words", "Short KPI / claim as H1"),
+      {
+        name: "support",
+        required: false,
+        in: "body",
+        type: "1 short line",
+        expects: "Optional context under/ beside the claim",
+        limit: "1 short sentence",
+      },
+    ],
   },
   {
     id: "icon",
@@ -117,6 +315,13 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     example: '{ "visual": "icon", "heading": "Clear idea", "iconHint": "carbon-idea", "points": ["Short bullets"], "kicker": "IDEA" }',
     tags: ["concept", "icon"],
     iconHints: ICON_HINTS,
+    fields: [
+      f.layout("icon"),
+      f.iconHint(),
+      f.kicker(),
+      f.h1("≈2–8 words"),
+      f.bullets("≤4 items; each ≤≈12 words"),
+    ],
   },
   {
     id: "cards",
@@ -129,6 +334,12 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     displays: "Grid of titled cards with bodies",
     example: '{ "visual": "cards", "heading": "What you get", "cards": [{"title":"Alpha","body":"…"},{"title":"Beta","body":"…"}] }',
     tags: ["features", "grid"],
+    fields: [
+      f.layout("cards"),
+      f.kicker(),
+      f.items("2–4 cards", "YAML items: [{title, body}] — never use cards: as key"),
+      f.h1("≈2–8 words", "Title only; card copy lives in items"),
+    ],
   },
   {
     id: "features",
@@ -143,6 +354,12 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
       '{ "visual": "features", "heading": "Three pillars", "features": [{"title":"Clarity","body":"…","iconHint":"carbon-idea"},{"title":"Trust","body":"…","iconHint":"carbon-security"},{"title":"Pace","body":"…","iconHint":"carbon-rocket"}] }',
     tags: ["features", "icon", "grid"],
     iconHints: ICON_HINTS,
+    fields: [
+      f.layout("features"),
+      f.kicker(),
+      f.items("exactly 3", "items: [{title, body, iconHint}] from allowlist"),
+      f.h1("≈2–8 words", "Title only"),
+    ],
   },
   {
     id: "timeline",
@@ -156,6 +373,13 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     example:
       '{ "visual": "timeline", "heading": "Roadmap", "steps": [{"phase":"2024","title":"Launch","body":"…","state":"done"},{"phase":"2025","title":"Scale","body":"…","state":"current"},{"phase":"2026","title":"Expand","body":"…","state":"todo"}], "source": "Plan" }',
     tags: ["steps", "time"],
+    fields: [
+      f.layout("timeline"),
+      f.kicker(),
+      f.source(),
+      f.steps("3–5 steps", "steps: [{phase, title, body, state}] — phase is a human label, not state"),
+      f.h1("≈2–8 words", "Title only"),
+    ],
   },
   {
     id: "process",
@@ -170,6 +394,12 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
       '{ "visual": "process", "heading": "How we deliver", "process": [{"title":"Brief","iconHint":"carbon-document"},{"title":"Compose","iconHint":"carbon-paint-brush"},{"title":"Ship","iconHint":"carbon-checkmark"}] }',
     tags: ["steps", "flow", "icon"],
     iconHints: ICON_HINTS,
+    fields: [
+      f.layout("process"),
+      f.kicker(),
+      f.steps("3–5 steps", "steps: [{title, iconHint}] from allowlist; titles short"),
+      f.h1("≈2–8 words", "Title only"),
+    ],
   },
   {
     id: "stats",
@@ -183,6 +413,13 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     example:
       '{ "visual": "stats", "heading": "Traction", "stats": [{"value":"120%","label":"YoY","note":"ARR"},{"value":"40","label":"NPS","note":""}], "source": "Q3 report" }',
     tags: ["number", "kpi", "grid"],
+    fields: [
+      f.layout("stats"),
+      f.kicker(),
+      f.source(),
+      f.items("2–4 stats", "items: [{value, label, note}] — never use stats: as key"),
+      f.h1("≈2–8 words", "Title only"),
+    ],
   },
   {
     id: "skills",
@@ -196,6 +433,12 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     example:
       '{ "visual": "skills", "heading": "Stack", "skills": [{"name":"TypeScript","level":"Expert","pct":90},{"name":"Vue","level":"Strong","pct":75}] }',
     tags: ["bars", "skills"],
+    fields: [
+      f.layout("skills"),
+      f.kicker(),
+      f.items("≥2 rows", "items: [{name, level, pct 0–100}]"),
+      f.h1("≈2–8 words", "Title only"),
+    ],
   },
   {
     id: "statement",
@@ -208,6 +451,19 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     displays: "Ink slide, content bottom-left with rule",
     example: '{ "visual": "statement", "heading": "Ship the sharp idea", "points": ["One clear takeaway"], "kicker": "CLOSE" }',
     tags: ["close", "editorial", "voice"],
+    fields: [
+      f.layout("statement"),
+      f.kicker(),
+      f.h1("≈3–10 words", "Bold closing line"),
+      {
+        name: "support",
+        required: false,
+        in: "body",
+        type: "1 short line",
+        expects: "Optional supporting sentence under H1",
+        limit: "1 short sentence",
+      },
+    ],
   },
 ];
 

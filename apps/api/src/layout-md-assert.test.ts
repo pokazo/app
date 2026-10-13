@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertImageSplitContent,
   assertLayoutsInMarkdown,
   parseSlideBlocks,
   parseSimpleYaml,
@@ -266,6 +267,37 @@ features:
   });
 });
 
+describe("assertImageSplitContent", () => {
+  it("accepts short kicker and ≤3 bullets", () => {
+    expect(() =>
+      assertImageSplitContent("image-right", {
+        kicker: "NABEREZHNAYA",
+        body: "# Title\n\n- One\n- Two\n- Three\n",
+      }),
+    ).not.toThrow();
+  });
+
+  it("throws when more than 3 bullets", () => {
+    expect(() =>
+      assertImageSplitContent("image-right", {
+        kicker: "OK",
+        body: "# Title\n\n- A\n- B\n- C\n- D\n",
+      }),
+    ).toThrow(/LayoutError\[image-right\].*at most 3 bullets/);
+  });
+
+  it("throws when kicker exceeds catalog char budget", () => {
+    const long = "Любимое место отдыха жителей города";
+    expect(long.length).toBeGreaterThan(28);
+    expect(() =>
+      assertImageSplitContent("image-left", {
+        kicker: long,
+        body: "# Title\n\n- One\n",
+      }),
+    ).toThrow(/LayoutError\[image-left\].*kicker too long/);
+  });
+});
+
 describe("assertLayoutsInMarkdown", () => {
   it("accepts happy-path gallery for all custom layouts", () => {
     expect(() => assertLayoutsInMarkdown(happyPathLayoutsMarkdown())).not.toThrow();
@@ -275,6 +307,27 @@ describe("assertLayoutsInMarkdown", () => {
     for (const name of LAYOUT_SHOT_ORDER) {
       expect(layouts, `gallery missing ${name}`).toContain(name);
     }
+  });
+
+  it("throws LayoutError[image-right] when body has 4 bullets", () => {
+    const md = `---
+theme: default
+---
+
+---
+layout: image-right
+image: /slide-2.jpg
+kicker: OK
+---
+
+# Title
+
+- One
+- Two
+- Three
+- Four
+`;
+    expect(() => assertLayoutsInMarkdown(md)).toThrow(/LayoutError\[image-right\]/);
   });
 
   it("accepts all four hero variant slides", () => {

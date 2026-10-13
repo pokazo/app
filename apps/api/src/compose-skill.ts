@@ -50,7 +50,8 @@ Visual rules:
 - Slide 1 already has a local hero image. Finish with at least 3 local image: paths total (hero + ≥2 more).
 - Dense facts: prefer concrete numbers, named entities, and source: on stats/timeline/comparison slides. For side-by-side specs use two-cols or a markdown table in default layout — not vague marketing bullets.
 - Icons: iconHint for icon|features|process MUST be copied from the allowlist above (or layout-get iconHints). No custom Vue SFCs, no <script>.
-- Layouts throw LayoutError[<name>] when data cannot be shown (e.g. stats/cards need ≥2 items, timeline ≥3 steps, image-* need local image:, hero needs valid variant). If build/repair reports LayoutError[…], fix that slide's frontmatter/body only — do not rewrite the whole deck; leave slide 1 hero alone unless the error names hero.
+- Before insert/update of any body slide: call layout-get for that layout id and OBEY every fields[].limit (overflow clips). Do not invent longer copy than the contract.
+- Layouts throw LayoutError[<name>] when data cannot be shown (e.g. stats/cards need ≥2 items, timeline ≥3 steps, image-* need local image: + short copy within fields[].limit, hero needs valid variant). If build/repair reports LayoutError[…], fix that slide's frontmatter/body only — do not rewrite the whole deck; leave slide 1 hero alone unless the error names hero.
 - theme/palette are already set in headmatter — do not change theme or palette.
 - Language: ${lang}.
 - One strong idea per slide; heading short; ≤5 bullets; numbers can be large in content.
@@ -87,7 +88,7 @@ export function outlineUserPrompt(opts: {
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}Составь оглавление презентации.
 
-Сначала через MCP: layout-list / layout-match / layout-get — выбери visual по контракту layout’а. Затем submit_outline.
+Сначала через MCP: layout-list / layout-match / layout-get — выбери visual по контракту layout’а. Читай fields[].limit и не превышай их в heading/points/kicker. Затем submit_outline.
 
 Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero|cards|quote|fact|icon|two-cols|statement|features|process), imageQuery, iconHint, kicker, source, steps, stats, skills, cards, features, process.
 steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
@@ -161,6 +162,7 @@ For visual=two-cols: H1 title ABOVE ::left::, then ::left:: / ::right::; no emoj
 For visual=quote|fact|icon|statement: use matching layout; icon needs iconHint; fact = short H1 claim; quote = quote + attribution; statement = bottom-anchored H1 + line.
 For visual=features: map outline.features → frontmatter items: (title, body, iconHint from allowlist). Body = H1 only.
 For visual=process: map outline.process → frontmatter steps: (title, iconHint from allowlist). Body = H1 only.
+Before each body slide insert/update: layout-get that id and OBEY fields[].limit.
 iconHint allowlist: ${LAYOUT_ICON_HINTS}.
 Hero already has one local image. At least 3 local image: paths total when finished.
 Do not skip remaining photos after one stock error — one upload attempt (if tools exist), then one Yandex, then one Unsplash, then generate, then continue.

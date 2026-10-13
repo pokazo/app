@@ -35,7 +35,7 @@ server.registerTool(
   "layout-get",
   {
     description:
-      "Full layout contract: when to use, anti-patterns, outline fields, frontmatter/body, what it displays, example JSON.",
+      "Full layout contract: when to use, anti-patterns, outline fields, frontmatter/body, fields[] with soft limit, what it displays, example JSON. Read fields carefully; honor each fields[].limit or text clips in the half-pane.",
     inputSchema: {
       id: z.string().describe("Layout id, e.g. features, process, fact"),
     },

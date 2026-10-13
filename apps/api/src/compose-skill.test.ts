@@ -100,6 +100,13 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/LayoutError\[/);
     expect(skill).toMatch(/fix that slide/i);
   });
+
+  it("requires layout-get fields[].limit before body insert/update", () => {
+    const skill = composeSkill("default", "ru");
+    expect(skill).toMatch(/layout-get/);
+    expect(skill).toMatch(/fields\[\]\.limit/);
+    expect(composeUserPrompt({ title: "t", slides: [] }, "ru")).toMatch(/fields\[\]\.limit/);
+  });
 });
 
 describe("outlineUserPrompt", () => {

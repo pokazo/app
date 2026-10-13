@@ -28,6 +28,21 @@ describe("layout catalog", () => {
     expect(features.outlineFields).toMatch(/carbon-money/);
   });
 
+  it("every layout-get entry exposes fields[] with soft limits where copy can clip", () => {
+    for (const entry of LAYOUT_CATALOG) {
+      expect(entry.fields?.length, `${entry.id} missing fields`).toBeGreaterThan(0);
+    }
+    const imageRight = layoutGet("image-right");
+    const byName = Object.fromEntries(imageRight.fields.map((f) => [f.name, f]));
+    expect(byName.kicker?.limit).toMatch(/2–5 short words/i);
+    expect(byName.kicker?.limit).toMatch(/≤28/);
+    expect(byName.H1?.limit).toMatch(/2–8 words/);
+    expect(byName.bullets?.limit).toMatch(/≤3/);
+    expect(layoutGet("image-left").fields.find((f) => f.name === "bullets")?.limit).toMatch(
+      /≤3/,
+    );
+  });
+
   it("layout-get throws on unknown", () => {
     expect(() => layoutGet("nope")).toThrow(/Unknown layout/);
   });
