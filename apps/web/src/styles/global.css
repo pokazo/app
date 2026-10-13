@@ -502,6 +502,12 @@ a.chip:hover { background: #e4dbff; }
 .card label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin-bottom: 12px; }
 .app-form { max-width: 720px; margin: 0 auto; text-align: left; }
 .app-form h1 { text-align: center; }
+.app-resume { margin-top: 40px; }
+.app-resume-title {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+}
 .app-page {
   padding: 40px 0 72px;
   background:
@@ -769,6 +775,7 @@ a.chip:hover { background: #e4dbff; }
 .deck-status.failed { color: var(--pk-danger); }
 .deck-status.queued,
 .deck-status.generating,
+.deck-status.preview,
 .deck-status.building { color: var(--pk-spot); }
 .deck-error { margin: 8px 0 0; font-size: 13px; word-break: break-word; }
 .deck-item .pk-btn { flex-shrink: 0; height: 40px; padding: 0 16px; }

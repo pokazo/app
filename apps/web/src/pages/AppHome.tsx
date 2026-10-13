@@ -1,9 +1,18 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
 import { api, ApiError, apiUrl } from "../api";
-import { deckBusyLabel, deckViewable, sanitizeDeckTheme, sanitizeSlideCount } from "../decks";
+import {
+  Deck,
+  deckBusy,
+  deckBusyLabel,
+  deckStatusLabel,
+  deckViewable,
+  formatWhen,
+  sanitizeDeckTheme,
+  sanitizeSlideCount,
+} from "../decks";
 import { sanitizeAudience } from "../audience-pages";
 import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
@@ -11,6 +20,8 @@ import { PaywallModal } from "../components/PaywallModal";
 import { BillingMe } from "../billing";
 
 type Me = { id: string; email: string; name: string };
+
+const RESUME_DECK_LIMIT = 3;
 
 /** Survives React Strict Mode remount so landing→/app?topic=… creates once. */
 const autoCreateLocks = new Set<string>();
@@ -21,6 +32,7 @@ export function AppHome() {
   const [me, setMe] = useState<Me | null>(null);
   const [billing, setBilling] = useState<BillingMe | null>(null);
   const [paywall, setPaywall] = useState<BillingMe | null>(null);
+  const [resumeDecks, setResumeDecks] = useState<Deck[]>([]);
   const [topic, setTopic] = useState(params.get("topic") ?? "");
   const [theme, setTheme] = useState(() => sanitizeDeckTheme(params.get("theme")));
   const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
@@ -50,6 +62,28 @@ export function AppHome() {
       .then((data: Me) => setMe(data))
       .catch(() => nav(`/login?next=${encodeURIComponent("/app")}`));
   }, [nav]);
+
+  const loadResumeDecks = useCallback(async () => {
+    try {
+      const data = await api<{ decks: Deck[] }>("/api/decks");
+      setResumeDecks(
+        data.decks.filter((d) => deckViewable(d.status)).slice(0, RESUME_DECK_LIMIT),
+      );
+    } catch {
+      setResumeDecks([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!me) return;
+    void loadResumeDecks();
+  }, [me, loadResumeDecks]);
+
+  useEffect(() => {
+    if (!resumeDecks.some((d) => deckBusy(d.status))) return;
+    const t = setInterval(() => void loadResumeDecks(), 3000);
+    return () => clearInterval(t);
+  }, [resumeDecks, loadResumeDecks]);
 
   useEffect(() => {
     if (!me) return;
@@ -264,6 +298,29 @@ export function AppHome() {
           </form>
           <ThemePicker value={theme} onChange={setTheme} disabled={Boolean(status)} />
           {err ? <p className="err app-note">{err}</p> : null}
+          {resumeDecks.length > 0 ? (
+            <section className="app-resume" aria-label="Продолжить просмотр">
+              <h2 className="app-resume-title">Продолжить</h2>
+              <ul className="deck-list deck-list-solo">
+                {resumeDecks.map((d) => (
+                  <li className="deck-item" key={d.deckId}>
+                    <div>
+                      <p className="deck-topic">{d.topic}</p>
+                      <p className="deck-meta">
+                        <span className={`deck-status ${d.status}`}>{deckStatusLabel(d.status)}</span>
+                        {" · "}
+                        {d.slideCount} слайдов
+                        {d.createdAt ? ` · ${formatWhen(d.createdAt)}` : ""}
+                      </p>
+                    </div>
+                    <Link className="pk-btn primary" to={`/view/${d.deckId}`}>
+                      {d.status === "preview" ? "Смотреть (сборка…)" : "Смотреть"}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </div>
       </main>
       {paywall ? <PaywallModal billing={paywall} onClose={() => setPaywall(null)} /> : null}
