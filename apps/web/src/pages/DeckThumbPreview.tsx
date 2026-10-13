@@ -20,6 +20,7 @@ export function DeckThumbPreview(props: {
   /** Bumps when preview dist rebuilds — refreshes iframe without remounting the thumb. */
   embedCacheKey?: number;
 }) {
+  const rootRef = useRef<HTMLSpanElement>(null);
   const cacheKey = props.embedCacheKey ?? 0;
   const cacheKeyRef = useRef(cacheKey);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -34,8 +35,30 @@ export function DeckThumbPreview(props: {
     }
   }, [cacheKey]);
 
+  // Frame has pointer-events:none (CSS) so hover must bind on the parent .deck-thumb button.
   useEffect(() => {
+    const host = rootRef.current?.closest(".deck-thumb");
+    if (!(host instanceof HTMLElement)) return;
+    const onEnter = () => {
+      if (hoverTimer.current) {
+        clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+      }
+      setHovered(true);
+    };
+    const onLeave = () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+      hoverTimer.current = setTimeout(() => setHovered(false), HOVER_UNMOUNT_MS);
+    };
+    host.addEventListener("mouseenter", onEnter);
+    host.addEventListener("mouseleave", onLeave);
+    host.addEventListener("focusin", onEnter);
+    host.addEventListener("focusout", onLeave);
     return () => {
+      host.removeEventListener("mouseenter", onEnter);
+      host.removeEventListener("mouseleave", onLeave);
+      host.removeEventListener("focusin", onEnter);
+      host.removeEventListener("focusout", onLeave);
       if (hoverTimer.current) clearTimeout(hoverTimer.current);
     };
   }, []);
@@ -57,21 +80,7 @@ export function DeckThumbPreview(props: {
   });
 
   return (
-    <span
-      className="deck-thumb-frame"
-      aria-hidden
-      onMouseEnter={() => {
-        if (hoverTimer.current) {
-          clearTimeout(hoverTimer.current);
-          hoverTimer.current = null;
-        }
-        setHovered(true);
-      }}
-      onMouseLeave={() => {
-        if (hoverTimer.current) clearTimeout(hoverTimer.current);
-        hoverTimer.current = setTimeout(() => setHovered(false), HOVER_UNMOUNT_MS);
-      }}
-    >
+    <span ref={rootRef} className="deck-thumb-frame" aria-hidden>
       {!ready || !mountIframe ? (
         <span className="deck-thumb-ph-wrap">
           {layers.showImage && props.imageUrl ? (
