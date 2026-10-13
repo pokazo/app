@@ -404,6 +404,8 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
       const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
       await assertDeckLayoutsRender(workDir, id);
     }
+    const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
+    await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });
   };
 
   try {
@@ -543,6 +545,8 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
       const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
       await assertDeckLayoutsRender(workDir, id);
     }
+    const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
+    await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });
   };
 
   try {

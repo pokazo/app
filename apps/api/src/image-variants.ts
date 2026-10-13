@@ -1,4 +1,4 @@
-import { access, unlink } from "node:fs/promises";
+import { access, readFile, unlink } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 import sharp from "sharp";
 
@@ -43,14 +43,20 @@ export async function writeImageThumb(imageAbsPath: string): Promise<string | nu
   }
   const out = thumbAbsPath(imageAbsPath);
   try {
+    const srcBytes = (await readFile(imageAbsPath)).byteLength;
     await sharp(imageAbsPath)
       .rotate()
       .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
       .webp({ quality: THUMB_WEBP_QUALITY })
       .toFile(out);
+    const outBytes = (await readFile(out)).byteLength;
+    console.info(
+      `[image-variants] cover-thumb ${basename(imageAbsPath)} ${srcBytes}b → ${basename(out)} ${outBytes}b (w≤${THUMB_WIDTH})`,
+    );
     return out;
   } catch {
     /* corrupt / unsupported — keep original; filmstrip falls back to full image */
+    console.warn(`[image-variants] cover-thumb failed for ${basename(imageAbsPath)}`);
     return null;
   }
 }

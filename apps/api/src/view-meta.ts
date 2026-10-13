@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { filmstripThumbPath } from "./filmstrip-thumb-path.js";
 import { thumbVariantPath } from "./image-variants.js";
 import { parseSlideBlocks } from "./layout-md-assert.js";
 import { hasOrphanLeadingHero } from "./rewrite-lock.js";
@@ -8,7 +9,10 @@ export type ViewSlide = {
   index: number;
   heading: string;
   image: string | null;
-  /** Small WebP next to the cover image, when present in dist/public. */
+  /**
+   * Filmstrip preview: prefer full-slide screenshot `/thumbs/N.webp`,
+   * else cover `.thumb.webp` sibling when present.
+   */
   imageThumb: string | null;
   /** Slidev page number for iframe navigate / thumb embed (may differ from index). */
   slidevIndex: number;
@@ -72,15 +76,18 @@ export function withSlideImages(
 }
 
 /**
- * Attach `imageThumb` when the `.thumb.webp` sibling exists under dist (or public).
- * Call after slidesForView with the built player asset root.
+ * Attach `imageThumb` for the filmstrip.
+ * Prefer post-build slide screenshot `/thumbs/{slidevIndex}.webp`, then cover `.thumb.webp`.
  */
 export function withImageThumbs(slides: ViewSlide[], assetDir: string): ViewSlide[] {
   return slides.map((s) => {
-    const thumb = thumbVariantPath(s.image);
-    if (!thumb) return { ...s, imageThumb: null };
-    const abs = join(assetDir, thumb.replace(/^\//, ""));
-    return { ...s, imageThumb: existsSync(abs) ? thumb : null };
+    const shot = filmstripThumbPath(s.slidevIndex);
+    const shotAbs = join(assetDir, shot.replace(/^\//, ""));
+    if (existsSync(shotAbs)) return { ...s, imageThumb: shot };
+    const cover = thumbVariantPath(s.image);
+    if (!cover) return { ...s, imageThumb: null };
+    const coverAbs = join(assetDir, cover.replace(/^\//, ""));
+    return { ...s, imageThumb: existsSync(coverAbs) ? cover : null };
   });
 }
 

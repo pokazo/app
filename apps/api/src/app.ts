@@ -461,6 +461,10 @@ export function createApp() {
       }),
       join(dir, "dist"),
     );
+    const thumbHits = slides.filter((s) => s.imageThumb).length;
+    console.info(
+      `[view] deck=${id} slides=${slides.length} filmstripThumbs=${thumbHits} shots=${slides.filter((s) => s.imageThumb?.startsWith("/thumbs/")).length} coverThumbs=${slides.filter((s) => s.imageThumb?.includes(".thumb.webp")).length}`,
+    );
     const activity =
       progressive || rewriting
         ? (await readDeckActivity(dir))?.label ?? null

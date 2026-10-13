@@ -1,16 +1,16 @@
-import { embedSlideUrl } from "./deck-view";
-
 /**
- * What the filmstrip thumb shows before / after the Slidev iframe is ready.
- * Bare cover images look like “photo, no text” — heading must stay visible until iframe paints.
+ * Filmstrip shows a static slide screenshot (`/thumbs/N.webp`) when available.
+ * Cover photo is a weak fallback — heading stays visible so thumbs are not “photo only”.
  */
 export function thumbPlaceholderLayers(opts: {
-  ready: boolean;
   heading: string;
   imageUrl?: string | null;
 }): { showHeading: boolean; showImage: boolean; label: string } {
   const label = opts.heading.trim() || "Слайд";
-  if (opts.ready) return { showHeading: false, showImage: false, label };
+  const isSlideShot = Boolean(opts.imageUrl?.includes("/thumbs/"));
+  if (isSlideShot) {
+    return { showHeading: false, showImage: true, label };
+  }
   return {
     showHeading: true,
     showImage: Boolean(opts.imageUrl),
@@ -18,26 +18,14 @@ export function thumbPlaceholderLayers(opts: {
   };
 }
 
-/** Cache-bust Slidev thumb URL when preview dist rebuilds — without remounting React state. */
-export function thumbEmbedSrc(embedBase: string, index: number, cacheKey = 0): string {
-  const base = embedSlideUrl(embedBase, index);
-  return cacheKey > 0 ? `${base}&_r=${cacheKey}` : base;
-}
-
 /**
- * Progressive slide growth remounts the stage; thumbs stay keyed by index only
- * so existing iframes are not wiped back to the image placeholder.
+ * Progressive slide growth remounts the stage; thumbs stay keyed by index only.
  */
 export function thumbReactKey(index: number): string {
   return `thumb-${index}`;
 }
 
-/** When dist cache key changes, drop ready so the new iframe can paint (heading stays). */
-export function thumbShouldResetReady(prevCacheKey: number, nextCacheKey: number): boolean {
-  return prevCacheKey !== nextCacheKey;
-}
-
-/** Prefer small WebP; fall back to full cover path. */
+/** Prefer filmstrip screenshot / cover thumb; fall back to full cover path. */
 export function thumbCoverPath(opts: {
   imageThumb?: string | null;
   image?: string | null;
@@ -45,11 +33,7 @@ export function thumbCoverPath(opts: {
   return opts.imageThumb || opts.image || null;
 }
 
-/** Filmstrip mounts a Slidev iframe only for the current page or hover/focus. */
-export function thumbShouldMountIframe(opts: {
-  enabled: boolean;
-  active: boolean;
-  hovered: boolean;
-}): boolean {
-  return opts.enabled && (opts.active || opts.hovered);
+/** True when URL is a post-build slide raster under /thumbs/. */
+export function thumbIsSlideShot(url?: string | null): boolean {
+  return Boolean(url?.includes("/thumbs/"));
 }

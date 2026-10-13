@@ -70,10 +70,11 @@ image: https://evil.example/x.jpg
 });
 
 describe("withImageThumbs", () => {
-  it("sets imageThumb when .thumb.webp exists under asset dir", async () => {
+  it("prefers /thumbs/N.webp slide screenshot over cover .thumb.webp", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pokazo-view-thumb-"));
-    await mkdir(join(dir, "dist"), { recursive: true });
-    await writeFile(join(dir, "dist", "slide-1.thumb.webp"), Buffer.from("x"));
+    await mkdir(join(dir, "dist", "thumbs"), { recursive: true });
+    await writeFile(join(dir, "dist", "thumbs", "1.webp"), Buffer.from("shot"));
+    await writeFile(join(dir, "dist", "slide-1.thumb.webp"), Buffer.from("cover"));
     const slides = withImageThumbs(
       [
         { index: 1, heading: "A", image: "/slide-1.jpg", imageThumb: null, slidevIndex: 1 },
@@ -81,8 +82,19 @@ describe("withImageThumbs", () => {
       ],
       join(dir, "dist"),
     );
-    expect(slides[0]?.imageThumb).toBe("/slide-1.thumb.webp");
+    expect(slides[0]?.imageThumb).toBe("/thumbs/1.webp");
     expect(slides[1]?.imageThumb).toBe(null);
+  });
+
+  it("falls back to cover .thumb.webp when no slide screenshot", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pokazo-view-cover-"));
+    await mkdir(join(dir, "dist"), { recursive: true });
+    await writeFile(join(dir, "dist", "slide-1.thumb.webp"), Buffer.from("x"));
+    const slides = withImageThumbs(
+      [{ index: 1, heading: "A", image: "/slide-1.jpg", imageThumb: null, slidevIndex: 1 }],
+      join(dir, "dist"),
+    );
+    expect(slides[0]?.imageThumb).toBe("/slide-1.thumb.webp");
   });
 });
 

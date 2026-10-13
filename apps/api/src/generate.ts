@@ -349,6 +349,14 @@ export async function generateDeck(opts: {
   console.info(`[generate] hero-compose done`);
 
   const base = `/p/${opts.id}/`;
+  const renderThumbs = async (slideCount?: number) => {
+    const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
+    await tryRenderDeckFilmstripThumbs({
+      workDir: opts.workDir,
+      deckId: opts.id,
+      slideCount,
+    });
+  };
   const buildAndGate = async (label: string) => {
     await setActivity(activityLabelForPhase(label === "preview" ? "preview" : "final_build"));
     const t0 = Date.now();
@@ -361,7 +369,13 @@ export async function generateDeck(opts: {
       await assertDeckLayoutsRender(opts.workDir, opts.id);
       gateMs = Date.now() - g0;
     }
-    console.info(`[timing] ${label} build=${buildMs}ms gate=${gateMs}ms`);
+    const mdNow = await readFile(join(opts.workDir, "slides.md"), "utf8").catch(() => "");
+    const thumbCount = mdNow ? countSlidesInMarkdown(mdNow) : undefined;
+    const th0 = Date.now();
+    await renderThumbs(thumbCount);
+    console.info(
+      `[timing] ${label} build=${buildMs}ms gate=${gateMs}ms thumbs=${Date.now() - th0}ms`,
+    );
   };
 
   let builtSlideCount = 0;
@@ -406,6 +420,7 @@ export async function generateDeck(opts: {
           await buildSlidev(opts.workDir, base);
           builtSlideCount = mdCount;
           await writePreviewBuild(opts.workDir, { builtSlideCount });
+          await renderThumbs(builtSlideCount);
           console.info(
             `[generate] progressive preview ok slides=${builtSlideCount} build=${Date.now() - t0}ms`,
           );
