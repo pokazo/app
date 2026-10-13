@@ -7,8 +7,9 @@ describe("sanitizeAudience", () => {
     expect(sanitizeAudience("urok")).toBe("urok");
   });
 
-  it("defaults to school", () => {
-    expect(sanitizeAudience(undefined)).toBe("school");
-    expect(sanitizeAudience("nope")).toBe("school");
+  it("defaults to general (school only via /shkola slug)", () => {
+    expect(sanitizeAudience(undefined)).toBe("general");
+    expect(sanitizeAudience("nope")).toBe("general");
+    expect(sanitizeAudience("shkola")).toBe("shkola");
   });
 });

@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS deck (
   topic TEXT NOT NULL,
   locale TEXT NOT NULL DEFAULT 'ru',
   slide_count INT NOT NULL DEFAULT 8,
-  audience TEXT NOT NULL DEFAULT 'school',
+  audience TEXT NOT NULL DEFAULT 'general',
   theme TEXT NOT NULL DEFAULT 'default',
   status TEXT NOT NULL,
   error TEXT,

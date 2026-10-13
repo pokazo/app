@@ -1,5 +1,6 @@
 /** Landing path slugs and legacy audience codes stored on deck.audience. */
 export const AUDIENCE_IDS = [
+  "general",
   "urok",
   "doklad",
   "shkola",
@@ -14,10 +15,13 @@ export type AudienceId = (typeof AUDIENCE_IDS)[number];
 
 const AUDIENCE_SET = new Set<string>(AUDIENCE_IDS);
 
-/** Normalize create/API audience; unknown → school. */
+/**
+ * Normalize create/API audience.
+ * Unknown/empty → general (main /app). School tone only from /shkola (or legacy "school").
+ */
 export function sanitizeAudience(raw: string | null | undefined): AudienceId {
   const id = (raw ?? "").trim().toLowerCase();
-  return AUDIENCE_SET.has(id) ? (id as AudienceId) : "school";
+  return AUDIENCE_SET.has(id) ? (id as AudienceId) : "general";
 }
 
 /**
@@ -27,6 +31,8 @@ export function sanitizeAudience(raw: string | null | undefined): AudienceId {
 export function audienceForPrompt(raw: string): string {
   const id = sanitizeAudience(raw);
   const labels: Record<AudienceId, string> = {
+    general:
+      "общая аудитория (главная /app): тон и возраст выводи из темы и research — не предполагай школу",
     urok: "урок (/urok): презентация к школьному уроку; цели урока, возрастной уровень класса, ясный учебный язык",
     doklad:
       "доклад (/doklad): учебный доклад; структура выступления, тезис → аргументы → вывод",

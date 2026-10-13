@@ -17,18 +17,22 @@ describe("theme pick skill", () => {
     const prompt = themePickUserPrompt({
       topic: "УАЗ Патриот",
       locale: "ru",
-      audience: "school",
+      audience: "general",
       researchMarkdown: "## Brief\nВнедорожник для семьи, тёплый тон.",
     });
     expect(prompt).toContain("УАЗ Патриот");
     expect(prompt).toContain("ru");
-    expect(prompt).toContain("school");
+    expect(prompt).toMatch(/не предполагай школу/i);
     expect(prompt).toContain("Research brief:");
     expect(prompt).toContain("Внедорожник для семьи");
+    expect(prompt).toContain("using the research brief");
   });
 
-  it("mentions research-after rule in system prompt", () => {
-    expect(themePickSystemPrompt()).toContain("AFTER topic research");
+  it("mentions research-after rule and forbids school default", () => {
+    const system = themePickSystemPrompt();
+    expect(system).toContain("AFTER topic research");
+    expect(system).toContain("not from a URL path");
+    expect(system).toContain("never as a default");
   });
 });
 
@@ -58,7 +62,7 @@ describe("resolveDeckTheme", () => {
       requested: "nope",
       topic: "X",
       locale: "ru",
-      audience: "school",
+      audience: "general",
       generateObjectFn,
     });
     expect(out.via).toBe("llm");
@@ -74,7 +78,7 @@ describe("resolveDeckTheme", () => {
       requested: "auto",
       topic: "Космос для 5 класса",
       locale: "ru",
-      audience: "school",
+      audience: "shkola",
       researchMarkdown: "Школьники 5 класса, яркие факты про планеты.",
       generateObjectFn,
     });
@@ -89,6 +93,7 @@ describe("resolveDeckTheme", () => {
     expect(args.system).toContain("bricks");
     expect(args.prompt).toContain("Космос для 5 класса");
     expect(args.prompt).toContain("яркие факты про планеты");
+    expect(args.prompt).toMatch(/\/shkola/);
   });
 
   it("falls back to default when LLM returns invalid theme", async () => {
@@ -99,7 +104,7 @@ describe("resolveDeckTheme", () => {
       requested: "auto",
       topic: "X",
       locale: "ru",
-      audience: "school",
+      audience: "general",
       generateObjectFn,
     });
     expect(out).toEqual({
@@ -117,7 +122,7 @@ describe("resolveDeckTheme", () => {
       requested: "auto",
       topic: "X",
       locale: "ru",
-      audience: "school",
+      audience: "general",
       generateObjectFn,
     });
     expect(out.via).toBe("fallback");

@@ -8,10 +8,15 @@ describe("sanitizeAudience", () => {
     expect(sanitizeAudience("biznes")).toBe("biznes");
   });
 
-  it("falls back to school", () => {
-    expect(sanitizeAudience("")).toBe("school");
-    expect(sanitizeAudience("hack")).toBe("school");
-    expect(sanitizeAudience(null)).toBe("school");
+  it("falls back to general (not school)", () => {
+    expect(sanitizeAudience("")).toBe("general");
+    expect(sanitizeAudience("hack")).toBe("general");
+    expect(sanitizeAudience(null)).toBe("general");
+  });
+
+  it("keeps explicit school only when requested", () => {
+    expect(sanitizeAudience("school")).toBe("school");
+    expect(sanitizeAudience("shkola")).toBe("shkola");
   });
 });
 
@@ -20,6 +25,11 @@ describe("audienceForPrompt", () => {
     expect(audienceForPrompt("shkola")).toMatch(/\/shkola/);
     expect(audienceForPrompt("urok")).toMatch(/\/urok/);
     expect(audienceForPrompt("studenty")).toMatch(/\/studenty/);
+  });
+
+  it("general does not assume school", () => {
+    expect(audienceForPrompt("general")).toMatch(/не предполагай школу/i);
+    expect(audienceForPrompt("")).toMatch(/не предполагай школу/i);
   });
 
   it("expands legacy codes without inventing a path", () => {

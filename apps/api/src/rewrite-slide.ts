@@ -618,7 +618,7 @@ export async function rewriteSlide(opts: {
   let input = {
     topic: "",
     locale: "ru",
-    audience: "school",
+    audience: "general",
     theme: "default",
   };
   try {
@@ -632,7 +632,7 @@ export async function rewriteSlide(opts: {
   const theme = sanitizePickerTheme(input.theme);
   const locale = input.locale || "ru";
   const topic = input.topic || outline.title;
-  const audience = input.audience || "school";
+  const audience = input.audience || "general";
 
   let researchMarkdown: string | undefined;
   try {

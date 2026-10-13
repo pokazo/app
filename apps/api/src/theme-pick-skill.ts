@@ -1,3 +1,4 @@
+import { audienceForPrompt } from "./audience.js";
 import { THEME_PICK_CATALOG } from "./themes.js";
 
 export function themePickSystemPrompt(): string {
@@ -13,8 +14,10 @@ ${catalog}
 
 Rules:
 - Choose from the list above only — never invent ids, never return "auto".
-- You run AFTER topic research: use the research brief (tone, domain, audience cues) — not the topic line alone.
-- Match tone (school → warmer/simpler; business → apple-basic/default; academic → seriph; bold/creative → bricks; dark editorial → ink-dark or brand-auto).
+- You run AFTER topic research: decide from the research brief (tone, domain, visual mood) and topic — not from a URL path.
+- Entry audience is optional soft context only. If it is "general" / missing, do NOT assume school; judge only research + topic.
+- Match visual mood: warm storytelling → shibainu; academic → seriph; business minimal → apple-basic/default; bold/creative → bricks; dark editorial → ink-dark or brand-auto.
+- Prefer shibainu only when research clearly needs warm/simple school-style storytelling — never as a default.
 - reason: one short sentence in the user's language.`;
 }
 
@@ -31,9 +34,9 @@ export function themePickUserPrompt(opts: {
     : "Research brief: (none)";
   return `Topic: ${opts.topic}
 Locale: ${opts.locale}
-Audience: ${opts.audience}
+Audience: ${audienceForPrompt(opts.audience)}
 
 ${researchBlock}
 
-Pick the best theme id from the allowed list.`;
+Pick the best theme id from the allowed list using the research brief.`;
 }
