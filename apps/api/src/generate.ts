@@ -140,39 +140,6 @@ export async function generateDeck(opts: {
 
   const outlineModel = model(config.outlineModel);
   const requestedTheme = sanitizePickerTheme(opts.theme);
-  await setActivity(activityLabelForPhase("theme-pick"));
-  console.info(`[generate] theme-pick start requested=${requestedTheme} topic=${opts.topic}`);
-  const themePick = await resolveDeckTheme({
-    requested: requestedTheme,
-    topic: opts.topic,
-    locale: opts.locale,
-    audience: opts.audience,
-    model: outlineModel,
-  });
-  const theme = themePick.theme;
-  await writeFile(
-    join(opts.workDir, "theme-pick.json"),
-    JSON.stringify(
-      {
-        requested: requestedTheme,
-        theme: themePick.theme,
-        reason: themePick.reason,
-        via: themePick.via,
-      },
-      null,
-      2,
-    ),
-  );
-  if (opts.onThemeResolved) {
-    await opts.onThemeResolved(theme, { reason: themePick.reason, via: themePick.via });
-  }
-  timer.mark("theme-pick");
-  console.info(
-    `[generate] theme-pick done via=${themePick.via} theme=${theme} reason=${themePick.reason}`,
-  );
-
-  const skill = composeSkill(theme, opts.locale);
-  const heroSystem = heroSkill(theme, opts.locale);
 
   const uploadDir = hasUploadImages(config.uploadDataDir, opts.id)
     ? uploadDirForDeck(config.uploadDataDir, opts.id)
@@ -222,6 +189,42 @@ export async function generateDeck(opts: {
     `[generate] research done used=${research.used} searchCalls=${research.searchCalls} ` +
       `chars=${research.markdown.length}`,
   );
+
+  // Separate LLM step after research: pick one concrete catalog theme (never leave "auto").
+  await setActivity(activityLabelForPhase("theme-pick"));
+  console.info(`[generate] theme-pick start requested=${requestedTheme} topic=${opts.topic}`);
+  const themePick = await resolveDeckTheme({
+    requested: requestedTheme,
+    topic: opts.topic,
+    locale: opts.locale,
+    audience: opts.audience,
+    researchMarkdown: research.markdown,
+    model: outlineModel,
+  });
+  const theme = themePick.theme;
+  await writeFile(
+    join(opts.workDir, "theme-pick.json"),
+    JSON.stringify(
+      {
+        requested: requestedTheme,
+        theme: themePick.theme,
+        reason: themePick.reason,
+        via: themePick.via,
+      },
+      null,
+      2,
+    ),
+  );
+  if (opts.onThemeResolved) {
+    await opts.onThemeResolved(theme, { reason: themePick.reason, via: themePick.via });
+  }
+  timer.mark("theme-pick");
+  console.info(
+    `[generate] theme-pick done via=${themePick.via} theme=${theme} reason=${themePick.reason}`,
+  );
+
+  const skill = composeSkill(theme, opts.locale);
+  const heroSystem = heroSkill(theme, opts.locale);
 
   await setActivity(activityLabelForPhase("outline"));
   console.info(`[generate] outline via layout MCP start`);

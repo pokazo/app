@@ -13,15 +13,22 @@ describe("theme pick skill", () => {
     expect(system).toContain('never return "auto"');
   });
 
-  it("embeds topic audience locale", () => {
+  it("embeds topic audience locale and research brief", () => {
     const prompt = themePickUserPrompt({
       topic: "УАЗ Патриот",
       locale: "ru",
       audience: "school",
+      researchMarkdown: "## Brief\nВнедорожник для семьи, тёплый тон.",
     });
     expect(prompt).toContain("УАЗ Патриот");
     expect(prompt).toContain("ru");
     expect(prompt).toContain("school");
+    expect(prompt).toContain("Research brief:");
+    expect(prompt).toContain("Внедорожник для семьи");
+  });
+
+  it("mentions research-after rule in system prompt", () => {
+    expect(themePickSystemPrompt()).toContain("AFTER topic research");
   });
 });
 
@@ -68,6 +75,7 @@ describe("resolveDeckTheme", () => {
       topic: "Космос для 5 класса",
       locale: "ru",
       audience: "school",
+      researchMarkdown: "Школьники 5 класса, яркие факты про планеты.",
       generateObjectFn,
     });
     expect(out).toEqual({
@@ -80,6 +88,7 @@ describe("resolveDeckTheme", () => {
     expect(args.schema).toBe(ThemePick);
     expect(args.system).toContain("bricks");
     expect(args.prompt).toContain("Космос для 5 класса");
+    expect(args.prompt).toContain("яркие факты про планеты");
   });
 
   it("falls back to default when LLM returns invalid theme", async () => {

@@ -31,6 +31,8 @@ export async function resolveDeckTheme(opts: {
   topic: string;
   locale: string;
   audience: string;
+  /** Topic research markdown — required context when requested is "auto". */
+  researchMarkdown?: string;
   /** AI SDK model — required when requested is "auto" and no generateObjectFn. */
   model?: unknown;
   generateObjectFn?: GenerateObjectFn;
@@ -49,6 +51,7 @@ export async function resolveDeckTheme(opts: {
     topic: opts.topic,
     locale: opts.locale,
     audience: opts.audience,
+    researchMarkdown: opts.researchMarkdown,
   });
 
   try {
