@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex } from "../deck-view";
@@ -34,6 +34,11 @@ const POLL_MS = 1000;
 
 export function DeckView() {
   const { id = "" } = useParams();
+  const location = useLocation();
+  /** Only from create→view navigation; lost on refresh so the soft waiting copy stays off. */
+  const awaitingPreview = Boolean(
+    (location.state as { awaitingPreview?: boolean } | null)?.awaitingPreview,
+  );
   const stageRef = useRef<HTMLIFrameElement>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [meta, setMeta] = useState<ViewMeta | null>(null);
@@ -432,7 +437,7 @@ export function DeckView() {
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
-      {waiting && !err ? (
+      {waiting && !err && (activity || awaitingPreview) ? (
         <p className="app-note deck-building">{activity || VIEW_WAITING_NOTE}</p>
       ) : null}
       {building && meta ? (

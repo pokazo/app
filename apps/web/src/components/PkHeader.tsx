@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { APP_HISTORY_PATH } from "../decks";
@@ -11,6 +11,7 @@ export function PkHeader(props: {
   billing?: BillingMe | null;
 }) {
   const [billing, setBilling] = useState<BillingMe | null>(props.billing ?? null);
+  const profileRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     if (props.billing !== undefined) {
@@ -34,6 +35,18 @@ export function PkHeader(props: {
     };
   }, [props.me, props.billing]);
 
+  useEffect(() => {
+    if (!props.me) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const el = profileRef.current;
+      if (!el?.open) return;
+      if (event.target instanceof Node && el.contains(event.target)) return;
+      el.open = false;
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [props.me]);
+
   const label = props.me?.name || props.me?.email || "Профиль";
 
   return (
@@ -50,7 +63,7 @@ export function PkHeader(props: {
             <Link className="pk-btn ghost" to={APP_HISTORY_PATH}>
               История
             </Link>
-            <details className="head-profile">
+            <details ref={profileRef} className="head-profile">
               <summary className="head-profile-summary">
                 <span className="head-email">{label}</span>
               </summary>

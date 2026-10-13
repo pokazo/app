@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { PkButton } from "../components/PkButton";
@@ -11,6 +11,9 @@ import { PaywallModal } from "../components/PaywallModal";
 import { BillingMe } from "../billing";
 
 type Me = { id: string; email: string; name: string };
+
+/** Survives React Strict Mode remount so landing→/app?topic=… creates once. */
+const autoCreateLocks = new Set<string>();
 
 export function AppHome() {
   const nav = useNavigate();
@@ -26,6 +29,17 @@ export function AppHome() {
   const [status, setStatus] = useState("");
   const [activity, setActivity] = useState("");
   const [err, setErr] = useState("");
+  const creatingRef = useRef(false);
+  const topicRef = useRef(topic);
+  const themeRef = useRef(theme);
+  const slideCountRef = useRef(slideCount);
+  const audienceRef = useRef(audience);
+  const filesRef = useRef(files);
+  topicRef.current = topic;
+  themeRef.current = theme;
+  slideCountRef.current = slideCount;
+  audienceRef.current = audience;
+  filesRef.current = files;
 
   useEffect(() => {
     fetch(apiUrl("/api/auth/me"), { credentials: "include" })
@@ -80,31 +94,27 @@ export function AppHome() {
     };
   }, [me, params, setParams]);
 
-  async function onOut() {
-    await fetch(apiUrl("/api/auth/sign-out"), {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
-    nav("/login");
-  }
-
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
+  async function createDeck() {
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    const topicNow = topicRef.current.trim();
+    const themeNow = themeRef.current;
+    const slideCountNow = slideCountRef.current;
+    const audienceNow = audienceRef.current;
+    const filesNow = filesRef.current;
     setErr("");
     setStatus("queued");
-    setActivity("");
+    setActivity("Создаём…");
     try {
       let created: { deckId: string };
-      if (files.length > 0) {
+      if (filesNow.length > 0) {
         const form = new FormData();
-        form.set("topic", topic);
+        form.set("topic", topicNow);
         form.set("locale", "ru");
-        form.set("slideCount", String(slideCount));
-        form.set("audience", audience);
-        form.set("theme", theme);
-        for (const f of files) form.append("files", f);
+        form.set("slideCount", String(slideCountNow));
+        form.set("audience", audienceNow);
+        form.set("theme", themeNow);
+        for (const f of filesNow) form.append("files", f);
         created = await api<{ deckId: string }>("/api/decks", {
           method: "POST",
           body: form,
@@ -112,7 +122,13 @@ export function AppHome() {
       } else {
         created = await api<{ deckId: string }>("/api/decks", {
           method: "POST",
-          body: JSON.stringify({ topic, locale: "ru", slideCount, audience, theme }),
+          body: JSON.stringify({
+            topic: topicNow,
+            locale: "ru",
+            slideCount: slideCountNow,
+            audience: audienceNow,
+            theme: themeNow,
+          }),
         });
       }
       for (;;) {
@@ -126,13 +142,14 @@ export function AppHome() {
         setStatus(d.status);
         setActivity(d.activity ?? "");
         if (deckViewable(d.status)) {
-          nav(`/view/${created.deckId}`);
+          nav(`/view/${created.deckId}`, { state: { awaitingPreview: true } });
           return;
         }
         if (d.status === "failed") {
           setErr(d.error || "Не собралось");
           setStatus("");
           setActivity("");
+          creatingRef.current = false;
           return;
         }
       }
@@ -144,13 +161,67 @@ export function AppHome() {
           setPaywall(body.billing);
           setStatus("");
           setActivity("");
+          creatingRef.current = false;
           return;
         }
       }
       setErr("Не удалось создать");
       setStatus("");
       setActivity("");
+      creatingRef.current = false;
     }
+  }
+
+  // Landing/login send ?topic=… — start generate immediately (no second Create click).
+  useEffect(() => {
+    if (!me) return;
+    const qTopic = (params.get("topic") ?? "").trim();
+    if (qTopic.length < 5) return;
+
+    const lock = params.toString();
+    if (autoCreateLocks.has(lock)) {
+      setParams((current) => {
+        if (!current.get("topic")) return current;
+        const next = new URLSearchParams(current);
+        next.delete("topic");
+        return next;
+      }, { replace: true });
+      return;
+    }
+
+    // Defer so React Strict Mode's effect cleanup can cancel the first mount.
+    const timer = window.setTimeout(() => {
+      if (autoCreateLocks.has(lock) || creatingRef.current) return;
+      autoCreateLocks.add(lock);
+      setParams((current) => {
+        if (!current.get("topic")) return current;
+        const next = new URLSearchParams(current);
+        next.delete("topic");
+        return next;
+      }, { replace: true });
+      void createDeck();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+    // Intentionally once when session is ready; topic is stripped when create starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-create from query
+  }, [me]);
+
+  async function onOut() {
+    await fetch(apiUrl("/api/auth/sign-out"), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    nav("/login");
+  }
+
+  async function onCreate(e: FormEvent) {
+    e.preventDefault();
+    await createDeck();
   }
 
   if (!me) return null;
@@ -187,12 +258,11 @@ export function AppHome() {
                 disabled={Boolean(status)}
               />
               <PkButton disabled={topic.trim().length < 5 || Boolean(status)} type="submit">
-                {status ? "Создаём…" : "Создать"}
+                {status ? label || "Создаём…" : "Создать"}
               </PkButton>
             </div>
           </form>
           <ThemePicker value={theme} onChange={setTheme} disabled={Boolean(status)} />
-          {status ? <p className="app-note">{label}</p> : null}
           {err ? <p className="err app-note">{err}</p> : null}
         </div>
       </main>
