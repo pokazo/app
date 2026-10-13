@@ -15,8 +15,28 @@ export function shouldPollDeckView(opts: {
   building: boolean;
   /** Client forced poll after POST rewrite (until server building catches up). */
   forcePoll?: boolean;
+  /** Local rewrite in flight — keep polling even if a poll missed server building=true. */
+  rewriteBusy?: boolean;
 }): boolean {
-  return !opts.hasMeta || opts.building || Boolean(opts.forcePoll);
+  return (
+    !opts.hasMeta ||
+    opts.building ||
+    Boolean(opts.forcePoll) ||
+    Boolean(opts.rewriteBusy)
+  );
+}
+
+/** True when POST rewrite is still showing busy but /api/view no longer reports a rewrite. */
+export function shouldClearRewriteBusy(opts: {
+  rewriteBusy: boolean;
+  serverBuilding: boolean;
+  rewritingSlide?: number | null;
+}): boolean {
+  return (
+    opts.rewriteBusy &&
+    !opts.serverBuilding &&
+    (opts.rewritingSlide == null || opts.rewritingSlide === undefined)
+  );
 }
 
 /** Soft copy while dist is not ready yet (hero preview pending). */

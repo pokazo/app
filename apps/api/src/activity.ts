@@ -87,9 +87,18 @@ export function deckActivityPath(workDir: string): string {
 }
 
 export async function writeDeckActivity(workDir: string, label: string): Promise<void> {
+  const trimmed = label.trim();
+  if (!trimmed) {
+    await writeFile(
+      deckActivityPath(workDir),
+      JSON.stringify({ label: "", at: new Date().toISOString() }, null, 2),
+      "utf8",
+    );
+    return;
+  }
   await writeFile(
     deckActivityPath(workDir),
-    JSON.stringify({ label, at: new Date().toISOString() }, null, 2),
+    JSON.stringify({ label: trimmed, at: new Date().toISOString() }, null, 2),
     "utf8",
   );
 }
@@ -99,8 +108,10 @@ export async function readDeckActivity(workDir: string): Promise<DeckActivity | 
     const raw = JSON.parse(await readFile(deckActivityPath(workDir), "utf8")) as {
       label?: unknown;
     };
-    if (typeof raw.label !== "string" || !raw.label.trim()) return null;
-    return { label: raw.label.trim() };
+    if (typeof raw.label !== "string") return null;
+    const label = raw.label.trim();
+    if (!label) return null;
+    return { label };
   } catch {
     return null;
   }

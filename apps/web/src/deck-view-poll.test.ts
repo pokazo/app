@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isDeckId, progressiveSlideReveal, shouldPollDeckView } from "./deck-view-poll.js";
+import {
+  isDeckId,
+  progressiveSlideReveal,
+  shouldClearRewriteBusy,
+  shouldPollDeckView,
+} from "./deck-view-poll.js";
 
 describe("isDeckId", () => {
   it("accepts uuid", () => {
@@ -27,6 +32,32 @@ describe("shouldPollDeckView", () => {
 
   it("keeps polling when forcePoll after rewrite POST", () => {
     expect(shouldPollDeckView({ hasMeta: true, building: false, forcePoll: true })).toBe(true);
+  });
+
+  it("keeps polling while local rewriteBusy even if server already idle", () => {
+    expect(shouldPollDeckView({ hasMeta: true, building: false, rewriteBusy: true })).toBe(true);
+  });
+});
+
+describe("shouldClearRewriteBusy", () => {
+  it("clears when local busy but server finished rewrite", () => {
+    expect(
+      shouldClearRewriteBusy({
+        rewriteBusy: true,
+        serverBuilding: false,
+        rewritingSlide: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps busy while server still rewriting", () => {
+    expect(
+      shouldClearRewriteBusy({
+        rewriteBusy: true,
+        serverBuilding: true,
+        rewritingSlide: 2,
+      }),
+    ).toBe(false);
   });
 });
 

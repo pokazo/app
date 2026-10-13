@@ -409,6 +409,11 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
     instruction,
     updatedAt: new Date().toISOString(),
   });
+  try {
+    await writeDeckActivity(workDir, "");
+  } catch {
+    /* optional */
+  }
   console.info(`[rewrite] hero done slide=${slideIndex} deck=${id}`);
 }
 
@@ -555,6 +560,11 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
     instruction,
     updatedAt: new Date().toISOString(),
   });
+  try {
+    await writeDeckActivity(workDir, "");
+  } catch {
+    /* optional */
+  }
   console.info(`[rewrite] body done slide=${slideIndex} deck=${id}`);
 }
 

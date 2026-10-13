@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   composeOneSlideSkill,
   composeOneSlideUserPrompt,
+  isFullRedoInstruction,
   reviseOutlineSlidePrompt,
   rewriteHeroRepairPrompt,
   rewriteHeroSkill,
@@ -42,6 +43,21 @@ const lockedStats = {
   image: "",
   visual: "stats" as const,
 };
+
+describe("isFullRedoInstruction", () => {
+  it("detects vague full-redo and bare dislike", () => {
+    expect(isFullRedoInstruction("полностью переделай , мне не нравиться")).toBe(true);
+    expect(isFullRedoInstruction("переделай всё")).toBe(true);
+    expect(isFullRedoInstruction("мне не нравится")).toBe(true);
+    expect(isFullRedoInstruction("с нуля")).toBe(true);
+  });
+
+  it("keeps specific edit requests as soft", () => {
+    expect(isFullRedoInstruction("поменяй картинку")).toBe(false);
+    expect(isFullRedoInstruction("не нравится заголовок")).toBe(false);
+    expect(isFullRedoInstruction("короче текст")).toBe(false);
+  });
+});
 
 describe("rewrite-skill prompts", () => {
   it("revise body prompt soft-locks visual and allows layout change", () => {
@@ -109,6 +125,48 @@ describe("rewrite-skill prompts", () => {
     expect(p).toMatch(/CURRENT: layout=image-right/);
     expect(p).toMatch(/Never use hero\/cover/);
     expect(p).toMatch(/Поменяй картинку на атоммаш/);
+    expect(p).not.toMatch(/FULL REDO MODE/);
+  });
+
+  it("compose-one user prompt enters FULL REDO MODE for vague redo", () => {
+    const p = composeOneSlideUserPrompt({
+      slideIndex: 2,
+      slide: sampleSlide,
+      locale: "ru",
+      topic: "Тема",
+      instruction: "полностью переделай, мне не нравится",
+      locked: {
+        layout: "image-right",
+        variant: "",
+        image: "/slide-2.jpg",
+        visual: "image-right",
+      },
+    });
+    expect(p).toMatch(/FULL REDO MODE/);
+    expect(p).toMatch(/different body layout/);
+    expect(p).toMatch(/photo pipeline/);
+    expect(p).not.toMatch(/Keep this layout unless/);
+  });
+
+  it("revise body prompt demands different visual on full redo", () => {
+    const p = reviseOutlineSlidePrompt({
+      topic: "Тема",
+      locale: "ru",
+      audience: "school",
+      slideIndex: 2,
+      previous: sampleSlide,
+      instruction: "полностью переделай",
+      isHero: false,
+      locked: {
+        layout: "image-right",
+        variant: "",
+        image: "/slide-2.jpg",
+        visual: "image-right",
+      },
+    });
+    expect(p).toMatch(/FULL REDO/);
+    expect(p).toMatch(/ДРУГОЙ visual/);
+    expect(p).toMatch(/imageQuery/);
   });
 
   it("body repair prompt forbids hero tools", () => {

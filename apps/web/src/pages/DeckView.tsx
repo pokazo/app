@@ -6,6 +6,7 @@ import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex } from "
 import {
   isDeckId,
   progressiveSlideReveal,
+  shouldClearRewriteBusy,
   shouldPollDeckView,
   VIEW_NOT_FOUND_ERR,
   VIEW_WAITING_NOTE,
@@ -53,8 +54,14 @@ export function DeckView() {
   const [rewriteErr, setRewriteErr] = useState("");
   const [rewritingSlide, setRewritingSlide] = useState<number | null>(null);
   const forcePollRef = useRef(false);
+  const rewriteBusyRef = useRef(false);
   const stayOnSlideRef = useRef<number | null>(null);
   const rewriteFileRef = useRef<HTMLInputElement>(null);
+
+  const markRewriteBusy = (busy: boolean) => {
+    rewriteBusyRef.current = busy;
+    setRewriteBusy(busy);
+  };
 
   const embedBase = apiUrl(`/p/${id}/`);
   const idOk = isDeckId(id);
@@ -85,7 +92,7 @@ export function DeckView() {
     setEmbedKey(0);
     setSpeechOpen(false);
     setRewriteText("");
-    setRewriteBusy(false);
+    markRewriteBusy(false);
     setRewriteErr("");
     setRewritingSlide(null);
     forcePollRef.current = false;
@@ -117,6 +124,7 @@ export function DeckView() {
           hasMeta,
           building: isBuilding,
           forcePoll: forcePollRef.current,
+          rewriteBusy: rewriteBusyRef.current,
         })
       ) {
         return;
@@ -128,27 +136,36 @@ export function DeckView() {
         const firstMeta = !hasMeta;
         const wasBuilding = hasMeta && isBuilding;
         const nextCount = data.slides.length;
+        const serverBuilding = Boolean(data.building);
+        const serverRewritingSlide =
+          typeof data.rewritingSlide === "number" ? data.rewritingSlide : null;
         const reveal = progressiveSlideReveal({
           prevCount: slideCount,
           nextCount,
-          building: Boolean(data.building),
+          building: serverBuilding,
         });
         hasMeta = true;
-        isBuilding = Boolean(data.building);
+        isBuilding = serverBuilding;
         slideCount = nextCount;
         if (isBuilding) forcePollRef.current = true;
-        if (!isBuilding) forcePollRef.current = false;
+        const rewriteDone = shouldClearRewriteBusy({
+          rewriteBusy: rewriteBusyRef.current,
+          serverBuilding,
+          rewritingSlide: serverRewritingSlide,
+        });
+        if (!isBuilding && !rewriteBusyRef.current) forcePollRef.current = false;
         setMeta(data);
         setWaiting(false);
         setErr("");
-        setBuilding(isBuilding);
+        setBuilding(isBuilding || rewriteBusyRef.current);
         setActivity((data.activity ?? "").trim());
-        setRewritingSlide(
-          typeof data.rewritingSlide === "number" ? data.rewritingSlide : null,
-        );
+        setRewritingSlide(serverRewritingSlide);
         if (data.rewriteError && !isBuilding) {
           setRewriteErr(data.rewriteError);
-          setRewriteBusy(false);
+          markRewriteBusy(false);
+          forcePollRef.current = false;
+          setBuilding(false);
+          setRewritingSlide(null);
         }
         if (firstMeta) {
           setCurrent(data.slides[0]?.index ?? 1);
@@ -157,10 +174,13 @@ export function DeckView() {
           setEmbedKey((k) => k + 1);
           if (reveal.focusSlide != null) setCurrent(reveal.focusSlide);
         }
-        if (wasBuilding && !isBuilding) {
+        if ((wasBuilding && !isBuilding) || rewriteDone) {
           setStageReady(false);
           setEmbedKey((k) => k + 1);
-          setRewriteBusy(false);
+          markRewriteBusy(false);
+          forcePollRef.current = false;
+          setBuilding(false);
+          setActivity("");
           if (!data.rewriteError) {
             setRewriteText("");
             setRewriteFiles([]);
@@ -303,7 +323,7 @@ export function DeckView() {
       return;
     }
     setRewriteErr("");
-    setRewriteBusy(true);
+    markRewriteBusy(true);
     setActivity("Правлю слайд…");
     stayOnSlideRef.current = current;
     forcePollRef.current = true;
@@ -335,7 +355,7 @@ export function DeckView() {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       forcePollRef.current = false;
       setBuilding(false);
-      setRewriteBusy(false);
+      markRewriteBusy(false);
       setRewritingSlide(null);
       stayOnSlideRef.current = null;
       if (res.status === 401) {
@@ -350,7 +370,7 @@ export function DeckView() {
     } catch {
       forcePollRef.current = false;
       setBuilding(false);
-      setRewriteBusy(false);
+      markRewriteBusy(false);
       setRewritingSlide(null);
       stayOnSlideRef.current = null;
       setRewriteErr("Не удалось запустить пересборку.");
