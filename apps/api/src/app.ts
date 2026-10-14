@@ -648,18 +648,21 @@ export function createApp() {
   app.post("/api/decks/:id/slides/:n/move", async (c) => {
     const n = Number(c.req.param("n"));
     if (!Number.isInteger(n) || n < 1 || n > 16) return c.json({ error: "bad slide" }, 400);
-    let direction: "up" | "down";
+    let to: number;
     try {
-      const body = await c.req.json<{ direction?: string }>();
-      if (body.direction !== "up" && body.direction !== "down") {
-        return c.json({ error: "bad direction" }, 400);
+      const body = await c.req.json<{ to?: number; direction?: string }>();
+      if (typeof body.to === "number" && Number.isInteger(body.to)) {
+        to = body.to;
+      } else if (body.direction === "up" || body.direction === "down") {
+        to = body.direction === "up" ? n - 1 : n + 1;
+      } else {
+        return c.json({ error: "bad target" }, 400);
       }
-      direction = body.direction;
     } catch {
       return c.json({ error: "bad body" }, 400);
     }
-    const focus = direction === "up" ? n - 1 : n + 1;
-    return acceptStructureOp(c, { op: "move", viewIndex: n, direction }, focus);
+    if (to < 1 || to > 16) return c.json({ error: "bad move" }, 400);
+    return acceptStructureOp(c, { op: "move", from: n, to }, to);
   });
 
   app.delete("/api/decks/:id/slides/:n", async (c) => {

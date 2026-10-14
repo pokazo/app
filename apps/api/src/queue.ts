@@ -209,7 +209,7 @@ export async function enqueueRewriteSlide(opts: {
 export async function processStructureSlide(id: string, op: StructureOp): Promise<void> {
   const workDir = join(config.deckDataDir, id);
   const slideHint =
-    op.op === "insert" ? op.after : op.op === "move" || op.op === "delete" ? op.viewIndex : 1;
+    op.op === "insert" ? op.after : op.op === "move" ? op.to : op.op === "delete" ? op.viewIndex : 1;
   try {
     await applySlideStructure({
       id,

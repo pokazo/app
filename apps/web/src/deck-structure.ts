@@ -27,10 +27,11 @@ async function structureFetch(
   return body as StructureAccept;
 }
 
-export function moveDeckSlide(deckId: string, n: number, direction: "up" | "down") {
-  return structureFetch(`/api/decks/${deckId}/slides/${n}/move`, {
+/** Move view-index `from` to absolute view-index `to` (1-based). */
+export function moveDeckSlide(deckId: string, from: number, to: number) {
+  return structureFetch(`/api/decks/${deckId}/slides/${from}/move`, {
     method: "POST",
-    body: JSON.stringify({ direction }),
+    body: JSON.stringify({ to }),
   });
 }
 
@@ -53,7 +54,7 @@ export function focusAfterStructure(acceptedSlide: number, maxSlides: number): n
 export function structureErrorMessage(raw: string): string {
   if (/min slides/i.test(raw)) return "Нельзя удалить — минимум 3 слайда";
   if (/max slides/i.test(raw)) return "Нельзя добавить — максимум 16 слайдов";
-  if (/bad move/i.test(raw)) return "Нельзя сдвинуть этот слайд";
+  if (/bad move|bad target/i.test(raw)) return "Нельзя сдвинуть этот слайд";
   if (/busy/i.test(raw)) return "Подождите, идёт сборка";
   if (/unauthorized|401/i.test(raw)) return "Войдите, чтобы править слайды";
   return "Не удалось изменить слайды";

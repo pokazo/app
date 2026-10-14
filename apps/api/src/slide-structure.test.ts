@@ -57,30 +57,45 @@ layout: statement
 });
 
 describe("mutateSlideStructure move", () => {
-  it("swaps adjacent slides in md and outline", () => {
+  it("moves a slide to an absolute index in md and outline", () => {
     const md = makeMd(["statement", "fact", "quote"]);
     const outline = makeOutline(["A", "B", "C"]);
     const result = mutateSlideStructure(md, outline, {
       op: "move",
-      viewIndex: 2,
-      direction: "down",
+      from: 1,
+      to: 3,
+    });
+    expect(result.focusViewIndex).toBe(3);
+    expect(result.outline.slides.map((s) => s.heading)).toEqual(["B", "C", "A"]);
+    const blocks = splitRawSlideBlocks(result.md);
+    expect(blocks[0]).toContain("# Slide 2");
+    expect(blocks[2]).toContain("# Slide 1");
+    expect(result.outlineIndexMap.get(1)).toBe(3);
+    expect(result.outlineIndexMap.get(2)).toBe(1);
+  });
+
+  it("swaps adjacent slides when to is neighbor", () => {
+    const md = makeMd(["statement", "fact", "quote"]);
+    const outline = makeOutline(["A", "B", "C"]);
+    const result = mutateSlideStructure(md, outline, {
+      op: "move",
+      from: 2,
+      to: 3,
     });
     expect(result.focusViewIndex).toBe(3);
     expect(result.outline.slides.map((s) => s.heading)).toEqual(["A", "C", "B"]);
     const blocks = splitRawSlideBlocks(result.md);
     expect(blocks[1]).toContain("# Slide 3");
     expect(blocks[2]).toContain("# Slide 2");
-    expect(result.outlineIndexMap.get(2)).toBe(3);
-    expect(result.outlineIndexMap.get(3)).toBe(2);
   });
 
-  it("moves orphan hero md without swapping outline slots", () => {
+  it("moves orphan hero md without dropping outline slides", () => {
     const md = makeMd(["hero", "statement", "fact", "quote"]);
     const outline = makeOutline(["A", "B", "C"]);
     const result = mutateSlideStructure(md, outline, {
       op: "move",
-      viewIndex: 1,
-      direction: "down",
+      from: 1,
+      to: 2,
     });
     expect(result.outline.slides.map((s) => s.heading)).toEqual(["A", "B", "C"]);
     const blocks = splitRawSlideBlocks(result.md);
@@ -92,12 +107,12 @@ describe("mutateSlideStructure move", () => {
   it("rejects move past edges", () => {
     const md = makeMd(["statement", "fact", "quote"]);
     const outline = makeOutline(["A", "B", "C"]);
-    expect(() =>
-      mutateSlideStructure(md, outline, { op: "move", viewIndex: 1, direction: "up" }),
-    ).toThrow(/bad move/);
-    expect(() =>
-      mutateSlideStructure(md, outline, { op: "move", viewIndex: 3, direction: "down" }),
-    ).toThrow(/bad move/);
+    expect(() => mutateSlideStructure(md, outline, { op: "move", from: 1, to: 0 })).toThrow(
+      /bad move/,
+    );
+    expect(() => mutateSlideStructure(md, outline, { op: "move", from: 3, to: 4 })).toThrow(
+      /bad move/,
+    );
   });
 });
 

@@ -74,6 +74,8 @@ export function DeckView() {
   const [rewritingSlide, setRewritingSlide] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [structureErr, setStructureErr] = useState("");
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
   const forcePollRef = useRef(false);
   const rewriteBusyRef = useRef(false);
   const stayOnSlideRef = useRef<number | null>(null);
@@ -118,6 +120,8 @@ export function DeckView() {
     setRewritingSlide(null);
     setDeleteConfirm(null);
     setStructureErr("");
+    setDragFrom(null);
+    setDragOver(null);
     forcePollRef.current = false;
     stayOnSlideRef.current = null;
 
@@ -376,9 +380,9 @@ export function DeckView() {
     }
   }
 
-  async function onMoveSlide(n: number, direction: "up" | "down") {
-    const focus = direction === "up" ? n - 1 : n + 1;
-    await runStructure(focus, "Правлю слайды…", () => moveDeckSlide(id, n, direction));
+  async function onMoveSlideTo(from: number, to: number) {
+    if (from === to) return;
+    await runStructure(to, "Правлю слайды…", () => moveDeckSlide(id, from, to));
   }
 
   async function onDeleteSlide(n: number) {
@@ -537,17 +541,57 @@ export function DeckView() {
           {slides.map((s) => {
             const cover = thumbCoverPath(s);
             const canEdit = structureReady;
+            const itemClass = [
+              "deck-thumb-item",
+              s.index === current ? "is-current" : "",
+              dragFrom === s.index ? "is-dragging" : "",
+              dragOver === s.index && dragFrom != null && dragFrom !== s.index ? "is-drag-over" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
             return (
             <div
               key={s.index}
               data-thumb={s.index}
-              className={`deck-thumb-item${s.index === current ? " is-current" : ""}`}
+              className={itemClass}
+              onDragOver={(e) => {
+                if (!canEdit || dragFrom == null) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (dragOver !== s.index) setDragOver(s.index);
+              }}
+              onDragLeave={() => {
+                if (dragOver === s.index) setDragOver(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const from = Number(e.dataTransfer.getData("text/plain") || dragFrom);
+                setDragFrom(null);
+                setDragOver(null);
+                if (!canEdit || !Number.isInteger(from) || from < 1) return;
+                void onMoveSlideTo(from, s.index);
+              }}
             >
               <button
                 type="button"
                 className={`deck-thumb${s.index === current ? " is-current" : ""}`}
+                draggable={canEdit}
                 aria-label={s.heading ? `${s.index}. ${s.heading}` : `Страница ${s.index}`}
                 aria-current={s.index === current ? "true" : undefined}
+                title={canEdit ? "Перетащите, чтобы поменять порядок" : undefined}
+                onDragStart={(e) => {
+                  if (!canEdit) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.dataTransfer.setData("text/plain", String(s.index));
+                  e.dataTransfer.effectAllowed = "move";
+                  setDragFrom(s.index);
+                }}
+                onDragEnd={() => {
+                  setDragFrom(null);
+                  setDragOver(null);
+                }}
                 onClick={() => go(s.index)}
               >
                 <DeckThumbPreview
@@ -567,30 +611,6 @@ export function DeckView() {
               </button>
               {me && meta?.status === "ready" ? (
                 <div className="deck-thumb-actions">
-                  <button
-                    type="button"
-                    className="deck-thumb-action"
-                    aria-label={`Слайд ${s.index} вверх`}
-                    disabled={!canEdit || s.index <= 1}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void onMoveSlide(s.index, "up");
-                    }}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="deck-thumb-action"
-                    aria-label={`Слайд ${s.index} вниз`}
-                    disabled={!canEdit || s.index >= last}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void onMoveSlide(s.index, "down");
-                    }}
-                  >
-                    ↓
-                  </button>
                   <button
                     type="button"
                     className="deck-thumb-action danger"

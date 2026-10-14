@@ -14,7 +14,7 @@ export const SLIDE_COUNT_MAX = 16;
 export const EMPTY_SLIDE_HEADING = "Новый слайд";
 
 export type StructureOp =
-  | { op: "move"; viewIndex: number; direction: "up" | "down" }
+  | { op: "move"; from: number; to: number }
   | { op: "delete"; viewIndex: number }
   | { op: "insert"; after: number };
 
@@ -74,16 +74,6 @@ function identityOutlineMap(n: number): Map<number, number> {
   return map;
 }
 
-function swapOutlineMap(map: Map<number, number>, a: number, b: number): Map<number, number> {
-  const next = new Map<number, number>();
-  for (const [oldIdx, newIdx] of map) {
-    if (newIdx === a) next.set(oldIdx, b);
-    else if (newIdx === b) next.set(oldIdx, a);
-    else next.set(oldIdx, newIdx);
-  }
-  return next;
-}
-
 function deleteOutlineMap(map: Map<number, number>, removed: number): Map<number, number> {
   const next = new Map<number, number>();
   for (const [oldIdx, newIdx] of map) {
@@ -115,29 +105,54 @@ export function mutateSlideStructure(
   let focusViewIndex = 1;
 
   if (op.op === "move") {
-    const from = op.viewIndex;
-    const to = op.direction === "up" ? from - 1 : from + 1;
+    const from = op.from;
+    const to = op.to;
     if (!Number.isInteger(from) || from < 1 || from > viewCount) {
       throw new Error("bad slide");
     }
-    if (to < 1 || to > viewCount) throw new Error("bad move");
-    const mapFrom = mapViewSlideToOutline(md, from, outlineCount);
-    const mapTo = mapViewSlideToOutline(md, to, outlineCount);
-    const tmp = blocks[from - 1]!;
-    blocks[from - 1] = blocks[to - 1]!;
-    blocks[to - 1] = tmp;
-    if (mapFrom.kind === "outline" && mapTo.kind === "outline") {
-      const ai = mapFrom.outlineSlideIndex - 1;
-      const bi = mapTo.outlineSlideIndex - 1;
-      const sa = slides[ai]!;
-      slides[ai] = slides[bi]!;
-      slides[bi] = sa;
-      outlineIndexMap = swapOutlineMap(
+    if (!Number.isInteger(to) || to < 1 || to > viewCount) throw new Error("bad move");
+    if (from === to) {
+      return {
+        md,
+        outline,
+        focusViewIndex: from,
         outlineIndexMap,
-        mapFrom.outlineSlideIndex,
-        mapTo.outlineSlideIndex,
-      );
+      };
     }
+    type ViewSlot =
+      | { kind: "orphan"; block: string }
+      | { kind: "outline"; block: string; slide: OutlineSlide; oldIndex: number };
+    const slots: ViewSlot[] = [];
+    for (let i = 1; i <= viewCount; i++) {
+      const mapping = mapViewSlideToOutline(md, i, outlineCount);
+      const block = blocks[i - 1]!;
+      if (mapping.kind === "orphan-hero") {
+        slots.push({ kind: "orphan", block });
+      } else {
+        slots.push({
+          kind: "outline",
+          block,
+          slide: slides[mapping.outlineSlideIndex - 1]!,
+          oldIndex: mapping.outlineSlideIndex,
+        });
+      }
+    }
+    const [moved] = slots.splice(from - 1, 1);
+    if (!moved) throw new Error("bad slide");
+    slots.splice(to - 1, 0, moved);
+    for (let i = 0; i < slots.length; i++) {
+      blocks[i] = slots[i]!.block;
+    }
+    blocks.length = slots.length;
+    const nextSlides: OutlineSlide[] = [];
+    const nextMap = new Map<number, number>();
+    for (const slot of slots) {
+      if (slot.kind !== "outline") continue;
+      nextSlides.push(slot.slide);
+      nextMap.set(slot.oldIndex, nextSlides.length);
+    }
+    slides = nextSlides;
+    outlineIndexMap = nextMap;
     focusViewIndex = to;
   } else if (op.op === "delete") {
     const n = op.viewIndex;
