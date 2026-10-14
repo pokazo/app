@@ -11,7 +11,15 @@ import {
   VIEW_NOT_FOUND_ERR,
   VIEW_WAITING_NOTE,
 } from "../deck-view-poll";
-import { APP_HISTORY_PATH } from "../decks";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import {
+  deleteDeckSlide,
+  focusAfterStructure,
+  insertDeckSlide,
+  moveDeckSlide,
+  structureErrorMessage,
+} from "../deck-structure";
+import { APP_HISTORY_PATH, SLIDE_COUNT_MAX, SLIDE_COUNT_MIN } from "../decks";
 import { thumbCoverPath, thumbReactKey } from "../deck-thumb-preview";
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
@@ -64,6 +72,8 @@ export function DeckView() {
   const [rewriteBusy, setRewriteBusy] = useState(false);
   const [rewriteErr, setRewriteErr] = useState("");
   const [rewritingSlide, setRewritingSlide] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [structureErr, setStructureErr] = useState("");
   const forcePollRef = useRef(false);
   const rewriteBusyRef = useRef(false);
   const stayOnSlideRef = useRef<number | null>(null);
@@ -106,6 +116,8 @@ export function DeckView() {
     markRewriteBusy(false);
     setRewriteErr("");
     setRewritingSlide(null);
+    setDeleteConfirm(null);
+    setStructureErr("");
     forcePollRef.current = false;
     stayOnSlideRef.current = null;
 
@@ -172,7 +184,12 @@ export function DeckView() {
         setActivity((data.activity ?? "").trim());
         setRewritingSlide(serverRewritingSlide);
         if (data.rewriteError && !isBuilding) {
-          setRewriteErr(data.rewriteError);
+          const failed = data.rewriteError;
+          if (/min slides|max slides|bad move|bad slide|structure:/i.test(failed)) {
+            setStructureErr(structureErrorMessage(failed));
+          } else {
+            setRewriteErr(failed);
+          }
           markRewriteBusy(false);
           forcePollRef.current = false;
           setBuilding(false);
@@ -193,6 +210,7 @@ export function DeckView() {
           setBuilding(false);
           setActivity("");
           if (!data.rewriteError) {
+            setStructureErr("");
             setRewriteText("");
             setRewriteFiles([]);
             if (rewriteFileRef.current) rewriteFileRef.current.value = "";
@@ -324,6 +342,52 @@ export function DeckView() {
     } finally {
       setExporting(null);
     }
+  }
+
+  const structureReady = Boolean(
+    me && meta && meta.status === "ready" && !building && !rewriteBusy,
+  );
+
+  async function runStructure(
+    focusSlide: number,
+    activityLabel: string,
+    request: () => Promise<{ slide: number }>,
+  ) {
+    if (!id || !structureReady) return;
+    setStructureErr("");
+    markRewriteBusy(true);
+    setActivity(activityLabel);
+    stayOnSlideRef.current = focusSlide;
+    forcePollRef.current = true;
+    setBuilding(true);
+    setRewritingSlide(focusSlide);
+    try {
+      const accepted = await request();
+      stayOnSlideRef.current = focusAfterStructure(accepted.slide, Math.max(last, accepted.slide));
+    } catch (err) {
+      markRewriteBusy(false);
+      forcePollRef.current = false;
+      setBuilding(false);
+      setRewritingSlide(null);
+      setActivity("");
+      setStructureErr(
+        structureErrorMessage(err instanceof Error ? err.message : String(err)),
+      );
+    }
+  }
+
+  async function onMoveSlide(n: number, direction: "up" | "down") {
+    const focus = direction === "up" ? n - 1 : n + 1;
+    await runStructure(focus, "Правлю слайды…", () => moveDeckSlide(id, n, direction));
+  }
+
+  async function onDeleteSlide(n: number) {
+    setDeleteConfirm(null);
+    await runStructure(n, "Правлю слайды…", () => deleteDeckSlide(id, n));
+  }
+
+  async function onAddSlide() {
+    await runStructure(current + 1, "Добавляю слайд…", () => insertDeckSlide(id, current));
   }
 
   async function submitRewrite() {
@@ -460,37 +524,101 @@ export function DeckView() {
           onClose={() => setSpeechOpen(false)}
         />
       ) : null}
+      {deleteConfirm != null ? (
+        <ConfirmDialog
+          title={`Удалить слайд ${deleteConfirm}?`}
+          busy={rewriteBusy}
+          onCancel={() => setDeleteConfirm(null)}
+          onConfirm={() => void onDeleteSlide(deleteConfirm)}
+        />
+      ) : null}
       <div className="deck-layout">
         <nav className="deck-thumbs" aria-label="Страницы">
           {slides.map((s) => {
             const cover = thumbCoverPath(s);
+            const canEdit = structureReady;
             return (
-            <button
+            <div
               key={s.index}
-              type="button"
               data-thumb={s.index}
-              className={`deck-thumb${s.index === current ? " is-current" : ""}`}
-              aria-label={s.heading ? `${s.index}. ${s.heading}` : `Страница ${s.index}`}
-              aria-current={s.index === current ? "true" : undefined}
-              onClick={() => go(s.index)}
+              className={`deck-thumb-item${s.index === current ? " is-current" : ""}`}
             >
-              <DeckThumbPreview
-                key={thumbReactKey(s.index)}
-                embedBase={embedBase}
-                embedCacheKey={embedKey}
-                index={s.slidevIndex ?? s.index}
-                heading={s.heading || `Слайд ${s.index}`}
-                imageUrl={
-                  cover
-                    ? `${apiUrl(`/p/${id}${cover}`)}${embedKey ? `?_r=${embedKey}` : ""}`
-                    : null
-                }
-                enabled={stageReady}
-                active={s.index === current}
-              />
-            </button>
+              <button
+                type="button"
+                className={`deck-thumb${s.index === current ? " is-current" : ""}`}
+                aria-label={s.heading ? `${s.index}. ${s.heading}` : `Страница ${s.index}`}
+                aria-current={s.index === current ? "true" : undefined}
+                onClick={() => go(s.index)}
+              >
+                <DeckThumbPreview
+                  key={thumbReactKey(s.index)}
+                  embedBase={embedBase}
+                  embedCacheKey={embedKey}
+                  index={s.slidevIndex ?? s.index}
+                  heading={s.heading || `Слайд ${s.index}`}
+                  imageUrl={
+                    cover
+                      ? `${apiUrl(`/p/${id}${cover}`)}${embedKey ? `?_r=${embedKey}` : ""}`
+                      : null
+                  }
+                  enabled={stageReady}
+                  active={s.index === current}
+                />
+              </button>
+              {me && meta?.status === "ready" ? (
+                <div className="deck-thumb-actions">
+                  <button
+                    type="button"
+                    className="deck-thumb-action"
+                    aria-label={`Слайд ${s.index} вверх`}
+                    disabled={!canEdit || s.index <= 1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void onMoveSlide(s.index, "up");
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="deck-thumb-action"
+                    aria-label={`Слайд ${s.index} вниз`}
+                    disabled={!canEdit || s.index >= last}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void onMoveSlide(s.index, "down");
+                    }}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="deck-thumb-action danger"
+                    aria-label={`Удалить слайд ${s.index}`}
+                    disabled={!canEdit || last <= SLIDE_COUNT_MIN}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirm(s.index);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+            </div>
             );
           })}
+          {me && meta?.status === "ready" ? (
+            <button
+              type="button"
+              className="deck-thumb-add"
+              disabled={!structureReady || last >= SLIDE_COUNT_MAX}
+              onClick={() => void onAddSlide()}
+            >
+              Добавить слайд
+            </button>
+          ) : null}
+          {structureErr ? <p className="err deck-thumb-err">{structureErr}</p> : null}
         </nav>
         <div
           className={`deck-stage${me && meta?.status === "ready" ? " has-rewrite" : ""}`}

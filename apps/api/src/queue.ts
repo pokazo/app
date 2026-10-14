@@ -7,6 +7,7 @@ import { pool } from "./migrate.js";
 import { generateDeck } from "./generate.js";
 import { rewriteSlide } from "./rewrite-slide.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
+import { applySlideStructure, type StructureOp } from "./slide-structure.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { billingLog, finalizeDeckBilling } from "./billing.js";
 
@@ -31,6 +32,10 @@ export function startDeckWorker(): Queue | null {
             const slide = Number(job.data.slide);
             const instruction = String(job.data.instruction ?? "");
             await processRewriteSlide(id, slide, instruction);
+            return;
+          }
+          if (job.name === "structure-slide") {
+            await processStructureSlide(String(job.data.id), job.data.op as StructureOp);
             return;
           }
           const maxAttempts = job.opts.attempts ?? 1;
@@ -199,6 +204,57 @@ export async function enqueueRewriteSlide(opts: {
   void processRewriteSlide(opts.id, opts.slide, opts.instruction).catch((err) =>
     console.error(err),
   );
+}
+
+export async function processStructureSlide(id: string, op: StructureOp): Promise<void> {
+  const workDir = join(config.deckDataDir, id);
+  const slideHint =
+    op.op === "insert" ? op.after : op.op === "move" || op.op === "delete" ? op.viewIndex : 1;
+  try {
+    await applySlideStructure({
+      id,
+      workDir,
+      op,
+      onSlideCount: async (count) => {
+        if (!pool) return;
+        await pool.query(`UPDATE deck SET slide_count=$2, updated_at=now() WHERE id=$1`, [
+          id,
+          count,
+        ]);
+      },
+    });
+  } catch (err) {
+    await writeRewriteStatus(workDir, {
+      slide: slideHint,
+      status: "failed",
+      error: String(err).slice(0, 2000),
+      instruction: `structure:${op.op}`,
+      updatedAt: new Date().toISOString(),
+    });
+    throw err;
+  }
+}
+
+/** Enqueue structural slide edit. Caller must have written rewrite.json status=running. */
+export async function enqueueStructureSlide(opts: {
+  id: string;
+  op: StructureOp;
+}): Promise<void> {
+  const jobId = `structure-${opts.id}`;
+  try {
+    const q = startDeckWorker();
+    if (q) {
+      await q.add(
+        "structure-slide",
+        { id: opts.id, op: opts.op },
+        { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
+      );
+      return;
+    }
+  } catch (err) {
+    console.error("enqueue structure redis failed, inline", err);
+  }
+  void processStructureSlide(opts.id, opts.op).catch((err) => console.error(err));
 }
 
 export async function deckBusyForRewrite(id: string): Promise<"generating" | "rewriting" | null> {

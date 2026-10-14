@@ -16,6 +16,8 @@ const PHASE_LABELS: Record<string, string> = {
   rewrite: "Правлю слайд",
   "rewrite-plan": "Правлю текст",
   "rewrite-build": "Собираю показ",
+  structure: "Правлю слайды",
+  "structure-build": "Собираю показ",
 };
 
 /** Higher priority wins when a step calls several tools at once. */

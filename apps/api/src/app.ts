@@ -2,12 +2,17 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { config } from "./env.js";
 import { pool } from "./migrate.js";
 import { createAuth } from "./auth.js";
-import { deckBusyForRewrite, enqueueDeck, enqueueRewriteSlide } from "./queue.js";
+import {
+  deckBusyForRewrite,
+  enqueueDeck,
+  enqueueRewriteSlide,
+  enqueueStructureSlide,
+} from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesForView, slidesFromOutline, withImageThumbs } from "./view-meta.js";
@@ -22,7 +27,12 @@ import {
 } from "./deck-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
+import { Outline } from "./outline.js";
 import { maxViewSlideCount } from "./rewrite-lock.js";
+import {
+  mutateSlideStructure,
+  type StructureOp,
+} from "./slide-structure.js";
 import { activityLabelForPhase, readDeckActivity, writeDeckActivity } from "./activity.js";
 import { readPreviewBuild } from "./progressive-preview.js";
 import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
@@ -580,6 +590,96 @@ export function createApp() {
     }
     await enqueueRewriteSlide({ id, slide: n, instruction });
     return c.json({ deckId: id, slide: n, status: "accepted", attached: attachedIds }, 202);
+  });
+
+  const acceptStructureOp = async (c: Context, op: StructureOp, focusSlide: number) => {
+    if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session) return c.json({ error: "unauthorized" }, 401);
+    const id = c.req.param("id") ?? "";
+    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const { rows } = await pool.query(`SELECT * FROM deck WHERE id=$1 AND user_id=$2`, [
+      id,
+      session.user.id,
+    ]);
+    const deck = rows[0] as DeckRow | undefined;
+    if (!deck) return c.json({ error: "not found" }, 404);
+    if (deck.status !== "ready") {
+      return c.json({ error: "deck not ready", status: deck.status }, 409);
+    }
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "outline.json")) || !existsSync(join(dir, "slides.md"))) {
+      return c.json({ error: "not found" }, 404);
+    }
+    let outline;
+    let slidesMd: string;
+    try {
+      outline = Outline.parse(JSON.parse(await readFile(join(dir, "outline.json"), "utf8")));
+      slidesMd = await readFile(join(dir, "slides.md"), "utf8");
+    } catch {
+      return c.json({ error: "not found" }, 404);
+    }
+    try {
+      mutateSlideStructure(slidesMd, outline, op);
+    } catch (err) {
+      const msg = String(err);
+      if (/min slides|max slides|bad slide|bad move|no slides/.test(msg)) {
+        return c.json({ error: msg.replace(/^Error:\s*/, "") }, 400);
+      }
+      throw err;
+    }
+    const busy = await deckBusyForRewrite(id);
+    if (busy) return c.json({ error: "busy", reason: busy }, 409);
+    await writeRewriteStatus(dir, {
+      slide: focusSlide,
+      status: "running",
+      instruction: `structure:${op.op}`,
+      updatedAt: new Date().toISOString(),
+    });
+    try {
+      await writeDeckActivity(dir, activityLabelForPhase("structure"));
+    } catch {
+      /* non-fatal */
+    }
+    await enqueueStructureSlide({ id, op });
+    return c.json({ deckId: id, status: "accepted", op: op.op, slide: focusSlide }, 202);
+  };
+
+  app.post("/api/decks/:id/slides/:n/move", async (c) => {
+    const n = Number(c.req.param("n"));
+    if (!Number.isInteger(n) || n < 1 || n > 16) return c.json({ error: "bad slide" }, 400);
+    let direction: "up" | "down";
+    try {
+      const body = await c.req.json<{ direction?: string }>();
+      if (body.direction !== "up" && body.direction !== "down") {
+        return c.json({ error: "bad direction" }, 400);
+      }
+      direction = body.direction;
+    } catch {
+      return c.json({ error: "bad body" }, 400);
+    }
+    const focus = direction === "up" ? n - 1 : n + 1;
+    return acceptStructureOp(c, { op: "move", viewIndex: n, direction }, focus);
+  });
+
+  app.delete("/api/decks/:id/slides/:n", async (c) => {
+    const n = Number(c.req.param("n"));
+    if (!Number.isInteger(n) || n < 1 || n > 16) return c.json({ error: "bad slide" }, 400);
+    return acceptStructureOp(c, { op: "delete", viewIndex: n }, n);
+  });
+
+  app.post("/api/decks/:id/slides", async (c) => {
+    let after: number;
+    try {
+      const body = await c.req.json<{ after?: number }>();
+      after = Number(body.after);
+      if (!Number.isInteger(after) || after < 1 || after > 16) {
+        return c.json({ error: "bad slide" }, 400);
+      }
+    } catch {
+      return c.json({ error: "bad body" }, 400);
+    }
+    return acceptStructureOp(c, { op: "insert", after }, after + 1);
   });
 
   app.get("/api/decks/:id/speech", async (c) => {
