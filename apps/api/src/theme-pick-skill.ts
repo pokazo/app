@@ -16,7 +16,7 @@ Rules:
 - Choose from the list above only — never invent ids, never return "auto".
 - You run AFTER topic research: decide from the research brief (tone, domain, visual mood) and topic — not from a URL path.
 - Entry audience is optional soft context only. If it is "general" / missing, do NOT assume school; judge only research + topic.
-- Match visual mood: warm storytelling → shibainu; academic → seriph; business minimal → apple-basic/default; bold/creative → bricks; dark editorial → ink-dark or brand-auto.
+- Match visual mood: warm storytelling → shibainu; academic → seriph; business minimal → apple-basic/default; bold/creative → bricks; dark editorial → ink-dark or brand-auto; cool corporate → ocean; ESG/nature → forest; dark SaaS (no red) → slate; premium/finance → amber; nordic minimal → frost; editorial burgundy → wine.
 - Prefer shibainu only when research clearly needs warm/simple school-style storytelling — never as a default.
 - reason: one short sentence in the user's language.`;
 }

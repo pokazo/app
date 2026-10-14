@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { assertHeroLayout } from './layout-assert.js'
+import { paletteClass as resolvePaletteClass } from './palette-class.js'
 
 const props = defineProps<{
   kicker?: string
@@ -13,8 +14,7 @@ const props = defineProps<{
 
 assertHeroLayout(props)
 
-const paletteClass =
-  props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
+const paletteClass = resolvePaletteClass(props.palette)
 
 const variant = props.variant!.trim()
 
@@ -404,4 +404,64 @@ function photoSrc(image?: string) {
   justify-content: center;
   padding: 48px 56px;
 }
+.pk-palette-ocean {
+  --pk-paper: #e8eef2;
+  --pk-ink: #1a2b3c;
+  --pk-sub: #3d5266;
+  --pk-accent: #2d6a8f;
+  --pk-faint: #6b7f8f;
+  --pk-veil: rgba(232, 238, 242, 0.55);
+}
+.pk-palette-forest {
+  --pk-paper: #eef2eb;
+  --pk-ink: #1c2a1f;
+  --pk-sub: #3d4d42;
+  --pk-accent: #3d6b4f;
+  --pk-faint: #6b7a70;
+  --pk-veil: rgba(238, 242, 235, 0.55);
+}
+.pk-palette-frost {
+  --pk-paper: #f0f5f8;
+  --pk-ink: #152633;
+  --pk-sub: #3d5260;
+  --pk-accent: #4a7c9b;
+  --pk-faint: #6b8290;
+  --pk-veil: rgba(240, 245, 248, 0.55);
+}
+.pk-palette-slate {
+  --pk-paper: #1e2228;
+  --pk-ink: #f0f2f5;
+  --pk-sub: #c5c9d0;
+  --pk-accent: #6b9bd1;
+  --pk-faint: #8a9099;
+  --pk-veil: rgba(30, 34, 40, 0.45);
+}
+.pk-palette-amber {
+  --pk-paper: #1a1814;
+  --pk-ink: #f5f0e6;
+  --pk-sub: #d4cbb8;
+  --pk-accent: #c9a227;
+  --pk-faint: #9a9180;
+  --pk-veil: rgba(26, 24, 20, 0.45);
+}
+.pk-palette-wine {
+  --pk-paper: #1f1418;
+  --pk-ink: #f6ecef;
+  --pk-sub: #d4c0c6;
+  --pk-accent: #8b3a4a;
+  --pk-faint: #9a8088;
+  --pk-veil: rgba(31, 20, 24, 0.45);
+}
+
+.pk-hero--corner.pk-palette-ocean,
+.pk-hero--corner.pk-palette-forest,
+.pk-hero--corner.pk-palette-frost,
+.pk-hero--fullbleed.pk-palette-ocean,
+.pk-hero--fullbleed.pk-palette-forest,
+.pk-hero--fullbleed.pk-palette-frost {
+  --pk-ink: #ffffff;
+  --pk-sub: #e8e4dc;
+  --pk-faint: #cfc9bd;
+}
+
 </style>

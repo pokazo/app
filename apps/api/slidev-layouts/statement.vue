@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSlots } from 'vue'
 import { assertStatementLayout } from './layout-assert.js'
+import { paletteClass as resolvePaletteClass } from './palette-class.js'
 
 const props = defineProps<{
   palette?: string
@@ -11,8 +12,7 @@ const props = defineProps<{
 const slots = useSlots()
 assertStatementLayout({ hasBodySlot: Boolean(slots.default) })
 
-const paletteClass =
-  props.palette === "cream" ? "pk-palette-cream" : "pk-palette-ink"
+const paletteClass = resolvePaletteClass(props.palette)
 </script>
 
 <template>
@@ -144,4 +144,61 @@ const paletteClass =
   --pk-faint: #8a8c8f;
   --pk-rule: rgba(255, 255, 255, 0.55);
 }
+.pk-palette-ocean {
+  --pk-paper: #e8eef2;
+  --pk-ink: #1a2b3c;
+  --pk-sub: #3d5266;
+  --pk-accent: #2d6a8f;
+  --pk-faint: #6b7f8f;
+  --pk-rule: rgba(0, 0, 0, 0.35);
+}
+.pk-palette-forest {
+  --pk-paper: #eef2eb;
+  --pk-ink: #1c2a1f;
+  --pk-sub: #3d4d42;
+  --pk-accent: #3d6b4f;
+  --pk-faint: #6b7a70;
+  --pk-rule: rgba(0, 0, 0, 0.35);
+}
+.pk-palette-frost {
+  --pk-paper: #f0f5f8;
+  --pk-ink: #152633;
+  --pk-sub: #3d5260;
+  --pk-accent: #4a7c9b;
+  --pk-faint: #6b8290;
+  --pk-rule: rgba(0, 0, 0, 0.35);
+}
+.pk-palette-slate {
+  --pk-paper: #1e2228;
+  --pk-ink: #f0f2f5;
+  --pk-sub: #c5c9d0;
+  --pk-accent: #6b9bd1;
+  --pk-faint: #8a9099;
+  --pk-rule: rgba(255, 255, 255, 0.55);
+}
+.pk-palette-amber {
+  --pk-paper: #1a1814;
+  --pk-ink: #f5f0e6;
+  --pk-sub: #d4cbb8;
+  --pk-accent: #c9a227;
+  --pk-faint: #9a9180;
+  --pk-rule: rgba(255, 255, 255, 0.55);
+}
+.pk-palette-wine {
+  --pk-paper: #1f1418;
+  --pk-ink: #f6ecef;
+  --pk-sub: #d4c0c6;
+  --pk-accent: #8b3a4a;
+  --pk-faint: #9a8088;
+  --pk-rule: rgba(255, 255, 255, 0.55);
+}
+
+.pk-palette-ocean .pk-brick__grid,
+.pk-palette-forest .pk-brick__grid,
+.pk-palette-frost .pk-brick__grid {
+  background-image:
+    linear-gradient(to right, rgba(45, 106, 143, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(45, 106, 143, 0.08) 1px, transparent 1px);
+}
+
 </style>

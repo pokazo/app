@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { assertStatsLayout } from './layout-assert.js'
+import { paletteClass as resolvePaletteClass } from './palette-class.js'
 
 export type StatItem = {
   value?: string
@@ -20,8 +21,7 @@ const props = defineProps<{
 assertStatsLayout(props)
 const items = (props.items?.length ? props.items : props.stats ?? []).slice(0, 4)
 
-const paletteClass =
-  props.palette === "ink" || props.palette === "auto" ? `pk-palette-${props.palette}` : "pk-palette-cream"
+const paletteClass = resolvePaletteClass(props.palette)
 </script>
 
 <template>
@@ -161,5 +161,53 @@ const paletteClass =
   --pk-sub: #c5c7ca;
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
+}
+.pk-palette-ocean {
+  --pk-paper: #e8eef2;
+  --pk-ink: #1a2b3c;
+  --pk-sub: #3d5266;
+  --pk-accent: #2d6a8f;
+  --pk-faint: #6b7f8f;
+  --pk-card: #dce6ee;
+}
+.pk-palette-forest {
+  --pk-paper: #eef2eb;
+  --pk-ink: #1c2a1f;
+  --pk-sub: #3d4d42;
+  --pk-accent: #3d6b4f;
+  --pk-faint: #6b7a70;
+  --pk-card: #e0e8dc;
+}
+.pk-palette-frost {
+  --pk-paper: #f0f5f8;
+  --pk-ink: #152633;
+  --pk-sub: #3d5260;
+  --pk-accent: #4a7c9b;
+  --pk-faint: #6b8290;
+  --pk-card: #e2ebf0;
+}
+.pk-palette-slate {
+  --pk-paper: #1e2228;
+  --pk-ink: #f0f2f5;
+  --pk-sub: #c5c9d0;
+  --pk-accent: #6b9bd1;
+  --pk-faint: #8a9099;
+  --pk-card: #2a3038;
+}
+.pk-palette-amber {
+  --pk-paper: #1a1814;
+  --pk-ink: #f5f0e6;
+  --pk-sub: #d4cbb8;
+  --pk-accent: #c9a227;
+  --pk-faint: #9a9180;
+  --pk-card: #2a2620;
+}
+.pk-palette-wine {
+  --pk-paper: #1f1418;
+  --pk-ink: #f6ecef;
+  --pk-sub: #d4c0c6;
+  --pk-accent: #8b3a4a;
+  --pk-faint: #9a8088;
+  --pk-card: #2e2228;
 }
 </style>

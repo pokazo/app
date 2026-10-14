@@ -75,6 +75,54 @@ export function ThemeThumb(props: { preview: ThemePreviewId }) {
           <span className="theme-thumb__line">Тёмный + красный</span>
         </>
       )}
+      {p === "ocean" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Ocean</span>
+          <span className="theme-thumb__title">Спокойный свет</span>
+          <span className="theme-thumb__line">Корпоративный cool</span>
+        </>
+      )}
+      {p === "forest" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Moss</span>
+          <span className="theme-thumb__title">Природа</span>
+          <span className="theme-thumb__line">ESG и продукт</span>
+        </>
+      )}
+      {p === "slate" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Slate</span>
+          <span className="theme-thumb__title">Техно-тёмный</span>
+          <span className="theme-thumb__line">SaaS без красного</span>
+        </>
+      )}
+      {p === "amber" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Amber</span>
+          <span className="theme-thumb__title">Премиум</span>
+          <span className="theme-thumb__line">Тёмный + золото</span>
+        </>
+      )}
+      {p === "frost" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Frost</span>
+          <span className="theme-thumb__title">Холодный свет</span>
+          <span className="theme-thumb__line">Nordic minimal</span>
+        </>
+      )}
+      {p === "wine" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Wine</span>
+          <span className="theme-thumb__title">Редакция</span>
+          <span className="theme-thumb__line">Бордо акцент</span>
+        </>
+      )}
     </span>
   );
 }

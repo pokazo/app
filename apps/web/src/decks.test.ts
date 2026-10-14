@@ -64,6 +64,12 @@ describe("deck theme picker", () => {
       "shibainu",
       "ink-dark",
       "brand-auto",
+      "ocean",
+      "forest",
+      "slate",
+      "amber",
+      "frost",
+      "wine",
     ]);
   });
 

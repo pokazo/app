@@ -780,6 +780,36 @@ a.chip:hover { background: #e4dbff; }
   background: #c8102e;
   opacity: 1;
 }
+.theme-thumb--ocean {
+  background: #e8eef2;
+  color: #1a2b3c;
+}
+.theme-thumb--ocean .theme-thumb__bar { background: #2d6a8f; opacity: 1; }
+.theme-thumb--forest {
+  background: #eef2eb;
+  color: #1c2a1f;
+}
+.theme-thumb--forest .theme-thumb__bar { background: #3d6b4f; opacity: 1; }
+.theme-thumb--slate {
+  background: #1e2228;
+  color: #f0f2f5;
+}
+.theme-thumb--slate .theme-thumb__bar { background: #6b9bd1; opacity: 1; }
+.theme-thumb--amber {
+  background: #1a1814;
+  color: #f5f0e6;
+}
+.theme-thumb--amber .theme-thumb__bar { background: #c9a227; opacity: 1; }
+.theme-thumb--frost {
+  background: #f0f5f8;
+  color: #152633;
+}
+.theme-thumb--frost .theme-thumb__bar { background: #4a7c9b; opacity: 1; }
+.theme-thumb--wine {
+  background: #1f1418;
+  color: #f6ecef;
+}
+.theme-thumb--wine .theme-thumb__bar { background: #8b3a4a; opacity: 1; }
 .theme-card-copy { display: flex; flex-direction: column; min-width: 0; }
 .theme-card-title { font-weight: 600; font-size: 14px; }
 .theme-card-hint { color: var(--pk-ink-muted); font-size: 12px; }

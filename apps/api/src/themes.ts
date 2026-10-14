@@ -1,17 +1,37 @@
 export const SLIDEV_THEME_IDS = ["default", "seriph", "apple-basic", "bricks", "shibainu"] as const;
 /** Layout palette packs (CSS on pk-* layouts). Mapped from picker ids. */
-export const LAYOUT_PALETTE_IDS = ["cream", "ink", "auto"] as const;
+export const LAYOUT_PALETTE_IDS = [
+  "cream",
+  "ink",
+  "auto",
+  "ocean",
+  "forest",
+  "slate",
+  "amber",
+  "frost",
+  "wine",
+] as const;
+export const PALETTE_PICKER_THEME_IDS = [
+  "ocean",
+  "forest",
+  "slate",
+  "amber",
+  "frost",
+  "wine",
+] as const;
 export const PICKER_THEME_IDS = [
   "auto",
   ...SLIDEV_THEME_IDS,
   "ink-dark",
   "brand-auto",
+  ...PALETTE_PICKER_THEME_IDS,
 ] as const;
 /** Concrete picker themes the auto-picker LLM may return (never "auto"). */
 export const SELECTABLE_THEME_IDS = [
   ...SLIDEV_THEME_IDS,
   "ink-dark",
   "brand-auto",
+  ...PALETTE_PICKER_THEME_IDS,
 ] as const;
 
 export type PickerThemeId = (typeof PICKER_THEME_IDS)[number];
@@ -32,6 +52,12 @@ export const THEME_PICK_CATALOG: ReadonlyArray<{
   { id: "shibainu", title: "Тёплый", hint: "Школа и рассказ" },
   { id: "ink-dark", title: "Тёмный", hint: "Редакционный тёмный" },
   { id: "brand-auto", title: "Автобренд", hint: "Тёмный + красный акцент" },
+  { id: "ocean", title: "Океан", hint: "Cool corporate" },
+  { id: "forest", title: "Мох", hint: "ESG и природа" },
+  { id: "slate", title: "Сланец", hint: "Тёмный SaaS без красного" },
+  { id: "amber", title: "Янтарь", hint: "Premium и finance" },
+  { id: "frost", title: "Иней", hint: "Nordic minimal" },
+  { id: "wine", title: "Бордо", hint: "Редакционный бордо" },
 ];
 
 export function sanitizePickerTheme(raw?: string | null): PickerThemeId {
@@ -48,14 +74,18 @@ export function sanitizeSelectableTheme(raw?: string | null): SelectableThemeId 
 
 export function slidevThemeId(raw?: string | null): SlidevThemeId {
   const pick = sanitizePickerTheme(raw);
-  if (pick === "auto" || pick === "ink-dark" || pick === "brand-auto") return "default";
-  return pick;
+  if ((SLIDEV_THEME_IDS as readonly string[]).includes(pick)) return pick as SlidevThemeId;
+  return "default";
 }
 
 /** CSS palette for Pokazo layouts (cream default; ink/auto = dark editorial). */
 export function layoutPalette(raw?: string | null): LayoutPaletteId {
   const pick = sanitizePickerTheme(raw);
+  if (pick === "auto") return "cream";
   if (pick === "ink-dark") return "ink";
   if (pick === "brand-auto") return "auto";
+  if ((PALETTE_PICKER_THEME_IDS as readonly string[]).includes(pick)) {
+    return pick as LayoutPaletteId;
+  }
   return "cream";
 }
