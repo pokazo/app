@@ -27,6 +27,7 @@ export function installDeckLayouts(workDir: string): void {
   const src = join(apiDir(), "slidev-layouts");
   for (const name of [
     "layout-assert.js",
+    "palette-class.js",
     "timeline.vue",
     "stats.vue",
     "skills.vue",
