@@ -107,14 +107,6 @@ export function ThemeThumb(props: { preview: ThemePreviewId }) {
           <span className="theme-thumb__line">Тёмный + золото</span>
         </>
       )}
-      {p === "frost" && (
-        <>
-          <span className="theme-thumb__bar" />
-          <span className="theme-thumb__kicker">Frost</span>
-          <span className="theme-thumb__title">Холодный свет</span>
-          <span className="theme-thumb__line">Nordic minimal</span>
-        </>
-      )}
       {p === "wine" && (
         <>
           <span className="theme-thumb__bar" />

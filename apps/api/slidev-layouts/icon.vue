@@ -218,15 +218,6 @@ const paletteClass = resolvePaletteClass(props.palette)
   --pk-card: #e0e8dc;
   --pk-rule: rgba(0, 0, 0, 0.1);
 }
-.pk-palette-frost {
-  --pk-paper: #f0f5f8;
-  --pk-ink: #152633;
-  --pk-sub: #3d5260;
-  --pk-accent: #4a7c9b;
-  --pk-faint: #6b8290;
-  --pk-card: #e2ebf0;
-  --pk-rule: rgba(0, 0, 0, 0.1);
-}
 .pk-palette-slate {
   --pk-paper: #1e2228;
   --pk-ink: #f0f2f5;

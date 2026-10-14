@@ -69,7 +69,6 @@ export type ThemePreviewId =
   | "forest"
   | "slate"
   | "amber"
-  | "frost"
   | "wine";
 
 export type DeckTheme = {
@@ -93,7 +92,6 @@ export const DECK_THEMES: DeckTheme[] = [
   { id: "forest", title: "Мох", hint: "ESG и природа", preview: "forest", colors: ["#eef2eb", "#1c2a1f", "#3d6b4f"] },
   { id: "slate", title: "Сланец", hint: "Тёмный SaaS без красного", preview: "slate", colors: ["#1e2228", "#f0f2f5", "#6b9bd1"] },
   { id: "amber", title: "Янтарь", hint: "Premium и finance", preview: "amber", colors: ["#1a1814", "#f5f0e6", "#c9a227"] },
-  { id: "frost", title: "Иней", hint: "Nordic minimal", preview: "frost", colors: ["#f0f5f8", "#152633", "#4a7c9b"] },
   { id: "wine", title: "Бордо", hint: "Редакционный бордо", preview: "wine", colors: ["#1f1418", "#f6ecef", "#8b3a4a"] },
 ];
 

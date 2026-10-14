@@ -420,14 +420,6 @@ function photoSrc(image?: string) {
   --pk-faint: #6b7a70;
   --pk-veil: rgba(238, 242, 235, 0.55);
 }
-.pk-palette-frost {
-  --pk-paper: #f0f5f8;
-  --pk-ink: #152633;
-  --pk-sub: #3d5260;
-  --pk-accent: #4a7c9b;
-  --pk-faint: #6b8290;
-  --pk-veil: rgba(240, 245, 248, 0.55);
-}
 .pk-palette-slate {
   --pk-paper: #1e2228;
   --pk-ink: #f0f2f5;
@@ -455,10 +447,8 @@ function photoSrc(image?: string) {
 
 .pk-hero--corner.pk-palette-ocean,
 .pk-hero--corner.pk-palette-forest,
-.pk-hero--corner.pk-palette-frost,
 .pk-hero--fullbleed.pk-palette-ocean,
-.pk-hero--fullbleed.pk-palette-forest,
-.pk-hero--fullbleed.pk-palette-frost {
+.pk-hero--fullbleed.pk-palette-forest {
   --pk-ink: #ffffff;
   --pk-sub: #e8e4dc;
   --pk-faint: #cfc9bd;

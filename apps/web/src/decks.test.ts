@@ -68,7 +68,6 @@ describe("deck theme picker", () => {
       "forest",
       "slate",
       "amber",
-      "frost",
       "wine",
     ]);
   });

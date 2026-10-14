@@ -45,7 +45,6 @@ describe("picker theme", () => {
     expect(layoutPalette("forest")).toBe("forest");
     expect(layoutPalette("slate")).toBe("slate");
     expect(layoutPalette("amber")).toBe("amber");
-    expect(layoutPalette("frost")).toBe("frost");
     expect(layoutPalette("wine")).toBe("wine");
   });
 });

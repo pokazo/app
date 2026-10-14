@@ -186,13 +186,6 @@ const paletteClass = resolvePaletteClass(props.palette)
   --pk-accent: #3d6b4f;
   --pk-faint: #6b7a70;
 }
-.pk-palette-frost {
-  --pk-paper: #f0f5f8;
-  --pk-ink: #152633;
-  --pk-sub: #3d5260;
-  --pk-accent: #4a7c9b;
-  --pk-faint: #6b8290;
-}
 .pk-palette-slate {
   --pk-paper: #1e2228;
   --pk-ink: #f0f2f5;

@@ -8,7 +8,6 @@ export const LAYOUT_PALETTE_IDS = [
   "forest",
   "slate",
   "amber",
-  "frost",
   "wine",
 ] as const;
 export const PALETTE_PICKER_THEME_IDS = [
@@ -16,7 +15,6 @@ export const PALETTE_PICKER_THEME_IDS = [
   "forest",
   "slate",
   "amber",
-  "frost",
   "wine",
 ] as const;
 export const PICKER_THEME_IDS = [
@@ -56,7 +54,6 @@ export const THEME_PICK_CATALOG: ReadonlyArray<{
   { id: "forest", title: "Мох", hint: "ESG и природа" },
   { id: "slate", title: "Сланец", hint: "Тёмный SaaS без красного" },
   { id: "amber", title: "Янтарь", hint: "Premium и finance" },
-  { id: "frost", title: "Иней", hint: "Nordic minimal" },
   { id: "wine", title: "Бордо", hint: "Редакционный бордо" },
 ];
 

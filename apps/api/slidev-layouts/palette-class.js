@@ -7,7 +7,6 @@ const KNOWN = new Set([
   "forest",
   "slate",
   "amber",
-  "frost",
   "wine",
 ]);
 
