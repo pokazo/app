@@ -75,11 +75,21 @@ function startDistServer(workDir: string, deckId: string): Promise<{ server: Ser
  * After Slidev build: rasterize each page → small WebP under `dist/thumbs/`.
  * These are the filmstrip images (full slide, not cover photo).
  */
+export type FilmstripThumbSlide = {
+  index: number;
+  path: string;
+  pngBytes: number;
+  webpBytes: number;
+  /** Raw capture PNG before WebP downscale (for size-compare goldens). */
+  capturePng: Buffer;
+  webp: Buffer;
+};
+
 export async function renderDeckFilmstripThumbs(opts: {
   workDir: string;
   deckId?: string;
   slideCount?: number;
-}): Promise<{ written: number; totalBytes: number; paths: string[] }> {
+}): Promise<{ written: number; totalBytes: number; paths: string[]; slides: FilmstripThumbSlide[] }> {
   const dist = join(opts.workDir, "dist");
   if (!existsSync(join(dist, "index.html"))) {
     throw new Error("deck dist not ready for thumbs");
@@ -94,6 +104,7 @@ export async function renderDeckFilmstripThumbs(opts: {
   const { server, port } = await startDistServer(opts.workDir, deckId);
   const browser = await chromium.launch({ headless: true });
   const paths: string[] = [];
+  const slides: FilmstripThumbSlide[] = [];
   let totalBytes = 0;
   try {
     const page = await browser.newPage({
@@ -116,7 +127,16 @@ export async function renderDeckFilmstripThumbs(opts: {
         .toBuffer();
       const abs = filmstripThumbAbs(dist, i);
       await writeFile(abs, webp);
-      paths.push(filmstripThumbPath(i));
+      const path = filmstripThumbPath(i);
+      paths.push(path);
+      slides.push({
+        index: i,
+        path,
+        pngBytes: png.byteLength,
+        webpBytes: webp.byteLength,
+        capturePng: png,
+        webp,
+      });
       totalBytes += webp.byteLength;
       console.info(
         `[thumbs] deck=${deckId} slide=${i} capturePng=${png.byteLength}b → webp=${webp.byteLength}b w=${FILMSTRIP_THUMB_WIDTH}`,
@@ -129,7 +149,7 @@ export async function renderDeckFilmstripThumbs(opts: {
   console.info(
     `[thumbs] deck=${deckId} done slides=${n} totalWebp=${totalBytes}b ms=${Date.now() - t0}`,
   );
-  return { written: paths.length, totalBytes, paths };
+  return { written: paths.length, totalBytes, paths, slides };
 }
 
 /** Best-effort thumbs after build — never fail the build. */

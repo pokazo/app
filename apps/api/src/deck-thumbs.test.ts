@@ -1,9 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { chromium } from "playwright-chromium";
+import { join } from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import {
@@ -11,32 +9,47 @@ import {
   filmstripThumbPath,
   renderDeckFilmstripThumbs,
 } from "./deck-thumbs.js";
-import { writeFixturePublicImage } from "./layout-fixtures.js";
-import { comparePngBuffers } from "./layout-png-compare.js";
 import { buildSlidev, writeSlides } from "./slidev.js";
+import {
+  assertPngGolden,
+  filmstripCellHtml,
+  filmstripPageHtml,
+  screenshotHtml,
+  sizeCompareSheet,
+  vividPhotoPng,
+  webpToPng,
+} from "./thumb-shot-helpers.js";
 
-const shotsDir = join(dirname(fileURLToPath(import.meta.url)), "__screenshots__", "thumbs");
 const update = process.env.UPDATE_THUMB_SHOTS === "1";
 const e2e = process.env.RUN_THUMB_E2E === "1";
 
-const TWO_SLIDES = `---
-layout: cover
-image: /slide-1.png
+/** Layouts that actually show the photo (default `cover` often hides it). */
+const PHOTO_SLIDES = `---
+layout: image-right
+image: /photo-cover.png
 ---
 
-# Thumb shot one
+# Neon cities
 
-Short subtitle for filmstrip.
+Design after dark
 
 ---
-layout: default
+layout: image-left
+image: /photo-cover.png
 ---
 
-# Thumb shot two
+# Checklist
 
-- Point A
-- Point B
+- Smaller files
+- Full slide in thumb
+- No iframe in filmstrip
 `;
+
+async function writePhotoCover(workDir: string): Promise<void> {
+  const pub = join(workDir, "public");
+  mkdirSync(pub, { recursive: true });
+  writeFileSync(join(pub, "photo-cover.png"), await vividPhotoPng());
+}
 
 describe("filmstripThumbPath", () => {
   it("maps 1-based Slidev index to /thumbs/N.webp", () => {
@@ -45,71 +58,99 @@ describe("filmstripThumbPath", () => {
   });
 });
 
-describe.skipIf(!e2e)("filmstrip thumbs from slide screenshots (RUN_THUMB_E2E=1)", () => {
-  it(
-    "writes WebP thumbs much smaller than capture PNGs and matches filmstrip golden",
-    async () => {
-      const dir = mkdtempSync(join(tmpdir(), "pokazo-filmstrip-thumb-"));
-      const deckId = dir.split("/").pop()!;
-      writeFixturePublicImage(dir, "slide-1.png");
-      await writeSlides(dir, TWO_SLIDES, "default");
-      await buildSlidev(dir, `/p/${deckId}/`, 300_000);
-
-      const result = await renderDeckFilmstripThumbs({ workDir: dir, deckId, slideCount: 2 });
-      expect(result.written).toBe(2);
-      expect(result.paths).toEqual(["/thumbs/1.webp", "/thumbs/2.webp"]);
-
-      const w1 = readFileSync(join(dir, "dist", "thumbs", "1.webp"));
-      const w2 = readFileSync(join(dir, "dist", "thumbs", "2.webp"));
-      const meta1 = await sharp(w1).metadata();
-      expect(meta1.format).toBe("webp");
-      expect(meta1.width).toBeLessThanOrEqual(FILMSTRIP_THUMB_WIDTH);
-      expect(w1.byteLength).toBeLessThan(80_000);
-      expect(w2.byteLength).toBeLessThan(80_000);
-      // Two thumbs together should stay far below one full-res slide PNG (~100KB–1MB+).
-      expect(w1.byteLength + w2.byteLength).toBeLessThan(160_000);
-
-      const filmHtml = `<!doctype html><html><head><style>
-        body{margin:0;background:#f4f4f2;font-family:system-ui,sans-serif}
-        #film{display:flex;flex-direction:column;gap:10px;padding:12px;width:200px}
-        .deck-thumb-frame{position:relative;width:176px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#fff;box-shadow:inset 0 0 0 1px #ddd}
-        .deck-thumb-ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-        .deck-thumb-n{position:absolute;top:6px;left:6px;z-index:2;min-width:20px;height:20px;padding:0 6px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;background:rgba(22,22,22,.55)}
-      </style></head><body><div id="film">
-        <span class="deck-thumb-frame"><img class="deck-thumb-ph" src="data:image/webp;base64,${w1.toString("base64")}" alt=""><span class="deck-thumb-n">1</span></span>
-        <span class="deck-thumb-frame"><img class="deck-thumb-ph" src="data:image/webp;base64,${w2.toString("base64")}" alt=""><span class="deck-thumb-n">2</span></span>
-      </div></body></html>`;
-
-      const browser = await chromium.launch({ headless: true });
-      try {
-        const page = await browser.newPage({ viewport: { width: 240, height: 320 } });
-        await page.setContent(filmHtml, { waitUntil: "load" });
-        await page.waitForTimeout(200);
-        const buf = Buffer.from(await page.locator("#film").screenshot({ type: "png" }));
-        mkdirSync(shotsDir, { recursive: true });
-        const goldenPath = join(shotsDir, "filmstrip-slide-shots.png");
-        if (update || !existsSync(goldenPath)) {
-          writeFileSync(goldenPath, buf);
-        } else {
-          const expected = readFileSync(goldenPath);
-          const { ok, diffRatio } = comparePngBuffers(buf, expected);
-          if (!ok) writeFileSync(join(shotsDir, "filmstrip-slide-shots.actual.png"), buf);
-          expect(ok, `filmstrip-slide-shots diffRatio=${diffRatio.toFixed(4)}`).toBe(true);
-        }
-      } finally {
-        await browser.close();
-      }
-    },
-    360_000,
-  );
-});
-
 describe("renderDeckFilmstripThumbs requires dist", () => {
   it("throws when dist missing", async () => {
     const dir = await mkdtemp(join(tmpdir(), "pokazo-no-dist-"));
     await writeFile(join(dir, "slides.md"), "# x\n", "utf8");
-    await expect(renderDeckFilmstripThumbs({ workDir: dir, deckId: "x", slideCount: 1 })).rejects.toThrow(
-      /dist not ready/,
-    );
+    await expect(
+      renderDeckFilmstripThumbs({ workDir: dir, deckId: "x", slideCount: 1 }),
+    ).rejects.toThrow(/dist not ready/);
   });
+});
+
+describe.skipIf(!e2e)("filmstrip thumbs screenshot goldens (RUN_THUMB_E2E=1)", () => {
+  it(
+    "builds photo+text slides, small WebPs, and image goldens",
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), "pokazo-filmstrip-thumb-"));
+      const deckId = dir.split("/").pop()!;
+      await writePhotoCover(dir);
+      await writeSlides(dir, PHOTO_SLIDES, "default");
+      await buildSlidev(dir, `/p/${deckId}/`, 300_000);
+
+      const result = await renderDeckFilmstripThumbs({ workDir: dir, deckId, slideCount: 2 });
+      expect(result.written).toBe(2);
+      expect(result.slides.length).toBe(2);
+
+      const s1 = result.slides[0]!;
+      const s2 = result.slides[1]!;
+      const meta1 = await sharp(s1.webp).metadata();
+      expect(meta1.format).toBe("webp");
+      expect(meta1.width).toBeLessThanOrEqual(FILMSTRIP_THUMB_WIDTH);
+      expect(s1.webpBytes).toBeLessThan(s1.pngBytes);
+      expect(s1.webpBytes).toBeLessThan(80_000);
+      expect(s2.webpBytes).toBeLessThan(80_000);
+      // Photo layouts must carry color (not a blank white slide).
+      const stats = await sharp(s1.webp).stats();
+      const channels = stats.channels.map((c) => c.mean);
+      expect(Math.max(...channels) - Math.min(...channels)).toBeGreaterThan(15);
+
+      await assertPngGolden(await webpToPng(s1.webp), "thumb-page-1", { update });
+      await assertPngGolden(await webpToPng(s2.webp), "thumb-page-2", { update });
+
+      const filmHtml = filmstripPageHtml([
+        filmstripCellHtml({
+          index: 1,
+          src: `data:image/webp;base64,${s1.webp.toString("base64")}`,
+          mode: "slide-shot",
+          current: true,
+        }),
+        filmstripCellHtml({
+          index: 2,
+          src: `data:image/webp;base64,${s2.webp.toString("base64")}`,
+          mode: "slide-shot",
+        }),
+      ]);
+      const filmStrip = await screenshotHtml({
+        html: filmHtml,
+        viewport: { width: 240, height: 320 },
+      });
+      await assertPngGolden(filmStrip, "filmstrip-slide-shots", { update });
+
+      // Same slide: 1280 capture vs 400 WebP — visual + byte proof.
+      expect(s1.webpBytes).toBeLessThan(s1.pngBytes / 2);
+      const compare = await sizeCompareSheet({
+        largePng: s1.capturePng,
+        smallWebp: s1.webp,
+        labelLarge: `capture ${s1.pngBytes}b`,
+        labelSmall: `thumb ${s1.webpBytes}b`,
+      });
+      await assertPngGolden(compare, "thumb-size-compare", { update });
+
+      const coverUri = `data:image/png;base64,${(await vividPhotoPng(400, 225)).toString("base64")}`;
+      const fallbackHtml = filmstripPageHtml([
+        filmstripCellHtml({
+          index: 1,
+          src: coverUri,
+          heading: "Neon cities",
+          mode: "cover-fallback",
+        }),
+        filmstripCellHtml({
+          index: 2,
+          src: "",
+          heading: "Checklist",
+          mode: "heading-only",
+        }),
+      ]);
+      const fallbackStrip = await screenshotHtml({
+        html: fallbackHtml,
+        viewport: { width: 240, height: 320 },
+      });
+      await assertPngGolden(fallbackStrip, "filmstrip-cover-fallback", { update });
+
+      // On-disk files match returned buffers.
+      expect(readFileSync(join(dir, "dist", "thumbs", "1.webp"))).toEqual(s1.webp);
+    },
+    360_000,
+  );
 });
