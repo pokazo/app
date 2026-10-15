@@ -29,6 +29,8 @@ const sampleSlide = {
   features: [],
   process: [],
   palette: "",
+  pie: [],
+  chartTitle: "",
 };
 
 const lockedHero = {

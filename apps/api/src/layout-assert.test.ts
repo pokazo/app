@@ -6,6 +6,8 @@ import {
   assertHeroLayout,
   assertIconLayout,
   assertImageLayout,
+  assertPieBodyContent,
+  assertPieLayout,
   assertProcessLayout,
   assertQuoteLayout,
   assertSkillsLayout,
@@ -42,6 +44,7 @@ describe("layoutError", () => {
       "features",
       "process",
       "spotlight",
+      "pie",
     ]) {
       expect(layoutError(name, "x").message).toBe(`LayoutError[${name}]: x`);
     }
@@ -517,6 +520,57 @@ describe("assertSpotlightBodyContent", () => {
   it("passes with short H1 + description", () => {
     expect(() =>
       assertSpotlightBodyContent("# Product that leads\n\nOne short promise under the title."),
+    ).not.toThrow();
+  });
+});
+
+const fiveSlices = [
+  { label: "Python", value: 38 },
+  { label: "C++", value: 21 },
+  { label: "C", value: 19 },
+  { label: "Java", value: 16 },
+  { label: "JavaScript", value: 6 },
+];
+
+describe("assertPieLayout", () => {
+  it("throws without 3–5 valid slices", () => {
+    expect(() => assertPieLayout({ items: [] })).toThrow(/LayoutError\[pie\]/);
+    expect(() =>
+      assertPieLayout({ items: [{ label: "Only", value: 10 }] }),
+    ).toThrow(/LayoutError\[pie\]/);
+  });
+
+  it("throws when label exceeds char cap", () => {
+    expect(() =>
+      assertPieLayout({
+        items: [
+          { label: "ThisLabelIsWayTooLong", value: 10 },
+          { label: "B", value: 10 },
+          { label: "C", value: 10 },
+        ],
+      }),
+    ).toThrow(/LayoutError\[pie\].*label too long/);
+  });
+
+  it("passes with 3–5 slices", () => {
+    expect(() =>
+      assertPieLayout({
+        chartTitle: "TIOBE Index Market Share",
+        items: fiveSlices,
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe("assertPieBodyContent", () => {
+  it("throws without H1/description or when over caps", () => {
+    expect(() => assertPieBodyContent("no heading")).toThrow(/LayoutError\[pie\].*H1/);
+    expect(() => assertPieBodyContent("# Only\n")).toThrow(/LayoutError\[pie\].*description/);
+  });
+
+  it("passes with short H1 + description", () => {
+    expect(() =>
+      assertPieBodyContent("# Comparing the Top Languages\n\nPython leads market share."),
     ).not.toThrow();
   });
 });

@@ -8,6 +8,8 @@ import {
   assertProcessLayout,
   assertQuoteLayout,
   assertSkillsLayout,
+  assertPieBodyContent,
+  assertPieLayout,
   assertSpotlightBodyContent,
   assertSpotlightLayout,
   assertStatementLayout,
@@ -214,6 +216,15 @@ export function assertLayoutsInMarkdown(md: string): void {
           cards: asList(fm.cards),
         });
         assertSpotlightBodyContent(body);
+        break;
+      case "pie":
+        assertPieLayout({
+          chartTitle: fm.chartTitle != null ? String(fm.chartTitle) : "",
+          kicker: fm.kicker != null ? String(fm.kicker) : "",
+          items: asList(fm.items),
+          pie: asList(fm.pie),
+        });
+        assertPieBodyContent(body);
         break;
       case "two-cols":
         assertTwoColsLayout({

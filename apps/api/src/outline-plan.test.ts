@@ -18,6 +18,8 @@ const base = {
   features: [] as const,
   process: [] as const,
   palette: "",
+  pie: [],
+  chartTitle: "",
 };
 
 function richEight(): OutlineT {

@@ -14,6 +14,8 @@ const emptyVisual = {
   features: [] as const,
   process: [] as const,
   palette: "",
+  pie: [],
+  chartTitle: "",
 };
 
 describe("createSubmitOutlineTool", () => {

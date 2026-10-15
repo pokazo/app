@@ -163,6 +163,28 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
     return issues;
   }
 
+  if (visual === "pie") {
+    const pie = (slide.pie ?? []).filter(
+      (s) => s.label?.trim() && Number.isFinite(s.value) && s.value > 0,
+    );
+    const issues: OutlinePlanIssue[] = [];
+    if (pie.length < 3 || pie.length > 5) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: pie — нужно 3–5 slices с label и value>0 (сейчас ${pie.length})`,
+      });
+    }
+    if (points.length < 1) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: pie без description (points[0])`,
+      });
+    }
+    return issues;
+  }
+
   if (visual === "icon") {
     if (!isLayoutCarbonIcon(slide.iconHint)) {
       return [
@@ -250,7 +272,7 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
       {
         slide: index,
         code: "text_only",
-        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process|spotlight с заполненным payload`,
+        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process|spotlight|pie с заполненным payload`,
       },
     ];
   }
@@ -356,6 +378,21 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
           slide: index,
           code: "text_only",
           message: `${label}: spotlight без imageQuery + palette + 4 cards + description — останется пустым`,
+        },
+      ];
+    }
+  }
+
+  if (visual === "pie") {
+    const pie = (slide.pie ?? []).filter(
+      (s) => s.label?.trim() && Number.isFinite(s.value) && s.value > 0,
+    );
+    if (pie.length < 3 || pie.length > 5 || nonEmptyStrings(slide.points ?? []).length < 1) {
+      return [
+        {
+          slide: index,
+          code: "text_only",
+          message: `${label}: pie без 3–5 slices + description — останется пустым`,
         },
       ];
     }

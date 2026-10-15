@@ -674,6 +674,8 @@ export async function rewriteSlide(opts: {
       features: [],
       process: [],
       palette: "",
+      pie: [],
+      chartTitle: "",
     };
     slidevIndex = 1;
     outlineSlot = null;

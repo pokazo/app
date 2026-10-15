@@ -23,6 +23,7 @@ export const OutlineVisual = z.enum([
   "features",
   "process",
   "spotlight",
+  "pie",
 ]);
 
 export const TimelineStep = z.object({
@@ -60,6 +61,11 @@ export const ProcessStep = z.object({
   iconHint: z.string(),
 });
 
+export const PieSlice = z.object({
+  label: z.string(),
+  value: z.number(),
+});
+
 export const OutlineSlide = z.object({
   heading: z.string(),
   points: z.array(z.string()).max(5),
@@ -85,6 +91,10 @@ export const OutlineSlide = z.object({
    * Empty string for other visuals.
    */
   palette: z.string(),
+  /** Pie slices when visual is pie; mapped to frontmatter items. */
+  pie: z.array(PieSlice).max(5),
+  /** Chart title above pie when visual is pie; otherwise "". */
+  chartTitle: z.string(),
 });
 
 export const Outline = z.object({

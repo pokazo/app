@@ -334,6 +334,87 @@ export function assertSpotlightLayout(props) {
   }
 }
 
+/** Char caps — keep in sync with layout-catalog pie fields[].limit. */
+export const PIE_CONTENT_LIMITS = Object.freeze({
+  maxKickerChars: 28,
+  maxH1Chars: 42,
+  maxDescChars: 90,
+  maxChartTitleChars: 48,
+  maxLabelChars: 16,
+  minSlices: 3,
+  maxSlices: 5,
+});
+
+/**
+ * Pie: 3–5 slices with label + positive value; optional chartTitle/kicker within caps.
+ */
+export function assertPieLayout(props) {
+  const raw = preferList(props.items, props.pie);
+  const ok = raw.filter((it) => {
+    const label = String(it?.label ?? "").trim();
+    const value = Number(it?.value);
+    return label && Number.isFinite(value) && value > 0;
+  });
+  if (ok.length < PIE_CONTENT_LIMITS.minSlices || ok.length > PIE_CONTENT_LIMITS.maxSlices) {
+    throw layoutError(
+      "pie",
+      `need ${PIE_CONTENT_LIMITS.minSlices}–${PIE_CONTENT_LIMITS.maxSlices} items with label and positive value (got ${ok.length})`,
+    );
+  }
+  for (let i = 0; i < ok.length; i++) {
+    const label = String(ok[i].label ?? "").trim();
+    if (label.length > PIE_CONTENT_LIMITS.maxLabelChars) {
+      throw layoutError(
+        "pie",
+        `items[${i}].label too long (${label.length}>${PIE_CONTENT_LIMITS.maxLabelChars} chars); see layout-get fields[].limit`,
+      );
+    }
+  }
+  const chartTitle = props.chartTitle != null ? String(props.chartTitle).trim() : "";
+  if (chartTitle && chartTitle.length > PIE_CONTENT_LIMITS.maxChartTitleChars) {
+    throw layoutError(
+      "pie",
+      `chartTitle too long (${chartTitle.length}>${PIE_CONTENT_LIMITS.maxChartTitleChars} chars); see layout-get fields[].limit`,
+    );
+  }
+  const kicker = props.kicker != null ? String(props.kicker).trim() : "";
+  if (kicker && kicker.length > PIE_CONTENT_LIMITS.maxKickerChars) {
+    throw layoutError(
+      "pie",
+      `kicker too long (${kicker.length}>${PIE_CONTENT_LIMITS.maxKickerChars} chars); see layout-get fields[].limit`,
+    );
+  }
+}
+
+export function assertPieBodyContent(body) {
+  const text = String(body ?? "");
+  if (!/(?:^|\n)#\s+\S/.test(text)) {
+    throw layoutError("pie", "body needs H1 title");
+  }
+  const h1 = (text.match(/(?:^|\n)#\s+(.+)/) || [])[1]?.trim() ?? "";
+  if (!h1) {
+    throw layoutError("pie", "body needs H1 title");
+  }
+  if (h1.length > PIE_CONTENT_LIMITS.maxH1Chars) {
+    throw layoutError(
+      "pie",
+      `H1 too long (${h1.length}>${PIE_CONTENT_LIMITS.maxH1Chars} chars); see layout-get fields[].limit`,
+    );
+  }
+  const afterH1 = text.replace(/(?:^|\n)#\s+.+\n?/, "");
+  const desc =
+    (afterH1.match(/^\s*(?![-*+#])(\S[^\n]*)/m) || [])[1]?.trim() ?? "";
+  if (!desc) {
+    throw layoutError("pie", "body needs a description line under H1");
+  }
+  if (desc.length > PIE_CONTENT_LIMITS.maxDescChars) {
+    throw layoutError(
+      "pie",
+      `description too long (${desc.length}>${PIE_CONTENT_LIMITS.maxDescChars} chars); see layout-get fields[].limit`,
+    );
+  }
+}
+
 /** Parse H1 + first paragraph from slide body; enforce char caps. */
 export function assertSpotlightBodyContent(body) {
   const text = String(body ?? "");

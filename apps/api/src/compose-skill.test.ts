@@ -125,6 +125,21 @@ describe("composeSkill", () => {
     expect(outline).toMatch(/palette/);
     expect(composeUserPrompt({ title: "t", slides: [] }, "ru")).toMatch(/spotlight/);
   });
+
+  it("teaches pie layout with SVG chart contract for compose", () => {
+    const skill = composeSkill("default", "ru");
+    expect(skill).toMatch(/layout: pie/);
+    expect(skill).toMatch(/outline\.pie → items/i);
+    expect(skill).toMatch(/chartTitle/);
+    const outline = outlineUserPrompt({
+      topic: "Languages",
+      locale: "ru",
+      audience: "investors",
+      slideCount: 8,
+    });
+    expect(outline).toMatch(/visual=pie|pie —/);
+    expect(composeUserPrompt({ title: "t", slides: [] }, "ru")).toMatch(/pie/);
+  });
 });
 
 describe("outlineUserPrompt", () => {

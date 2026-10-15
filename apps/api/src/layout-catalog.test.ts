@@ -76,4 +76,17 @@ describe("layout catalog", () => {
     });
     expect(hits[0]?.id).toBe("spotlight");
   });
+
+  it("layout-get pie exposes char caps for compose", () => {
+    const pie = layoutGet("pie");
+    expect(pie.summary).toMatch(/pie chart/i);
+    expect(pie.fields.find((f) => f.name === "H1")?.limit).toMatch(/≤42/);
+    expect(pie.fields.find((f) => f.name === "items")?.limit).toMatch(/3–5/);
+    expect(pie.fields.find((f) => f.name === "items[].label")?.limit).toMatch(/≤16/);
+  });
+
+  it("layout-match prefers pie for market share intent", () => {
+    const hits = layoutMatch({ intent: "market share composition", hasNumbers: true, featureCount: 5 });
+    expect(hits.some((h) => h.id === "pie")).toBe(true);
+  });
 });

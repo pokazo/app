@@ -24,6 +24,7 @@ const ALLOWED_LAYOUTS = new Set([
   "features",
   "process",
   "spotlight",
+  "pie",
 ]);
 
 function quoteYamlScalar(value: string): string {

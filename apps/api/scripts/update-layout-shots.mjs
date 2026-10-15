@@ -40,6 +40,7 @@ const names = [
   "features",
   "process",
   "spotlight",
+  "pie",
 ];
 const heroVariantNames = [
   "hero-ribbon",
@@ -73,6 +74,7 @@ for (const name of [
   "features.vue",
   "process.vue",
   "spotlight.vue",
+  "pie.vue",
   "palette-class.js",
 ]) {
   copyFileSync(join(apiRoot, "slidev-layouts", name), join(deck, "layouts", name));

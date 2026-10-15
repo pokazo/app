@@ -26,6 +26,7 @@ export const LAYOUT_SHOT_ORDER = [
   "features",
   "process",
   "spotlight",
+  "pie",
 ] as const;
 
 export type LayoutShotName = (typeof LAYOUT_SHOT_ORDER)[number];
@@ -350,6 +351,27 @@ items:
 # Product that leads
 
 One short promise under the title.
+
+---
+layout: pie
+kicker: DATA
+chartTitle: TIOBE Index Market Share
+items:
+  - label: Python
+    value: "38"
+  - label: C++
+    value: "21"
+  - label: C
+    value: "19"
+  - label: Java
+    value: "16"
+  - label: JavaScript
+    value: "6"
+---
+
+# Comparing the Top Languages
+
+Python leads professional market share.
 `;
 }
 
@@ -532,6 +554,20 @@ items:
 # Broken spotlight
 
 Missing image and pairs.
+`,
+  ),
+  pie: deckWithSlide(
+    "Bad pie",
+    `---
+layout: pie
+items:
+  - label: Only
+    value: "10"
+---
+
+# Broken pie
+
+Need more slices.
 `,
   ),
 };

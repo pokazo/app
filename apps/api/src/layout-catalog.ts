@@ -2,13 +2,14 @@
 
 import {
   layoutCarbonIconHints,
+  PIE_CONTENT_LIMITS,
   SPOTLIGHT_CONTENT_LIMITS,
 } from "../slidev-layouts/layout-assert.js";
 
 const ICON_HINTS = layoutCarbonIconHints();
 const ICON_HINTS_FIELD = `iconHint ONLY from: ${ICON_HINTS.join(", ")}`;
 
-export { SPOTLIGHT_CONTENT_LIMITS };
+export { SPOTLIGHT_CONTENT_LIMITS, PIE_CONTENT_LIMITS };
 
 /** One frontmatter or body field the layout accepts (mirror hero-catalog). */
 export type LayoutFieldSpec = {
@@ -532,6 +533,66 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
       },
     ],
   },
+  {
+    id: "pie",
+    summary: "Title + description left; SVG pie chart with legend right",
+    whenToUse:
+      "Market share, composition, mix of 3–5 parts with numbers that sum to ~100%",
+    antiPatterns: "2 slices or 6+; long labels; narrative without numbers (use cards/features)",
+    outlineFields:
+      "visual=pie; pie[{label,value}] 3–5; points[0]=description; chartTitle; kicker?",
+    frontmatter:
+      "layout: pie; chartTitle?; items: (from pie); kicker?",
+    body: "H1 + one description paragraph (no bullets)",
+    displays: "Left copy; right card with pie + % labels + legend",
+    example:
+      '{ "visual": "pie", "heading": "Comparing the Top Languages", "points": ["Python leads professional market share."], "chartTitle": "TIOBE Index Market Share", "pie": [{"label":"Python","value":38},{"label":"C++","value":21},{"label":"C","value":19},{"label":"Java","value":16},{"label":"JavaScript","value":6}], "kicker": "DATA" }',
+    tags: ["number", "kpi", "compare", "chart"],
+    fields: [
+      f.layout("pie"),
+      f.kicker(`2–5 short words, ALL CAPS (≤${PIE_CONTENT_LIMITS.maxKickerChars} chars)`),
+      {
+        name: "chartTitle",
+        required: false,
+        in: "frontmatter",
+        type: "string",
+        expects: "Short title above the pie",
+        limit: `≤${PIE_CONTENT_LIMITS.maxChartTitleChars} chars`,
+      },
+      f.items(
+        `${PIE_CONTENT_LIMITS.minSlices}–${PIE_CONTENT_LIMITS.maxSlices} slices`,
+        `YAML items: [{label, value}] — never use pie: as key. label ≤${PIE_CONTENT_LIMITS.maxLabelChars} chars; value > 0 (normalized to %)`,
+      ),
+      f.h1(
+        `≤${PIE_CONTENT_LIMITS.maxH1Chars} chars`,
+        "Title as H1; description is next paragraph",
+      ),
+      {
+        name: "description",
+        required: true,
+        in: "body",
+        type: "1 short paragraph under H1",
+        expects: "Map outline.points[0] → paragraph under H1; no bullets",
+        limit: `≤${PIE_CONTENT_LIMITS.maxDescChars} chars`,
+      },
+      {
+        name: "items[].label",
+        required: true,
+        in: "frontmatter",
+        type: "string",
+        expects: "Slice legend label",
+        limit: `≤${PIE_CONTENT_LIMITS.maxLabelChars} chars`,
+      },
+      {
+        name: "items[].value",
+        required: true,
+        in: "frontmatter",
+        type: "number",
+        expects: "Positive share weight; values are normalized to 100% for drawing",
+        limit: "> 0",
+      },
+    ],
+  },
 ];
 
 export function layoutCatalogById(id: string): LayoutCatalogEntry | undefined {
@@ -615,6 +676,12 @@ export function layoutMatch(input: LayoutMatchInput): LayoutMatchHit[] {
   }
   if (input.wantsPhoto && (input.featureCount ?? 0) === 4) {
     bump("spotlight", 7, "photo + 4 feature pairs");
+  }
+  if (/pie|доля|market share|composition|mix|распредел|сегмент/.test(intent)) {
+    bump("pie", 6, "intent pie / share mix");
+  }
+  if (input.hasNumbers && (input.featureCount ?? 0) >= 3 && (input.featureCount ?? 0) <= 5) {
+    bump("pie", 4, "numbers + 3–5 parts");
   }
 
   const hits: LayoutMatchHit[] = [...scores.entries()]

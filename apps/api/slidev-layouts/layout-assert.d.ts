@@ -81,3 +81,22 @@ export function assertSpotlightLayout(props: {
 }): void;
 
 export function assertSpotlightBodyContent(body: string): void;
+
+export const PIE_CONTENT_LIMITS: {
+  readonly maxKickerChars: 28;
+  readonly maxH1Chars: 42;
+  readonly maxDescChars: 90;
+  readonly maxChartTitleChars: 48;
+  readonly maxLabelChars: 16;
+  readonly minSlices: 3;
+  readonly maxSlices: 5;
+};
+
+export function assertPieLayout(props: {
+  chartTitle?: string | null;
+  kicker?: string | null;
+  items?: Array<{ label?: string; value?: string | number }> | null;
+  pie?: Array<{ label?: string; value?: string | number }> | null;
+}): void;
+
+export function assertPieBodyContent(body: string): void;

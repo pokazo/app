@@ -29,6 +29,8 @@ const sampleSlide = {
   features: [],
   process: [],
   palette: "",
+  pie: [],
+  chartTitle: "",
 };
 
 /** Prod bug: hero composed separately, then all outline slides inserted → md = outline+1. */

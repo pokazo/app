@@ -26,7 +26,7 @@ Rules:
 1. Before assigning visual on slides, call layout-list or layout-match (and layout-get for unfamiliar ids).
 2. Prefer variety; honor quotas in the user prompt (photos, structured payload, no text-only visuals).
 3. For visual=icon|features|process: every iconHint MUST be copied from that layout's iconHints allowlist (layout-get). Never invent Carbon names.
-4. Honor fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; spotlight: char caps on H1/desc/pairs + required palette).
+4. Honor fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; spotlight: char caps + palette; pie: 3–5 slices + char caps).
 5. When ready, call submit_outline with the full outline object (title + slides).
 6. If submit_outline returns issues, fix and submit_outline again.
 7. Do not invent layout ids outside the catalog.`;
