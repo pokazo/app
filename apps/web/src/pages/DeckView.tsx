@@ -45,6 +45,22 @@ type ViewMeta = {
 
 const WAIT_TIMEOUT_MS = 20 * 60 * 1000;
 const POLL_MS = 1000;
+/** Matches `@media (max-width: 800px)` — thumbs-only overview, no stage. */
+const MOBILE_DECK_MQ = "(max-width: 800px)";
+
+function useMobileDeckOverview() {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(MOBILE_DECK_MQ).matches : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_DECK_MQ);
+    const onChange = () => setMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return mobile;
+}
 
 export function DeckView() {
   const { id = "" } = useParams();
@@ -53,6 +69,7 @@ export function DeckView() {
   const awaitingPreview = Boolean(
     (location.state as { awaitingPreview?: boolean } | null)?.awaitingPreview,
   );
+  const mobileOverview = useMobileDeckOverview();
   const stageRef = useRef<HTMLIFrameElement>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [meta, setMeta] = useState<ViewMeta | null>(null);
@@ -276,10 +293,10 @@ export function DeckView() {
   );
 
   useEffect(() => {
-    if (!stageReady) return;
+    if (mobileOverview || !stageReady) return;
     const page = slidevPageForOutlineIndex(meta?.slides ?? [], current);
     stageRef.current?.contentWindow?.postMessage(slidevNavigateMessage(page), "*");
-  }, [current, stageReady, meta?.slides]);
+  }, [current, stageReady, meta?.slides, mobileOverview]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -605,7 +622,7 @@ export function DeckView() {
                       ? `${apiUrl(`/p/${id}${cover}`)}${embedKey ? `?_r=${embedKey}` : ""}`
                       : null
                   }
-                  enabled={stageReady}
+                  enabled={mobileOverview || stageReady}
                   active={s.index === current}
                 />
               </button>
@@ -640,96 +657,98 @@ export function DeckView() {
           ) : null}
           {structureErr ? <p className="err deck-thumb-err">{structureErr}</p> : null}
         </nav>
-        <div
-          className={`deck-stage${me && meta?.status === "ready" ? " has-rewrite" : ""}`}
-        >
-          <div className="deck-stage-frame">
-            {id && meta && !err ? (
-              <iframe
-                key={embedKey}
-                ref={stageRef}
-                title={meta.topic ?? "Презентация"}
-                src={`${embedDeckUrl(embedBase)}${embedKey ? `&_r=${embedKey}` : ""}`}
-                fetchPriority="high"
-                onLoad={() => setStageReady(true)}
-              />
-            ) : null}
-            <div className="deck-stage-nav" aria-hidden>
-              <button type="button" className="deck-hit left" onClick={() => go(current - 1)} />
-              <button type="button" className="deck-hit right" onClick={() => go(current + 1)} />
-            </div>
-          </div>
-          {meta && me && meta.status === "ready" ? (
-            <form
-              className="deck-rewrite"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void submitRewrite();
-              }}
-            >
-              <div className="deck-rewrite-row">
-                <input
-                  id="deck-rewrite-input"
-                  className="deck-rewrite-input"
-                  type="text"
-                  value={rewriteText}
-                  disabled={!rewriteReady}
-                  placeholder="Что переделать на этом слайде…"
-                  aria-label={`Что переделать на слайде ${current}`}
-                  onChange={(e) => setRewriteText(e.target.value)}
+        {!mobileOverview ? (
+          <div
+            className={`deck-stage${me && meta?.status === "ready" ? " has-rewrite" : ""}`}
+          >
+            <div className="deck-stage-frame">
+              {id && meta && !err ? (
+                <iframe
+                  key={embedKey}
+                  ref={stageRef}
+                  title={meta.topic ?? "Презентация"}
+                  src={`${embedDeckUrl(embedBase)}${embedKey ? `&_r=${embedKey}` : ""}`}
+                  fetchPriority="high"
+                  onLoad={() => setStageReady(true)}
                 />
-                <label
-                  className="deck-rewrite-file"
-                  title={
-                    rewriteFiles.length
-                      ? `Прикреплено: ${rewriteFiles.map((f) => f.name).join(", ")}`
-                      : "Прикрепить картинку"
-                  }
-                >
-                  <span className="deck-rewrite-file-btn" aria-hidden>
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                    </svg>
-                    {rewriteFiles.length ? (
-                      <span className="upload-attach-badge">{rewriteFiles.length}</span>
-                    ) : null}
-                  </span>
-                  <input
-                    ref={rewriteFileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    disabled={!rewriteReady}
-                    aria-label="Прикрепить картинку для этого слайда"
-                    onChange={(e) =>
-                      setRewriteFiles(Array.from(e.target.files ?? []).slice(0, 5))
-                    }
-                  />
-                </label>
-                <button type="submit" className="pk ghost" disabled={!rewriteReady}>
-                  {rewriteBusy || (building && rewritingSlide != null)
-                    ? activity || "Правлю слайд…"
-                    : "изменить"}
-                </button>
-              </div>
-              {rewriteFiles.length ? (
-                <p className="deck-rewrite-hint">
-                  Прикреплено: {rewriteFiles.map((f) => f.name).join(", ")}
-                </p>
               ) : null}
-              {rewriteErr ? <p className="err app-note">{rewriteErr}</p> : null}
-            </form>
-          ) : null}
-        </div>
+              <div className="deck-stage-nav" aria-hidden>
+                <button type="button" className="deck-hit left" onClick={() => go(current - 1)} />
+                <button type="button" className="deck-hit right" onClick={() => go(current + 1)} />
+              </div>
+            </div>
+            {meta && me && meta.status === "ready" ? (
+              <form
+                className="deck-rewrite"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void submitRewrite();
+                }}
+              >
+                <div className="deck-rewrite-row">
+                  <input
+                    id="deck-rewrite-input"
+                    className="deck-rewrite-input"
+                    type="text"
+                    value={rewriteText}
+                    disabled={!rewriteReady}
+                    placeholder="Что переделать на этом слайде…"
+                    aria-label={`Что переделать на слайде ${current}`}
+                    onChange={(e) => setRewriteText(e.target.value)}
+                  />
+                  <label
+                    className="deck-rewrite-file"
+                    title={
+                      rewriteFiles.length
+                        ? `Прикреплено: ${rewriteFiles.map((f) => f.name).join(", ")}`
+                        : "Прикрепить картинку"
+                    }
+                  >
+                    <span className="deck-rewrite-file-btn" aria-hidden>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                      </svg>
+                      {rewriteFiles.length ? (
+                        <span className="upload-attach-badge">{rewriteFiles.length}</span>
+                      ) : null}
+                    </span>
+                    <input
+                      ref={rewriteFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      disabled={!rewriteReady}
+                      aria-label="Прикрепить картинку для этого слайда"
+                      onChange={(e) =>
+                        setRewriteFiles(Array.from(e.target.files ?? []).slice(0, 5))
+                      }
+                    />
+                  </label>
+                  <button type="submit" className="pk ghost" disabled={!rewriteReady}>
+                    {rewriteBusy || (building && rewritingSlide != null)
+                      ? activity || "Правлю слайд…"
+                      : "изменить"}
+                  </button>
+                </div>
+                {rewriteFiles.length ? (
+                  <p className="deck-rewrite-hint">
+                    Прикреплено: {rewriteFiles.map((f) => f.name).join(", ")}
+                  </p>
+                ) : null}
+                {rewriteErr ? <p className="err app-note">{rewriteErr}</p> : null}
+              </form>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );
