@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertSlidevDist,
+  deckServeBase,
   ensureDeckNodeModules,
   installDeckLayouts,
   scaffoldMarkdown,
@@ -11,9 +12,15 @@ import {
   slidevSpawnSpec,
 } from "./slidev.js";
 
+describe("deckServeBase", () => {
+  it("is the absolute /p/:id/ prefix used as Slidev --base", () => {
+    expect(deckServeBase("abc")).toBe("/p/abc/");
+  });
+});
+
 describe("slidevSpawnSpec", () => {
   it("builds inside the deck directory", () => {
-    const spec = slidevSpawnSpec("/tmp/deck-id", "/p/deck-id/");
+    const spec = slidevSpawnSpec("/tmp/deck-id", deckServeBase("deck-id"));
     expect(spec.cwd).toBe("/tmp/deck-id");
     expect(spec.args).toEqual(["build", "slides.md", "--out", "dist", "--base", "/p/deck-id/"]);
   });

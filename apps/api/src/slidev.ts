@@ -47,6 +47,11 @@ export function installDeckLayouts(workDir: string): void {
   }
 }
 
+/** Public URL prefix for a hosted deck SPA (Slidev --base / Vite BASE_URL). */
+export function deckServeBase(deckId: string): string {
+  return `/p/${deckId}/`;
+}
+
 export function slidevSpawnSpec(workDir: string, base: string): SlidevSpawnSpec {
   return {
     bin: slidevBin(),

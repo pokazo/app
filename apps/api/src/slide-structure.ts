@@ -6,7 +6,7 @@ import { mapViewSlideToOutline } from "./rewrite-lock.js";
 import { writeRewriteStatus } from "./rewrite-status.js";
 import { Outline, type OutlineSlide, type OutlineT } from "./outline.js";
 import { SPEECH_JSON, parseSpeechJson, type SpeechDocT } from "./speech.js";
-import { buildSlidev, writeSlides } from "./slidev.js";
+import { buildSlidev, deckServeBase, writeSlides } from "./slidev.js";
 import { sanitizePickerTheme } from "./themes.js";
 
 export const SLIDE_COUNT_MIN = 3;
@@ -262,7 +262,9 @@ export async function applySlideStructure(opts: {
     /* optional */
   }
 
-  await buildSlidev(workDir, "./");
+  // Must match generate/rewrite: absolute /p/:id/ so BASE_URL keeps images + router
+  // under the deck path (base "./" resolves /slide-N.jpg to api origin → 404).
+  await buildSlidev(workDir, deckServeBase(id));
   try {
     const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
     await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });

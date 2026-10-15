@@ -937,7 +937,8 @@ footer.foot a:hover { text-decoration: underline; }
 .deck-thumbs {
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -947,8 +948,7 @@ footer.foot a:hover { text-decoration: underline; }
 }
 .deck-thumb-item {
   position: relative;
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 0 0 auto;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -964,8 +964,7 @@ footer.foot a:hover { text-decoration: underline; }
   display: flex;
   flex-direction: column;
   width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: none;
   padding: 0;
   border: 2px solid transparent;
   background: transparent;
@@ -1065,9 +1064,9 @@ footer.foot a:hover { text-decoration: underline; }
 .deck-thumb-frame {
   display: block;
   width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
+  flex: none;
+  height: auto;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
   /* inset stroke — real border eats equal px from W/H and breaks 16:9 content box */

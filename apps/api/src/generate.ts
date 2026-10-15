@@ -3,7 +3,7 @@ import { generateText } from "ai";
 import { join } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { config } from "./env.js";
-import { buildSlidev, installDeckLayouts, scaffoldMarkdown, writeSlides } from "./slidev.js";
+import { buildSlidev, deckServeBase, installDeckLayouts, scaffoldMarkdown, writeSlides } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp, type McpCallLog } from "./slidev-mcp.js";
 import { withHeroMcp } from "./hero-mcp.js";
@@ -348,7 +348,7 @@ export async function generateDeck(opts: {
   timer.mark("hero");
   console.info(`[generate] hero-compose done`);
 
-  const base = `/p/${opts.id}/`;
+  const base = deckServeBase(opts.id);
   const renderThumbs = async (slideCount?: number) => {
     const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
     await tryRenderDeckFilmstripThumbs({

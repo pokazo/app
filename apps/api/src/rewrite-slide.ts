@@ -3,7 +3,7 @@ import { generateObject, generateText } from "ai";
 import { join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { config } from "./env.js";
-import { buildSlidev } from "./slidev.js";
+import { buildSlidev, deckServeBase } from "./slidev.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp } from "./slidev-mcp.js";
 import { withLayoutMcp } from "./layout-mcp.js";
@@ -391,7 +391,7 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
   );
 
   let md = await guardWorkSlides(workDir, theme);
-  const base = `/p/${id}/`;
+  const base = deckServeBase(id);
   const buildAndGate = async () => {
     const bust = await bustSlideImageCache({ workDir, slidevIndex: 1 });
     if (bust.changed) {
@@ -532,7 +532,7 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
   );
 
   let md = await guardWorkSlides(workDir, theme);
-  const base = `/p/${id}/`;
+  const base = deckServeBase(id);
   const buildAndGate = async () => {
     const bust = await bustSlideImageCache({ workDir, slidevIndex });
     if (bust.changed) {
