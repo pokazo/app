@@ -84,4 +84,15 @@ describe("md-guard theme", () => {
     }
     expect(out).toMatch(/^theme: default$/m);
   });
+
+  it("preserves model-chosen palette on spotlight slides", () => {
+    const out = guardMarkdown(
+      `---\ntheme: default\nlayout: hero\n---\n\n# One\n\n---\nlayout: spotlight\npalette: ocean\nimage: /slide-2.png\n---\n\n# Spot`,
+      "ink-dark",
+    );
+    const blocks = [...out.matchAll(/^---\n([\s\S]*?)\n---/gm)].map((m) => m[1]!);
+    expect(blocks[0]).toMatch(/^palette: ink$/m);
+    expect(blocks[1]).toMatch(/^palette: ocean$/m);
+    expect(blocks[1]).toMatch(/^layout: spotlight$/m);
+  });
 });

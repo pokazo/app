@@ -22,6 +22,7 @@ export const OutlineVisual = z.enum([
   "statement",
   "features",
   "process",
+  "spotlight",
 ]);
 
 export const TimelineStep = z.object({
@@ -79,6 +80,11 @@ export const OutlineSlide = z.object({
   features: z.array(FeatureItem).max(3),
   /** Horizontal flow when visual is process. */
   process: z.array(ProcessStep).max(5),
+  /**
+   * Layout palette id when visual is spotlight (cream|ink|ocean|…).
+   * Empty string for other visuals.
+   */
+  palette: z.string(),
 });
 
 export const Outline = z.object({

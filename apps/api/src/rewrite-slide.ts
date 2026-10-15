@@ -673,6 +673,7 @@ export async function rewriteSlide(opts: {
       cards: [],
       features: [],
       process: [],
+      palette: "",
     };
     slidevIndex = 1;
     outlineSlot = null;

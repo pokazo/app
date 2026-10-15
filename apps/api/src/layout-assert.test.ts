@@ -9,6 +9,8 @@ import {
   assertProcessLayout,
   assertQuoteLayout,
   assertSkillsLayout,
+  assertSpotlightBodyContent,
+  assertSpotlightLayout,
   assertStatementLayout,
   assertStatsLayout,
   assertTimelineLayout,
@@ -39,6 +41,7 @@ describe("layoutError", () => {
       "statement",
       "features",
       "process",
+      "spotlight",
     ]) {
       expect(layoutError(name, "x").message).toBe(`LayoutError[${name}]: x`);
     }
@@ -425,6 +428,95 @@ describe("assertTwoColsLayout", () => {
   it("passes with both columns", () => {
     expect(() =>
       assertTwoColsLayout({ hasLeftSlot: true, hasRightSlot: true }),
+    ).not.toThrow();
+  });
+});
+
+const fourPairs = [
+  { title: "Clarity", body: "Short label, no filler." },
+  { title: "Pace", body: "Scan hierarchy fast." },
+  { title: "Trust", body: "Named sources, proof." },
+  { title: "Focus", body: "One idea, four points." },
+];
+
+describe("assertSpotlightLayout", () => {
+  it("throws without local image, palette, or exactly 4 pairs", () => {
+    expect(() =>
+      assertSpotlightLayout({ palette: "ocean", items: fourPairs }),
+    ).toThrow(/LayoutError\[spotlight\].*image/);
+    expect(() =>
+      assertSpotlightLayout({
+        image: "/slide-1.png",
+        palette: "nope",
+        items: fourPairs,
+      }),
+    ).toThrow(/LayoutError\[spotlight\].*palette/);
+    expect(() =>
+      assertSpotlightLayout({
+        image: "/slide-1.png",
+        palette: "ocean",
+        items: fourPairs.slice(0, 2),
+      }),
+    ).toThrow(/LayoutError\[spotlight\].*exactly 4/);
+  });
+
+  it("throws when pair title/body exceed char caps", () => {
+    expect(() =>
+      assertSpotlightLayout({
+        image: "/slide-1.png",
+        palette: "ocean",
+        items: [
+          { title: "This title is way too long!!", body: "ok" },
+          ...fourPairs.slice(1),
+        ],
+      }),
+    ).toThrow(/LayoutError\[spotlight\].*title too long/);
+    expect(() =>
+      assertSpotlightLayout({
+        image: "/slide-1.png",
+        palette: "ocean",
+        items: [
+          {
+            title: "Ok",
+            body: "x".repeat(49),
+          },
+          ...fourPairs.slice(1),
+        ],
+      }),
+    ).toThrow(/LayoutError\[spotlight\].*body too long/);
+  });
+
+  it("passes with valid spotlight props", () => {
+    expect(() =>
+      assertSpotlightLayout({
+        image: "/slide-1.png",
+        palette: "ocean",
+        kicker: "SPOTLIGHT",
+        items: fourPairs,
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe("assertSpotlightBodyContent", () => {
+  it("throws without H1 or description or when over char caps", () => {
+    expect(() => assertSpotlightBodyContent("no heading")).toThrow(
+      /LayoutError\[spotlight\].*H1/,
+    );
+    expect(() => assertSpotlightBodyContent("# Only title\n")).toThrow(
+      /LayoutError\[spotlight\].*description/,
+    );
+    expect(() =>
+      assertSpotlightBodyContent(`# ${"A".repeat(43)}\n\nShort desc.`),
+    ).toThrow(/LayoutError\[spotlight\].*H1 too long/);
+    expect(() =>
+      assertSpotlightBodyContent(`# Title\n\n${"d".repeat(91)}`),
+    ).toThrow(/LayoutError\[spotlight\].*description too long/);
+  });
+
+  it("passes with short H1 + description", () => {
+    expect(() =>
+      assertSpotlightBodyContent("# Product that leads\n\nOne short promise under the title."),
     ).not.toThrow();
   });
 });

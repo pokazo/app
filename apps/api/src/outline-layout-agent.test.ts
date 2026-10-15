@@ -13,6 +13,7 @@ const emptyVisual = {
   cards: [] as const,
   features: [] as const,
   process: [] as const,
+  palette: "",
 };
 
 describe("createSubmitOutlineTool", () => {

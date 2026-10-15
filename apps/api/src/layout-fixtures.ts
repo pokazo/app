@@ -25,6 +25,7 @@ export const LAYOUT_SHOT_ORDER = [
   "statement",
   "features",
   "process",
+  "spotlight",
 ] as const;
 
 export type LayoutShotName = (typeof LAYOUT_SHOT_ORDER)[number];
@@ -329,6 +330,26 @@ steps:
 ---
 
 # How we deliver
+
+---
+layout: spotlight
+palette: ocean
+image: ${imagePath}
+kicker: SPOTLIGHT
+items:
+  - title: Clarity
+    body: Short label, no filler.
+  - title: Pace
+    body: Scan hierarchy fast.
+  - title: Trust
+    body: Named sources, proof.
+  - title: Focus
+    body: One idea, four points.
+---
+
+# Product that leads
+
+One short promise under the title.
 `;
 }
 
@@ -496,6 +517,21 @@ steps:
 ---
 
 # Broken process
+`,
+  ),
+  spotlight: deckWithSlide(
+    "Bad spotlight",
+    `---
+layout: spotlight
+palette: ocean
+items:
+  - title: Only
+    body: one pair
+---
+
+# Broken spotlight
+
+Missing image and pairs.
 `,
   ),
 };

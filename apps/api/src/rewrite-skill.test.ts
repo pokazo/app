@@ -28,6 +28,7 @@ const sampleSlide = {
   cards: [],
   features: [],
   process: [],
+  palette: "",
 };
 
 const lockedHero = {

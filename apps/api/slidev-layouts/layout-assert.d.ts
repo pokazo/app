@@ -60,3 +60,24 @@ export function assertFeaturesLayout(props: {
 export function assertProcessLayout(props: {
   steps?: Array<{ title?: string; iconHint?: string }> | null;
 }): void;
+
+export const SPOTLIGHT_CONTENT_LIMITS: {
+  readonly maxKickerChars: 28;
+  readonly maxH1Chars: 42;
+  readonly maxDescChars: 90;
+  readonly maxPairTitleChars: 18;
+  readonly maxPairBodyChars: 48;
+  readonly pairCount: 4;
+};
+
+export function isSpotlightPalette(palette?: string | null): boolean;
+
+export function assertSpotlightLayout(props: {
+  image?: string | null;
+  palette?: string | null;
+  kicker?: string | null;
+  items?: Array<{ title?: string; body?: string }> | null;
+  cards?: Array<{ title?: string; body?: string }> | null;
+}): void;
+
+export function assertSpotlightBodyContent(body: string): void;

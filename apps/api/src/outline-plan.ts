@@ -1,4 +1,7 @@
-import { isLayoutCarbonIcon } from "../slidev-layouts/layout-assert.js";
+import {
+  isLayoutCarbonIcon,
+  isSpotlightPalette,
+} from "../slidev-layouts/layout-assert.js";
 import type { OutlineT, OutlineSlide } from "./outline.js";
 
 export type OutlinePlanIssue = {
@@ -8,7 +11,14 @@ export type OutlinePlanIssue = {
   message: string;
 };
 
-const PHOTO_VISUALS = new Set(["cover", "hero", "image-right", "image-left", "image"]);
+const PHOTO_VISUALS = new Set([
+  "cover",
+  "hero",
+  "image-right",
+  "image-left",
+  "image",
+  "spotlight",
+]);
 const TEXT_ONLY_VISUALS = new Set(["none", "default", "center", "section", "intro", "end"]);
 
 function nonEmptyStrings(items: string[]): string[] {
@@ -119,6 +129,40 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
     return [];
   }
 
+  if (visual === "spotlight") {
+    const cards = (slide.cards ?? []).filter((c) => c.title?.trim() && c.body?.trim());
+    const issues: OutlinePlanIssue[] = [];
+    if (!slide.imageQuery?.trim()) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: spotlight без imageQuery`,
+      });
+    }
+    if (!isSpotlightPalette(slide.palette)) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: spotlight — palette должна быть cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt`,
+      });
+    }
+    if (cards.length !== 4) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: spotlight — нужно ровно 4 cards с title и body (сейчас ${cards.length})`,
+      });
+    }
+    if (points.length < 1) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: spotlight без description (points[0])`,
+      });
+    }
+    return issues;
+  }
+
   if (visual === "icon") {
     if (!isLayoutCarbonIcon(slide.iconHint)) {
       return [
@@ -206,7 +250,7 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
       {
         slide: index,
         code: "text_only",
-        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process с заполненным payload`,
+        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process|spotlight с заполненным payload`,
       },
     ];
   }
@@ -297,6 +341,24 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
         message: `${label}: process без ≥3 steps с iconHint из allowlist — останется заголовок`,
       },
     ];
+  }
+
+  if (visual === "spotlight") {
+    const cards = (slide.cards ?? []).filter((c) => c.title?.trim() && c.body?.trim());
+    if (
+      !slide.imageQuery?.trim() ||
+      !isSpotlightPalette(slide.palette) ||
+      cards.length !== 4 ||
+      nonEmptyStrings(slide.points ?? []).length < 1
+    ) {
+      return [
+        {
+          slide: index,
+          code: "text_only",
+          message: `${label}: spotlight без imageQuery + palette + 4 cards + description — останется пустым`,
+        },
+      ];
+    }
   }
 
   return [];

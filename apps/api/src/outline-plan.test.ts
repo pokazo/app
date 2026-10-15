@@ -17,6 +17,7 @@ const base = {
   cards: [] as const,
   features: [] as const,
   process: [] as const,
+  palette: "",
 };
 
 function richEight(): OutlineT {

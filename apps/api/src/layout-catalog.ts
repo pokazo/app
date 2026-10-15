@@ -1,9 +1,14 @@
 /** Source-of-truth descriptions for outline/compose layout selection (MCP). */
 
-import { layoutCarbonIconHints } from "../slidev-layouts/layout-assert.js";
+import {
+  layoutCarbonIconHints,
+  SPOTLIGHT_CONTENT_LIMITS,
+} from "../slidev-layouts/layout-assert.js";
 
 const ICON_HINTS = layoutCarbonIconHints();
 const ICON_HINTS_FIELD = `iconHint ONLY from: ${ICON_HINTS.join(", ")}`;
+
+export { SPOTLIGHT_CONTENT_LIMITS };
 
 /** One frontmatter or body field the layout accepts (mirror hero-catalog). */
 export type LayoutFieldSpec = {
@@ -465,6 +470,68 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
       },
     ],
   },
+  {
+    id: "spotlight",
+    summary:
+      "Center photo + title/description + exactly 4 edge pairs; model picks palette background",
+    whenToUse:
+      "Product/hero spotlight: one central photo flanked by four short title+body points; pick palette for mood",
+    antiPatterns:
+      "Fewer/more than 4 pairs; long copy (clips); missing image or palette; pairs overlapping the photo",
+    outlineFields:
+      "visual=spotlight; imageQuery; palette; points[0]=description; cards[{title,body}] exactly 4",
+    frontmatter:
+      "layout: spotlight; palette: ocean|cream|…; image: /local.png; items: (from cards); kicker?",
+    body: "H1 + one description paragraph (no bullets)",
+    displays: "Title/desc top; center image; 2 pairs left + 2 right, tight to image, no overlap",
+    example:
+      '{ "visual": "spotlight", "heading": "Product that leads", "points": ["One short promise under the title."], "palette": "ocean", "imageQuery": "product on stage", "cards": [{"title":"Clarity","body":"Short label, no filler."},{"title":"Pace","body":"Scan hierarchy fast."},{"title":"Trust","body":"Named sources, proof."},{"title":"Focus","body":"One idea, four points."}], "kicker": "SPOTLIGHT" }',
+    tags: ["photo", "features", "grid", "product"],
+    fields: [
+      f.layout("spotlight"),
+      {
+        name: "palette",
+        required: true,
+        in: "frontmatter",
+        type: "cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt",
+        expects: "Model picks slide background color pack — do not omit",
+      },
+      f.image(),
+      f.kicker(`2–5 short words, ALL CAPS (≤${SPOTLIGHT_CONTENT_LIMITS.maxKickerChars} chars)`),
+      f.items(
+        `exactly ${SPOTLIGHT_CONTENT_LIMITS.pairCount}`,
+        `YAML items: [{title, body}] — never use cards: as key. title ≤${SPOTLIGHT_CONTENT_LIMITS.maxPairTitleChars} chars; body ≤${SPOTLIGHT_CONTENT_LIMITS.maxPairBodyChars} chars`,
+      ),
+      f.h1(
+        `≤${SPOTLIGHT_CONTENT_LIMITS.maxH1Chars} chars (≈2–8 words)`,
+        "Title only as H1; description is next paragraph",
+      ),
+      {
+        name: "description",
+        required: true,
+        in: "body",
+        type: "1 short paragraph under H1",
+        expects: "Map outline.points[0] → paragraph under H1; no bullets",
+        limit: `≤${SPOTLIGHT_CONTENT_LIMITS.maxDescChars} chars`,
+      },
+      {
+        name: "items[].title",
+        required: true,
+        in: "frontmatter",
+        type: "string",
+        expects: "Pair title on left/right of center image",
+        limit: `≤${SPOTLIGHT_CONTENT_LIMITS.maxPairTitleChars} chars`,
+      },
+      {
+        name: "items[].body",
+        required: true,
+        in: "frontmatter",
+        type: "string",
+        expects: "Pair body under title",
+        limit: `≤${SPOTLIGHT_CONTENT_LIMITS.maxPairBodyChars} chars`,
+      },
+    ],
+  },
 ];
 
 export function layoutCatalogById(id: string): LayoutCatalogEntry | undefined {
@@ -543,6 +610,12 @@ export function layoutMatch(input: LayoutMatchInput): LayoutMatchHit[] {
   if (/roadmap|истор|timeline|фаз/.test(intent)) bump("timeline", 5, "intent timeline");
   if (/stat|метрик|kpi|цифр/.test(intent)) bump("stats", 4, "intent metrics");
   if (/pillar|преимущ|benefit|feature/.test(intent)) bump("features", 4, "intent features");
+  if (/spotlight|product shot|центр.*фото|product showcase|флагман/.test(intent)) {
+    bump("spotlight", 6, "intent spotlight product");
+  }
+  if (input.wantsPhoto && (input.featureCount ?? 0) === 4) {
+    bump("spotlight", 7, "photo + 4 feature pairs");
+  }
 
   const hits: LayoutMatchHit[] = [...scores.entries()]
     .map(([id, v]) => ({ id, score: v.score, reason: v.reasons.join("; ") }))

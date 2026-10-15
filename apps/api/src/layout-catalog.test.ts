@@ -56,4 +56,24 @@ describe("layout catalog", () => {
     const hits = layoutMatch({ intent: "three pillars benefits", featureCount: 3 });
     expect(hits[0]?.id).toBe("features");
   });
+
+  it("layout-get spotlight exposes char caps for compose", () => {
+    const spot = layoutGet("spotlight");
+    expect(spot.summary).toMatch(/Center photo/i);
+    expect(spot.fields.some((f) => f.name === "palette" && f.required)).toBe(true);
+    expect(spot.fields.find((f) => f.name === "H1")?.limit).toMatch(/≤42/);
+    expect(spot.fields.find((f) => f.name === "description")?.limit).toMatch(/≤90/);
+    expect(spot.fields.find((f) => f.name === "items")?.limit).toMatch(/exactly 4/);
+    expect(spot.fields.find((f) => f.name === "items[].title")?.limit).toMatch(/≤18/);
+    expect(spot.fields.find((f) => f.name === "items[].body")?.limit).toMatch(/≤48/);
+  });
+
+  it("layout-match prefers spotlight for product photo + 4 features", () => {
+    const hits = layoutMatch({
+      intent: "product showcase spotlight",
+      wantsPhoto: true,
+      featureCount: 4,
+    });
+    expect(hits[0]?.id).toBe("spotlight");
+  });
 });

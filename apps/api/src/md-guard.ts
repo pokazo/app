@@ -23,6 +23,7 @@ const ALLOWED_LAYOUTS = new Set([
   "cards",
   "features",
   "process",
+  "spotlight",
 ]);
 
 function quoteYamlScalar(value: string): string {
@@ -57,12 +58,17 @@ function pinTheme(md: string, theme: string): string {
   return out;
 }
 
-/** Pin palette on every slide frontmatter — Slidev passes layout props per-slide only. */
+/** Pin palette on every slide frontmatter — Slidev passes layout props per-slide only.
+ * Exception: spotlight keeps model-chosen palette when already set (layout picks bg). */
 function pinPalette(md: string, palette: string): string {
   if (!md.trim().startsWith("---")) {
     return `---\npalette: ${palette}\n---\n\n${md}`;
   }
   return md.replace(/^---\n([\s\S]*?)\n---/gm, (_full, body: string) => {
+    const isSpotlight = /^layout:\s*spotlight\s*$/m.test(body);
+    if (isSpotlight && /^palette:\s*\S+/m.test(body)) {
+      return `---\n${body}\n---`;
+    }
     let fm = body.replace(/^palette:\s*.+$/m, `palette: ${palette}`);
     if (!/^palette:/m.test(fm)) {
       fm = `palette: ${palette}\n${fm}`;

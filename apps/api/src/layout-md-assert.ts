@@ -8,6 +8,8 @@ import {
   assertProcessLayout,
   assertQuoteLayout,
   assertSkillsLayout,
+  assertSpotlightBodyContent,
+  assertSpotlightLayout,
   assertStatementLayout,
   assertStatsLayout,
   assertTimelineLayout,
@@ -202,6 +204,16 @@ export function assertLayoutsInMarkdown(md: string): void {
         break;
       case "process":
         assertProcessLayout({ steps: asList(fm.steps) });
+        break;
+      case "spotlight":
+        assertSpotlightLayout({
+          image: String(fm.image || ""),
+          palette: String(fm.palette || ""),
+          kicker: fm.kicker != null ? String(fm.kicker) : "",
+          items: asList(fm.items),
+          cards: asList(fm.cards),
+        });
+        assertSpotlightBodyContent(body);
         break;
       case "two-cols":
         assertTwoColsLayout({

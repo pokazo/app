@@ -107,6 +107,24 @@ describe("composeSkill", () => {
     expect(skill).toMatch(/fields\[\]\.limit/);
     expect(composeUserPrompt({ title: "t", slides: [] }, "ru")).toMatch(/fields\[\]\.limit/);
   });
+
+  it("teaches spotlight layout with palette + char caps for compose", () => {
+    const skill = composeSkill("default", "ru");
+    expect(skill).toMatch(/layout: spotlight/);
+    expect(skill).toMatch(/outline\.palette → palette/i);
+    expect(skill).toMatch(/exactly 4/);
+    expect(skill).toMatch(/H1≤42|≤42/);
+    expect(skill).toMatch(/desc≤90|≤90/);
+    const outline = outlineUserPrompt({
+      topic: "Product",
+      locale: "ru",
+      audience: "investors",
+      slideCount: 8,
+    });
+    expect(outline).toMatch(/spotlight/);
+    expect(outline).toMatch(/palette/);
+    expect(composeUserPrompt({ title: "t", slides: [] }, "ru")).toMatch(/spotlight/);
+  });
 });
 
 describe("outlineUserPrompt", () => {

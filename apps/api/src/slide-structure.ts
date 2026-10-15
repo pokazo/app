@@ -42,6 +42,7 @@ export function emptyOutlineSlide(heading = EMPTY_SLIDE_HEADING): OutlineSlide {
     cards: [],
     features: [],
     process: [],
+    palette: "",
   };
 }
 

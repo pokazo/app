@@ -42,6 +42,7 @@ export function installDeckLayouts(workDir: string): void {
     "statement.vue",
     "features.vue",
     "process.vue",
+    "spotlight.vue",
   ]) {
     copyFileSync(join(src, name), join(dest, name));
   }

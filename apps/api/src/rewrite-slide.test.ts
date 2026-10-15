@@ -16,6 +16,7 @@ const goodSlide = {
   cards: [],
   features: [],
   process: [],
+  palette: "",
 };
 
 describe("reviseOutlineSlide", () => {

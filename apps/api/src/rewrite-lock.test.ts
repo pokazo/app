@@ -28,6 +28,7 @@ const sampleSlide = {
   cards: [],
   features: [],
   process: [],
+  palette: "",
 };
 
 /** Prod bug: hero composed separately, then all outline slides inserted → md = outline+1. */
