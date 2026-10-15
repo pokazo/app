@@ -76,6 +76,8 @@ export function DeckView() {
   const [err, setErr] = useState("");
   const [waiting, setWaiting] = useState(true);
   const [current, setCurrent] = useState(1);
+  /** Mobile: list by default; tap thumb opens real Slidev stage fullscreen. */
+  const [mobilePresent, setMobilePresent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [stageReady, setStageReady] = useState(false);
   const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
@@ -293,10 +295,16 @@ export function DeckView() {
   );
 
   useEffect(() => {
-    if (mobileOverview || !stageReady) return;
+    if (!mobileOverview) setMobilePresent(false);
+  }, [mobileOverview]);
+
+  const showStage = !mobileOverview || mobilePresent;
+
+  useEffect(() => {
+    if (!showStage || !stageReady) return;
     const page = slidevPageForOutlineIndex(meta?.slides ?? [], current);
     stageRef.current?.contentWindow?.postMessage(slidevNavigateMessage(page), "*");
-  }, [current, stageReady, meta?.slides, mobileOverview]);
+  }, [current, stageReady, meta?.slides, showStage]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -475,56 +483,88 @@ export function DeckView() {
 
   const slides = meta?.slides ?? [];
   const rewriteReady = Boolean(me && meta && meta.status === "ready" && !building && !rewriteBusy);
+  const shellClass = [
+    "deck-shell",
+    mobileOverview ? "is-mobile-overview" : "",
+    mobileOverview && mobilePresent ? "is-mobile-present" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  function openSlide(n: number) {
+    go(n);
+    if (mobileOverview) {
+      setStageReady(false);
+      setMobilePresent(true);
+    }
+  }
 
   return (
-    <div className="deck-shell">
+    <div className={shellClass}>
       <PkHeader me={me} onOut={me ? onOut : undefined} />
       <div className="deck-toolbar wrap">
-        <p className="deck-title">{meta?.topic || "Презентация"}</p>
-        <div className="deck-toolbar-actions">
-          {meta ? (
+        {mobileOverview && mobilePresent ? (
+          <>
+            <button
+              type="button"
+              className="pk ghost deck-mobile-back"
+              onClick={() => setMobilePresent(false)}
+            >
+              ← Слайды
+            </button>
             <span className="deck-pos">
               {current} / {last}
             </span>
-          ) : null}
-          <button type="button" className="pk ghost" onClick={() => void copyLink()}>
-            {copied ? "Скопировано" : "Скопировать ссылку"}
-          </button>
-          {meta ? (
-            <>
-              <button
-                type="button"
-                className="pk ghost"
-                disabled={building}
-                title={building ? "Дождитесь окончания сборки" : undefined}
-                onClick={() => setSpeechOpen(true)}
-              >
-                Спич
+          </>
+        ) : (
+          <>
+            <p className="deck-title">{meta?.topic || "Презентация"}</p>
+            <div className="deck-toolbar-actions">
+              {meta ? (
+                <span className="deck-pos">
+                  {current} / {last}
+                </span>
+              ) : null}
+              <button type="button" className="pk ghost" onClick={() => void copyLink()}>
+                {copied ? "Скопировано" : "Скопировать ссылку"}
               </button>
-              <button
-                type="button"
-                className="pk ghost"
-                disabled={!!exporting || building}
-                onClick={() => void downloadExport("pdf")}
-              >
-                {exporting === "pdf" ? "Сохраняем PDF…" : "Скачать PDF"}
-              </button>
-              <button
-                type="button"
-                className="pk ghost"
-                disabled={!!exporting || building}
-                onClick={() => void downloadExport("pptx")}
-              >
-                {exporting === "pptx" ? "Сохраняем PPTX…" : "Скачать PPTX"}
-              </button>
-            </>
-          ) : null}
-          {me ? (
-            <Link className="pk-btn ghost" to={APP_HISTORY_PATH}>
-              К списку
-            </Link>
-          ) : null}
-        </div>
+              {meta ? (
+                <>
+                  <button
+                    type="button"
+                    className="pk ghost"
+                    disabled={building}
+                    title={building ? "Дождитесь окончания сборки" : undefined}
+                    onClick={() => setSpeechOpen(true)}
+                  >
+                    Спич
+                  </button>
+                  <button
+                    type="button"
+                    className="pk ghost"
+                    disabled={!!exporting || building}
+                    onClick={() => void downloadExport("pdf")}
+                  >
+                    {exporting === "pdf" ? "Сохраняем PDF…" : "Скачать PDF"}
+                  </button>
+                  <button
+                    type="button"
+                    className="pk ghost"
+                    disabled={!!exporting || building}
+                    onClick={() => void downloadExport("pptx")}
+                  >
+                    {exporting === "pptx" ? "Сохраняем PPTX…" : "Скачать PPTX"}
+                  </button>
+                </>
+              ) : null}
+              {me ? (
+                <Link className="pk-btn ghost" to={APP_HISTORY_PATH}>
+                  К списку
+                </Link>
+              ) : null}
+            </div>
+          </>
+        )}
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
@@ -609,7 +649,7 @@ export function DeckView() {
                   setDragFrom(null);
                   setDragOver(null);
                 }}
-                onClick={() => go(s.index)}
+                onClick={() => openSlide(s.index)}
               >
                 <DeckThumbPreview
                   key={thumbReactKey(s.index)}
@@ -657,9 +697,9 @@ export function DeckView() {
           ) : null}
           {structureErr ? <p className="err deck-thumb-err">{structureErr}</p> : null}
         </nav>
-        {!mobileOverview ? (
+        {showStage ? (
           <div
-            className={`deck-stage${me && meta?.status === "ready" ? " has-rewrite" : ""}`}
+            className={`deck-stage${me && meta?.status === "ready" && !mobilePresent ? " has-rewrite" : ""}`}
           >
             <div className="deck-stage-frame">
               {id && meta && !err ? (
@@ -677,7 +717,7 @@ export function DeckView() {
                 <button type="button" className="deck-hit right" onClick={() => go(current + 1)} />
               </div>
             </div>
-            {meta && me && meta.status === "ready" ? (
+            {meta && me && meta.status === "ready" && !mobilePresent ? (
               <form
                 className="deck-rewrite"
                 onSubmit={(e) => {

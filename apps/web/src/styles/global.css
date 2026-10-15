@@ -1269,17 +1269,35 @@ footer.foot a:hover { text-decoration: underline; }
 }
 @media (max-width: 800px) {
   .thumbs, .steps { grid-template-columns: 1fr; }
-  /* Mobile deck: overview only — full-width thumb list, no stage/toolbar. */
-  .deck-toolbar {
+  /* Mobile overview: full-width thumb list. Tap opens present (real stage). */
+  .deck-shell.is-mobile-overview:not(.is-mobile-present) .deck-toolbar {
     display: none;
   }
-  .deck-layout {
+  .deck-shell.is-mobile-overview .deck-layout {
     grid-template-columns: 1fr;
   }
-  .deck-stage {
+  .deck-shell.is-mobile-overview:not(.is-mobile-present) .deck-stage {
     display: none;
   }
-  .deck-thumbs {
+  .deck-shell.is-mobile-overview.is-mobile-present .deck-thumbs {
+    display: none;
+  }
+  .deck-shell.is-mobile-overview.is-mobile-present .deck-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 16px;
+  }
+  .deck-shell.is-mobile-overview.is-mobile-present .deck-stage {
+    display: flex;
+    padding: 8px;
+  }
+  .deck-shell.is-mobile-overview.is-mobile-present .deck-stage-frame {
+    width: min(100%, calc(100cqh * 16 / 9));
+    max-height: 100%;
+  }
+  .deck-shell.is-mobile-overview .deck-thumbs {
     border-right: none;
     overflow-x: hidden;
     overflow-y: auto;
@@ -1287,19 +1305,23 @@ footer.foot a:hover { text-decoration: underline; }
     padding: 12px;
     gap: 10px;
   }
-  .deck-thumb-item {
+  .deck-shell.is-mobile-overview .deck-thumb-item {
     flex: 0 0 auto;
     width: 100%;
   }
-  .deck-thumb {
+  .deck-shell.is-mobile-overview .deck-thumb {
     flex: none;
     width: 100%;
   }
-  .deck-thumb-frame {
+  .deck-shell.is-mobile-overview .deck-thumb-frame {
     flex: none;
     width: 100%;
     height: auto;
     aspect-ratio: 16 / 9;
+  }
+  .deck-shell.is-mobile-overview .deck-thumb-ph {
+    object-fit: contain;
+    background: #fff;
   }
 }
 @media (max-width: 640px) {
