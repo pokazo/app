@@ -71,7 +71,7 @@ const paletteClass = resolvePaletteClass(props.palette)
 .pk-kicker__line {
   width: 36px;
   height: 3px;
-  background: #c45c26;
+  background: var(--pk-accent, #c45c26);
   border-radius: 2px;
   flex: none;
 }
@@ -80,7 +80,7 @@ const paletteClass = resolvePaletteClass(props.palette)
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #c45c26;
+  color: var(--pk-accent, #c45c26);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
