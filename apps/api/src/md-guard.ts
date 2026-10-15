@@ -57,15 +57,18 @@ function pinTheme(md: string, theme: string): string {
   return out;
 }
 
+/** Pin palette on every slide frontmatter — Slidev passes layout props per-slide only. */
 function pinPalette(md: string, palette: string): string {
   if (!md.trim().startsWith("---")) {
     return `---\npalette: ${palette}\n---\n\n${md}`;
   }
-  let out = md.replace(/^palette:\s*.+$/m, `palette: ${palette}`);
-  if (!/^palette:/m.test(out.slice(0, 240))) {
-    out = out.replace(/^---\n/, `---\npalette: ${palette}\n`);
-  }
-  return out;
+  return md.replace(/^---\n([\s\S]*?)\n---/gm, (_full, body: string) => {
+    let fm = body.replace(/^palette:\s*.+$/m, `palette: ${palette}`);
+    if (!/^palette:/m.test(fm)) {
+      fm = `palette: ${palette}\n${fm}`;
+    }
+    return `---\n${fm}\n---`;
+  });
 }
 
 /** Keep only local public paths like /hero.jpg; drop remote or traversal. */

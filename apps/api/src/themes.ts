@@ -9,6 +9,10 @@ export const LAYOUT_PALETTE_IDS = [
   "slate",
   "amber",
   "wine",
+  "neon",
+  "sunset",
+  "candy",
+  "volt",
 ] as const;
 export const PALETTE_PICKER_THEME_IDS = [
   "ocean",
@@ -16,6 +20,10 @@ export const PALETTE_PICKER_THEME_IDS = [
   "slate",
   "amber",
   "wine",
+  "neon",
+  "sunset",
+  "candy",
+  "volt",
 ] as const;
 export const PICKER_THEME_IDS = [
   "auto",
@@ -55,6 +63,10 @@ export const THEME_PICK_CATALOG: ReadonlyArray<{
   { id: "slate", title: "Сланец", hint: "Тёмный SaaS без красного" },
   { id: "amber", title: "Янтарь", hint: "Premium и finance" },
   { id: "wine", title: "Бордо", hint: "Редакционный бордо" },
+  { id: "neon", title: "Неон", hint: "Кибер cyan / magenta" },
+  { id: "sunset", title: "Закат", hint: "Яркий тёплый градиент" },
+  { id: "candy", title: "Конфети", hint: "Розовый жёлтый голубой" },
+  { id: "volt", title: "Вольт", hint: "Чёрный + лайм" },
 ];
 
 export function sanitizePickerTheme(raw?: string | null): PickerThemeId {

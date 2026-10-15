@@ -180,4 +180,32 @@ const paletteClass = resolvePaletteClass(props.palette)
   --pk-accent: #8b3a4a;
   --pk-faint: #9a8088;
 }
+.pk-palette-neon {
+  --pk-paper: #0a0a12;
+  --pk-ink: #f5f7ff;
+  --pk-sub: #b8c0d9;
+  --pk-accent: #00f0ff;
+  --pk-faint: #7a8299;
+}
+.pk-palette-sunset {
+  --pk-paper: #1a0a18;
+  --pk-ink: #fff5f8;
+  --pk-sub: #f0c0d4;
+  --pk-accent: #ff6b35;
+  --pk-faint: #c48aa0;
+}
+.pk-palette-candy {
+  --pk-paper: #fff5fb;
+  --pk-ink: #1a1020;
+  --pk-sub: #5a4060;
+  --pk-accent: #ff2d95;
+  --pk-faint: #8a7080;
+}
+.pk-palette-volt {
+  --pk-paper: #111111;
+  --pk-ink: #f5f5f5;
+  --pk-sub: #c8c8c8;
+  --pk-accent: #c8ff00;
+  --pk-faint: #8a8a8a;
+}
 </style>

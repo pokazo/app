@@ -69,6 +69,10 @@ describe("deck theme picker", () => {
       "slate",
       "amber",
       "wine",
+      "neon",
+      "sunset",
+      "candy",
+      "volt",
     ]);
   });
 

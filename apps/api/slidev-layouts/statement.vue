@@ -192,4 +192,43 @@ const paletteClass = resolvePaletteClass(props.palette)
     linear-gradient(to bottom, rgba(45, 106, 143, 0.08) 1px, transparent 1px);
 }
 
+.pk-palette-neon {
+  --pk-paper: #0a0a12;
+  --pk-ink: #f5f7ff;
+  --pk-sub: #b8c0d9;
+  --pk-accent: #00f0ff;
+  --pk-faint: #7a8299;
+  --pk-rule: rgba(255, 255, 255, 0.55);
+}
+.pk-palette-sunset {
+  --pk-paper: #1a0a18;
+  --pk-ink: #fff5f8;
+  --pk-sub: #f0c0d4;
+  --pk-accent: #ff6b35;
+  --pk-faint: #c48aa0;
+  --pk-rule: rgba(255, 255, 255, 0.55);
+}
+.pk-palette-candy {
+  --pk-paper: #fff5fb;
+  --pk-ink: #1a1020;
+  --pk-sub: #5a4060;
+  --pk-accent: #ff2d95;
+  --pk-faint: #8a7080;
+  --pk-rule: rgba(0, 0, 0, 0.35);
+}
+.pk-palette-volt {
+  --pk-paper: #111111;
+  --pk-ink: #f5f5f5;
+  --pk-sub: #c8c8c8;
+  --pk-accent: #c8ff00;
+  --pk-faint: #8a8a8a;
+  --pk-rule: rgba(255, 255, 255, 0.55);
+}
+
+.pk-palette-candy .pk-brick__grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 45, 149, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 45, 149, 0.08) 1px, transparent 1px);
+}
+
 </style>

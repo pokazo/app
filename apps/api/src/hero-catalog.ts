@@ -80,7 +80,7 @@ const SHARED_FIELDS: HeroFieldSpec[] = [
     name: "palette",
     required: false,
     in: "frontmatter",
-    type: "cream|ink|auto|ocean|forest|slate|amber|wine",
+    type: "cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt",
     expects: "Already set by pipeline — do NOT change in hero-compose",
   },
   {

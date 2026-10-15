@@ -8,6 +8,10 @@ const KNOWN = new Set([
   "slate",
   "amber",
   "wine",
+  "neon",
+  "sunset",
+  "candy",
+  "volt",
 ]);
 
 export function paletteClass(palette) {

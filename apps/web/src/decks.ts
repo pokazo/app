@@ -69,7 +69,11 @@ export type ThemePreviewId =
   | "forest"
   | "slate"
   | "amber"
-  | "wine";
+  | "wine"
+  | "neon"
+  | "sunset"
+  | "candy"
+  | "volt";
 
 export type DeckTheme = {
   id: string;
@@ -93,6 +97,10 @@ export const DECK_THEMES: DeckTheme[] = [
   { id: "slate", title: "Сланец", hint: "Тёмный SaaS без красного", preview: "slate", colors: ["#1e2228", "#f0f2f5", "#6b9bd1"] },
   { id: "amber", title: "Янтарь", hint: "Premium и finance", preview: "amber", colors: ["#1a1814", "#f5f0e6", "#c9a227"] },
   { id: "wine", title: "Бордо", hint: "Редакционный бордо", preview: "wine", colors: ["#1f1418", "#f6ecef", "#8b3a4a"] },
+  { id: "neon", title: "Неон", hint: "Кибер cyan / magenta", preview: "neon", colors: ["#0a0a12", "#00f0ff", "#ff2bd6"] },
+  { id: "sunset", title: "Закат", hint: "Яркий тёплый градиент", preview: "sunset", colors: ["#ff6b35", "#f72585", "#7b2cbf"] },
+  { id: "candy", title: "Конфети", hint: "Розовый жёлтый голубой", preview: "candy", colors: ["#ff2d95", "#ffd60a", "#00bbf9"] },
+  { id: "volt", title: "Вольт", hint: "Чёрный + лайм", preview: "volt", colors: ["#111111", "#c8ff00", "#f5f5f5"] },
 ];
 
 const THEME_IDS = new Set(DECK_THEMES.map((t) => t.id));

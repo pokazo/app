@@ -115,6 +115,41 @@ export function ThemeThumb(props: { preview: ThemePreviewId }) {
           <span className="theme-thumb__line">Бордо акцент</span>
         </>
       )}
+      {p === "neon" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Neon</span>
+          <span className="theme-thumb__title">Кибер-ночь</span>
+          <span className="theme-thumb__line">Cyan + magenta</span>
+        </>
+      )}
+      {p === "sunset" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Sunset</span>
+          <span className="theme-thumb__title">Яркий градиент</span>
+          <span className="theme-thumb__line">Как Авто, но тёплый</span>
+        </>
+      )}
+      {p === "candy" && (
+        <>
+          <span className="theme-thumb__kicker">Candy</span>
+          <span className="theme-thumb__title">Яркие блоки</span>
+          <span className="theme-thumb__chips">
+            <span className="theme-thumb__chip" />
+            <span className="theme-thumb__chip" />
+            <span className="theme-thumb__chip" />
+          </span>
+        </>
+      )}
+      {p === "volt" && (
+        <>
+          <span className="theme-thumb__bar" />
+          <span className="theme-thumb__kicker">Volt</span>
+          <span className="theme-thumb__title">Чёрный + лайм</span>
+          <span className="theme-thumb__line">Максимальный контраст</span>
+        </>
+      )}
     </span>
   );
 }

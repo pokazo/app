@@ -46,6 +46,10 @@ describe("picker theme", () => {
     expect(layoutPalette("slate")).toBe("slate");
     expect(layoutPalette("amber")).toBe("amber");
     expect(layoutPalette("wine")).toBe("wine");
+    expect(layoutPalette("neon")).toBe("neon");
+    expect(layoutPalette("sunset")).toBe("sunset");
+    expect(layoutPalette("candy")).toBe("candy");
+    expect(layoutPalette("volt")).toBe("volt");
   });
 });
 
@@ -66,5 +70,18 @@ describe("md-guard theme", () => {
     const out = guardMarkdown(`---\ntheme: default\ntitle: Hi\n---\n\n# Hi`, "ocean");
     expect(out).toMatch(/^theme: default$/m);
     expect(out).toMatch(/^palette: ocean$/m);
+  });
+
+  it("pins palette on every slide frontmatter (layout props are per-slide)", () => {
+    const out = guardMarkdown(
+      `---\ntheme: default\nlayout: hero\n---\n\n# One\n\n---\nlayout: stats\n---\n\n# Two\n\n---\nlayout: image-right\n---\n\n# Three`,
+      "ink-dark",
+    );
+    const blocks = [...out.matchAll(/^---\n([\s\S]*?)\n---/gm)].map((m) => m[1]);
+    expect(blocks).toHaveLength(3);
+    for (const fm of blocks) {
+      expect(fm).toMatch(/^palette: ink$/m);
+    }
+    expect(out).toMatch(/^theme: default$/m);
   });
 });
