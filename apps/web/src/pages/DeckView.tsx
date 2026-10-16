@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex } from "../deck-view";
+import { isTypingTarget, shouldAdvanceKey, shouldRetreatKey } from "../deck-present";
 import {
   isDeckId,
   progressiveSlideReveal,
@@ -71,7 +72,9 @@ export function DeckView() {
   );
   const mobileOverview = useMobileDeckOverview();
   const stageRef = useRef<HTMLIFrameElement>(null);
+  const stageHostRef = useRef<HTMLDivElement>(null);
   const [me, setMe] = useState<Me | null>(null);
+  const [presenting, setPresenting] = useState(false);
   /** True only when signed-in user owns this deck (GET /api/decks/:id). */
   const [isOwner, setIsOwner] = useState(false);
   const [meta, setMeta] = useState<ViewMeta | null>(null);
@@ -327,12 +330,20 @@ export function DeckView() {
   }, [current, stageReady, meta?.slides, showStage]);
 
   useEffect(() => {
+    function onFullscreenChange() {
+      setPresenting(document.fullscreenElement === stageHostRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight" || e.key === "PageDown") {
+      if (isTypingTarget(e.target)) return;
+      if (shouldAdvanceKey(e.key)) {
         e.preventDefault();
         go(current + 1);
-      }
-      if (e.key === "ArrowLeft" || e.key === "PageUp") {
+      } else if (shouldRetreatKey(e.key)) {
         e.preventDefault();
         go(current - 1);
       }
@@ -519,6 +530,25 @@ export function DeckView() {
     }
   }
 
+  async function enterPresent() {
+    const el = stageHostRef.current;
+    if (!el || typeof el.requestFullscreen !== "function") return;
+    try {
+      await el.requestFullscreen();
+    } catch {
+      /* denied / unavailable — stay in normal view */
+    }
+  }
+
+  async function exitPresent() {
+    if (!document.fullscreenElement) return;
+    try {
+      await document.exitFullscreen();
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
     <div className={shellClass}>
       <PkHeader me={me} onOut={me ? onOut : undefined} />
@@ -548,6 +578,11 @@ export function DeckView() {
               <button type="button" className="pk ghost" onClick={() => void copyLink()}>
                 {copied ? "Скопировано" : "Скопировать ссылку"}
               </button>
+              {meta && meta.status === "ready" && !presenting ? (
+                <button type="button" className="pk ghost" onClick={() => void enterPresent()}>
+                  На весь экран
+                </button>
+              ) : null}
               {meta && isOwner ? (
                 <>
                   <button
@@ -719,25 +754,47 @@ export function DeckView() {
         </nav>
         {showStage ? (
           <div
-            className={`deck-stage${me && meta?.status === "ready" && !mobilePresent ? " has-rewrite" : ""}`}
+            className={`deck-stage${me && meta?.status === "ready" && !mobilePresent && !presenting ? " has-rewrite" : ""}`}
           >
-            <div className="deck-stage-frame">
-              {id && meta && !err ? (
-                <iframe
-                  key={embedKey}
-                  ref={stageRef}
-                  title={meta.topic ?? "Презентация"}
-                  src={`${embedDeckUrl(embedBase)}${embedKey ? `&_r=${embedKey}` : ""}`}
-                  fetchPriority="high"
-                  onLoad={() => setStageReady(true)}
-                />
-              ) : null}
-              <div className="deck-stage-nav" aria-hidden>
-                <button type="button" className="deck-hit left" onClick={() => go(current - 1)} />
-                <button type="button" className="deck-hit right" onClick={() => go(current + 1)} />
+            <div className="deck-stage-host" ref={stageHostRef}>
+              <div className="deck-stage-frame">
+                {id && meta && !err ? (
+                  <iframe
+                    key={embedKey}
+                    ref={stageRef}
+                    title={meta.topic ?? "Презентация"}
+                    src={`${embedDeckUrl(embedBase)}${embedKey ? `&_r=${embedKey}` : ""}`}
+                    fetchPriority="high"
+                    onLoad={() => setStageReady(true)}
+                  />
+                ) : null}
+                <div className="deck-stage-nav" aria-hidden>
+                  {presenting ? (
+                    <button
+                      type="button"
+                      className="deck-hit deck-hit-advance"
+                      onClick={() => go(current + 1)}
+                    />
+                  ) : (
+                    <>
+                      <button type="button" className="deck-hit left" onClick={() => go(current - 1)} />
+                      <button type="button" className="deck-hit right" onClick={() => go(current + 1)} />
+                    </>
+                  )}
+                </div>
               </div>
+              {presenting ? (
+                <div className="deck-present-chrome">
+                  <span className="deck-pos">
+                    {current} / {last}
+                  </span>
+                  <button type="button" className="pk ghost" onClick={() => void exitPresent()}>
+                    Выйти
+                  </button>
+                </div>
+              ) : null}
             </div>
-            {meta && me && meta.status === "ready" && !mobilePresent ? (
+            {meta && me && meta.status === "ready" && !mobilePresent && !presenting ? (
               <form
                 className="deck-rewrite"
                 onSubmit={(e) => {
