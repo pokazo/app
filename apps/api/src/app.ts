@@ -53,6 +53,28 @@ import {
 const DECK_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+type DeckOwnerOk = { ok: true; id: string; deck: DeckRow };
+type DeckOwnerErr = { ok: false; res: Response };
+
+/** Session + row for the deck owner; 401/404/503 otherwise. */
+async function requireDeckOwner(
+  c: Context,
+  auth: ReturnType<typeof createAuth>,
+): Promise<DeckOwnerOk | DeckOwnerErr> {
+  if (!auth || !pool) return { ok: false, res: c.json({ error: "unavailable" }, 503) };
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session) return { ok: false, res: c.json({ error: "unauthorized" }, 401) };
+  const id = c.req.param("id") ?? "";
+  if (!DECK_UUID.test(id)) return { ok: false, res: c.json({ error: "not found" }, 404) };
+  const { rows } = await pool.query(`SELECT * FROM deck WHERE id=$1 AND user_id=$2`, [
+    id,
+    session.user.id,
+  ]);
+  const deck = rows[0] as DeckRow | undefined;
+  if (!deck) return { ok: false, res: c.json({ error: "not found" }, 404) };
+  return { ok: true, id, deck };
+}
+
 type DeckCreateFields = {
   topic?: string;
   locale?: string;
@@ -686,16 +708,18 @@ export function createApp() {
   });
 
   app.get("/api/decks/:id/speech", async (c) => {
-    const id = c.req.param("id");
-    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id } = owner;
     const dir = join(config.deckDataDir, id);
     if (!existsSync(join(dir, "slides.md"))) return c.json({ error: "not found" }, 404);
     return c.json(await readSpeechResponse(dir));
   });
 
   app.put("/api/decks/:id/speech", async (c) => {
-    const id = c.req.param("id");
-    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id } = owner;
     const dir = join(config.deckDataDir, id);
     if (!existsSync(join(dir, "slides.md"))) return c.json({ error: "not found" }, 404);
     try {
@@ -708,8 +732,9 @@ export function createApp() {
   });
 
   app.post("/api/decks/:id/speech/regenerate", async (c) => {
-    const id = c.req.param("id");
-    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id } = owner;
     const dir = join(config.deckDataDir, id);
     if (!existsSync(join(dir, "outline.json")) || !existsSync(join(dir, "slides.md"))) {
       return c.json({ error: "not found" }, 404);
@@ -739,8 +764,9 @@ export function createApp() {
   });
 
   app.get("/api/decks/:id/export/speech-pdf", async (c) => {
-    const id = c.req.param("id");
-    if (!DECK_UUID.test(id)) return c.json({ error: "not found" }, 404);
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id } = owner;
     const dir = join(config.deckDataDir, id);
     if (!existsSync(join(dir, "slides.md"))) return c.json({ error: "not found" }, 404);
     const speech = await readSpeechResponse(dir);
@@ -769,11 +795,10 @@ export function createApp() {
   });
 
   app.get("/api/decks/:id/export/:format", async (c) => {
-    const id = c.req.param("id");
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id } = owner;
     const format = c.req.param("format");
-    if (!DECK_UUID.test(id)) {
-      return c.json({ error: "not found" }, 404);
-    }
     if (!isExportFormat(format)) return c.json({ error: "bad format" }, 400);
     const dir = join(config.deckDataDir, id);
     if (!existsSync(join(dir, "slides.md")) || !existsSync(join(dir, "dist", "index.html"))) {

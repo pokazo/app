@@ -72,6 +72,8 @@ export function DeckView() {
   const mobileOverview = useMobileDeckOverview();
   const stageRef = useRef<HTMLIFrameElement>(null);
   const [me, setMe] = useState<Me | null>(null);
+  /** True only when signed-in user owns this deck (GET /api/decks/:id). */
+  const [isOwner, setIsOwner] = useState(false);
   const [meta, setMeta] = useState<ViewMeta | null>(null);
   const [err, setErr] = useState("");
   const [waiting, setWaiting] = useState(true);
@@ -116,6 +118,24 @@ export function DeckView() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!idOk || !me) {
+      setIsOwner(false);
+      return;
+    }
+    let cancelled = false;
+    void fetch(apiUrl(`/api/decks/${id}`), { credentials: "include" })
+      .then((r) => {
+        if (!cancelled) setIsOwner(r.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setIsOwner(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, idOk, me]);
 
   const loadView = useCallback(async () => {
     const r = await fetch(apiUrl(`/api/view/${id}`), { credentials: "include" });
@@ -345,7 +365,7 @@ export function DeckView() {
   }
 
   async function downloadExport(format: "pdf" | "pptx") {
-    if (!id || exporting || building) return;
+    if (!id || !isOwner || exporting || building) return;
     setExporting(format);
     setExportErr("");
     try {
@@ -528,7 +548,7 @@ export function DeckView() {
               <button type="button" className="pk ghost" onClick={() => void copyLink()}>
                 {copied ? "Скопировано" : "Скопировать ссылку"}
               </button>
-              {meta ? (
+              {meta && isOwner ? (
                 <>
                   <button
                     type="button"
@@ -578,7 +598,7 @@ export function DeckView() {
             : activity || "Собираем остальные слайды…"}
         </p>
       ) : null}
-      {speechOpen && id && !building ? (
+      {speechOpen && id && isOwner && !building ? (
         <SpeechModal
           deckId={id}
           topic={meta?.topic ?? "Презентация"}

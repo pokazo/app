@@ -28,28 +28,30 @@ describe("health", () => {
     expect(res.status).toBe(404);
   });
 
-  it("export rejects a non-uuid", async () => {
+  it("export without database is unavailable", async () => {
     const app = createApp();
     const res = await app.request("/api/decks/not-an-id/export/pdf");
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(503);
   });
 
-  it("export rejects unknown format", async () => {
+  it("export requires auth when database is unavailable still 503", async () => {
     const app = createApp();
-    const res = await app.request("/api/decks/11111111-1111-1111-1111-111111111111/export/gif");
-    expect(res.status).toBe(400);
+    const res = await app.request(
+      "/api/decks/11111111-1111-1111-1111-111111111111/export/gif",
+    );
+    expect(res.status).toBe(503);
   });
 
-  it("speech rejects a non-uuid", async () => {
+  it("speech without database is unavailable", async () => {
     const app = createApp();
     const res = await app.request("/api/decks/not-an-id/speech");
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(503);
   });
 
-  it("speech-pdf rejects a non-uuid", async () => {
+  it("speech-pdf without database is unavailable", async () => {
     const app = createApp();
     const res = await app.request("/api/decks/not-an-id/export/speech-pdf");
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(503);
   });
 });
 
