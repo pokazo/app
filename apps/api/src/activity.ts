@@ -48,6 +48,10 @@ const TOOL_LABELS: Array<{ tools: string[]; label: string }> = [
     label: "Выбираю стиль",
   },
   {
+    tools: ["outline-validate"],
+    label: "Проверяю план",
+  },
+  {
     tools: ["submit_outline"],
     label: "Пишу план",
   },

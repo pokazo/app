@@ -160,6 +160,8 @@ describe("outlineUserPrompt", () => {
     expect(prompt).toMatch(/конкретные факты/i);
     expect(prompt).toMatch(/visual=cards/);
     expect(prompt).toMatch(/cards — массив/);
+    expect(prompt).toMatch(/outline-validate/);
+    expect(prompt).toMatch(/issues\[\]\.expect/);
   });
 
   it("embeds research brief when provided", () => {
@@ -191,6 +193,7 @@ describe("outlineRevisePrompt", () => {
     expect(prompt).toContain("1. [text_only] Слайд 2 только текст");
     expect(prompt).toContain('"title":"X"');
     expect(prompt).toMatch(/Исправь/i);
+    expect(prompt).toMatch(/expect\.outlineFields|issues\[\]\.expect|expect\.outlineFields/i);
   });
 
   it("embeds research brief when provided", () => {

@@ -6,11 +6,12 @@ import {
   wrapToolsWithActivity,
 } from "./activity.js";
 import { Outline, type OutlineT } from "./outline.js";
+import { refineOutlineUntilValid } from "./outline-plan.js";
 import {
-  formatOutlinePlanIssues,
-  refineOutlineUntilValid,
-  validateOutlinePlan,
-} from "./outline-plan.js";
+  formatEnrichedPlanIssues,
+  outlineValidate,
+  OUTLINE_VALIDATE_TOOL_DESCRIPTION,
+} from "./outline-validate.js";
 import { outlineRevisePrompt, outlineUserPrompt } from "./compose-skill.js";
 import { withLayoutMcp } from "./layout-mcp.js";
 import type { McpCallLog } from "./slidev-mcp.js";
@@ -21,15 +22,17 @@ You have MCP tools for layouts:
 - layout-list — browse layouts
 - layout-get — full contract for one id
 - layout-match — ranked candidates for an intent
+- outline-validate — plan gate with exact expect contract per failing slide
 
 Rules:
 1. Before assigning visual on slides, call layout-list or layout-match (and layout-get for unfamiliar ids).
 2. Prefer variety; honor quotas in the user prompt (photos, structured payload, no text-only visuals).
 3. For visual=icon|features|process: every iconHint MUST be copied from that layout's iconHints allowlist (layout-get). Never invent Carbon names.
 4. Honor fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; spotlight: char caps + palette; pie: 3–5 slices + char caps).
-5. When ready, call submit_outline with the full outline object (title + slides).
-6. If submit_outline returns issues, fix and submit_outline again.
-7. Do not invent layout ids outside the catalog.`;
+5. After drafting the full outline, call outline-validate (outlineJson + slideCount). If ok:false, fix each slide using issues[].expect (outlineFields, antiPatterns, example, iconHints) and call outline-validate again.
+6. Only when outline-validate returns ok:true, call submit_outline with the full outline object (title + slides).
+7. If submit_outline returns ok:false with issues, fix using expect and re-validate then submit again.
+8. Do not invent layout ids outside the catalog.`;
 
 function skipOutlinePlan(): boolean {
   return process.env.SKIP_OUTLINE_PLAN === "1";
@@ -41,25 +44,23 @@ export function createSubmitOutlineTool(opts: {
 }) {
   return tool({
     description:
-      "Submit the final outline JSON after consulting layout MCP tools. Validates schema and plan rules.",
+      "Submit the final outline JSON after outline-validate returned ok:true. Re-runs the same plan gate; on fail returns structured issues with expect contracts.",
     parameters: Outline,
     execute: async (raw) => {
-      try {
-        const outline = Outline.parse(raw);
-        if (!skipOutlinePlan()) {
-          const issues = validateOutlinePlan(outline, { slideCount: opts.slideCount });
-          if (issues.length) {
-            return {
-              ok: false,
-              issues: formatOutlinePlanIssues(issues),
-            };
-          }
+      if (skipOutlinePlan()) {
+        const parsed = Outline.safeParse(raw);
+        if (!parsed.success) {
+          return { ok: false, issues: String(parsed.error) };
         }
-        opts.onAccepted(outline);
-        return { ok: true, slides: outline.slides.length, title: outline.title };
-      } catch (err) {
-        return { ok: false, issues: String(err) };
+        opts.onAccepted(parsed.data);
+        return { ok: true, slides: parsed.data.slides.length, title: parsed.data.title };
       }
+      const result = outlineValidate(raw, { slideCount: opts.slideCount });
+      if (!result.ok) {
+        return { ok: false, issues: result.issues };
+      }
+      opts.onAccepted(result.outline);
+      return { ok: true, slides: result.slides, title: result.title };
     },
   });
 }
@@ -162,7 +163,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
           audience: opts.audience,
           slideCount: opts.slideCount,
           previous: current,
-          issues: formatOutlinePlanIssues(issues),
+          issues: formatEnrichedPlanIssues(current, issues),
           researchMarkdown: opts.researchMarkdown,
         }),
       });
@@ -170,7 +171,12 @@ export async function generateOutlineWithLayoutMcp(opts: {
     },
   });
   if (refined.issues.length) {
-    throw new Error(`Outline plan failed validation:\n${formatOutlinePlanIssues(refined.issues)}`);
+    throw new Error(
+      `Outline plan failed validation:\n${formatEnrichedPlanIssues(refined.outline, refined.issues)}`,
+    );
   }
   return { outline: refined.outline, via: "generateObject_fallback", mcpCalls };
 }
+
+/** Re-export for tests / MCP description parity. */
+export { OUTLINE_VALIDATE_TOOL_DESCRIPTION };

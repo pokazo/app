@@ -7,6 +7,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { layoutGet, layoutList, layoutMatch } from "./layout-catalog.js";
+import {
+  OUTLINE_VALIDATE_TOOL_DESCRIPTION,
+  outlineValidate,
+} from "./outline-validate.js";
 
 const server = new McpServer({
   name: "pokazo-layouts",
@@ -80,6 +84,82 @@ server.registerTool(
     return {
       content: [{ type: "text" as const, text: JSON.stringify(hits, null, 2) }],
     };
+  },
+);
+
+server.registerTool(
+  "outline-validate",
+  {
+    description: OUTLINE_VALIDATE_TOOL_DESCRIPTION,
+    inputSchema: {
+      // Stringified JSON outline — OpenAI strict tools dislike deep free-form objects.
+      outlineJson: z
+        .string()
+        .describe("Full outline as JSON string: { title, slides: [...] }"),
+      slideCount: z
+        .number()
+        .describe("Expected slide count; use 0 to skip slide_count check"),
+    },
+  },
+  async ({ outlineJson, slideCount }) => {
+    try {
+      let raw: unknown;
+      try {
+        raw = JSON.parse(outlineJson);
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                ok: false,
+                issues: [
+                  {
+                    code: "empty_slide",
+                    message: `outlineJson is not valid JSON: ${String(err)}`,
+                    expect: {
+                      outlineFields: "Pass a JSON string of { title, slides }",
+                      antiPatterns: "Trailing commas; truncated JSON; markdown fences",
+                      example: '{"title":"…","slides":[…]}',
+                    },
+                  },
+                ],
+              }),
+            },
+          ],
+        };
+      }
+      const result = outlineValidate(raw, {
+        slideCount: slideCount > 0 ? slideCount : undefined,
+      });
+      if (result.ok) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                ok: true,
+                title: result.title,
+                slides: result.slides,
+              }),
+            },
+          ],
+        };
+      }
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ ok: false, issues: result.issues }, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        isError: true,
+        content: [{ type: "text" as const, text: String(err) }],
+      };
+    }
   },
 );
 

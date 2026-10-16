@@ -90,7 +90,7 @@ export function outlineUserPrompt(opts: {
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}Составь оглавление презентации.
 
-Сначала через MCP: layout-list / layout-match / layout-get — выбери visual по контракту layout’а. Читай fields[].limit и не превышай их в heading/points/kicker. Затем submit_outline.
+Сначала через MCP: layout-list / layout-match / layout-get — выбери visual по контракту layout’а. Читай fields[].limit и не превышай их в heading/points/kicker. Затем outline-validate (outlineJson + slideCount); при ok:false правь по issues[].expect и вызывай снова. Только при ok:true — submit_outline.
 
 Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero|cards|quote|fact|icon|two-cols|statement|features|process|spotlight|pie), imageQuery, iconHint, kicker, source, steps, stats, skills, cards, features, process, palette, pie, chartTitle.
 steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
@@ -139,14 +139,14 @@ export function outlineRevisePrompt(opts: {
 Аудитория: ${audienceForPrompt(opts.audience)}
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}
-Ошибки тестов плана:
+Ошибки тестов плана (каждая с expect.outlineFields / antiPatterns / example / iconHints — правь строго по expect):
 ${opts.issues}
 
 Правила (обязательно устранить все ошибки):
 - Не оставляй пустых слайдов (heading + payload).
 - Не оставляй слайдов только с текстом: нельзя none|default|center|section|intro|end.
 - Для image/hero/cover/spotlight нужен imageQuery; для icon — iconHint из allowlist; timeline — ≥3 steps; stats — ≥2; skills — ≥2; cards — ≥2; features — 3; process — ≥3; spotlight — palette + cards ровно 4 + points[0]; pie — 3–5 slices + points[0].
-- iconHint для icon|features|process — только из: ${LAYOUT_ICON_HINTS}.
+- iconHint для icon|features|process — только из: ${LAYOUT_ICON_HINTS} (или из issue.expect.iconHints).
 - Добавь source на слайды stats/timeline с цифрами.
 - Факты и source бери из Research brief выше, не выдумывай.
 

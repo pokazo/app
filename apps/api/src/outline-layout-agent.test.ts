@@ -41,5 +41,57 @@ describe("createSubmitOutlineTool", () => {
     );
     expect(result).toMatchObject({ ok: false });
     expect(accepted).toBeNull();
+    const issues = (result as { issues?: unknown }).issues;
+    expect(Array.isArray(issues)).toBe(true);
+    expect(JSON.stringify(issues)).toMatch(/expect|outlineFields/i);
+  });
+
+  it("returns structured expect when features underfilled", async () => {
+    let accepted: OutlineT | null = null;
+    const t = createSubmitOutlineTool({
+      slideCount: 3,
+      onAccepted: (o) => {
+        accepted = o;
+      },
+    });
+    const result = await t.execute!(
+      {
+        title: "T",
+        slides: [
+          {
+            heading: "Myths",
+            points: [],
+            intent: "m",
+            visual: "features",
+            ...emptyVisual,
+            features: [
+              { title: "A", body: "1", iconHint: "carbon-idea" },
+              { title: "B", body: "2", iconHint: "carbon-security" },
+            ],
+          },
+          {
+            heading: "Photo",
+            points: ["a"],
+            intent: "g",
+            visual: "image-right",
+            ...emptyVisual,
+            imageQuery: "gym",
+          },
+          {
+            heading: "Quote",
+            points: ["line"],
+            intent: "q",
+            visual: "quote",
+            ...emptyVisual,
+          },
+        ],
+      },
+      {} as never,
+    );
+    expect(result).toMatchObject({ ok: false });
+    expect(accepted).toBeNull();
+    const issues = (result as { ok: false; issues: Array<{ expect?: { outlineFields?: string } }> })
+      .issues;
+    expect(issues.some((i) => i.expect?.outlineFields?.includes("features"))).toBe(true);
   });
 });

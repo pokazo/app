@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 import type { McpCallLog } from "./slidev-mcp.js";
 import { wrapComposeTools } from "./slidev-mcp.js";
 
-const LAYOUT_TOOL_ALLOW = new Set(["layout-list", "layout-get", "layout-match"]);
+const LAYOUT_TOOL_ALLOW = new Set([
+  "layout-list",
+  "layout-get",
+  "layout-match",
+  "outline-validate",
+]);
 
 function apiDir(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..");
