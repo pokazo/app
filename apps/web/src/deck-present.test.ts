@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isTypingTarget, shouldAdvanceKey, shouldRetreatKey } from "./deck-present";
+import {
+  isPresentChromeRevealZone,
+  isTypingTarget,
+  shouldAdvanceKey,
+  shouldRetreatKey,
+} from "./deck-present";
 
 describe("isTypingTarget", () => {
   it("ignores null and non-elements", () => {
@@ -30,5 +35,19 @@ describe("shouldAdvanceKey / shouldRetreatKey", () => {
     expect(shouldRetreatKey("PageUp")).toBe(true);
     expect(shouldRetreatKey(" ")).toBe(false);
     expect(shouldRetreatKey("ArrowRight")).toBe(false);
+  });
+});
+
+describe("isPresentChromeRevealZone", () => {
+  const host = { top: 100, height: 500 };
+
+  it("reveals in bottom band", () => {
+    expect(isPresentChromeRevealZone(580, host, 120)).toBe(true);
+    expect(isPresentChromeRevealZone(481, host, 120)).toBe(true);
+  });
+
+  it("hides above the band", () => {
+    expect(isPresentChromeRevealZone(479, host, 120)).toBe(false);
+    expect(isPresentChromeRevealZone(200, host, 120)).toBe(false);
   });
 });

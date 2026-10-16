@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex } from "../deck-view";
-import { isTypingTarget, shouldAdvanceKey, shouldRetreatKey } from "../deck-present";
+import {
+  isPresentChromeRevealZone,
+  isTypingTarget,
+  PRESENT_CHROME_HIDE_MS,
+  shouldAdvanceKey,
+  shouldRetreatKey,
+} from "../deck-present";
 import {
   isDeckId,
   progressiveSlideReveal,
@@ -73,8 +79,10 @@ export function DeckView() {
   const mobileOverview = useMobileDeckOverview();
   const stageRef = useRef<HTMLIFrameElement>(null);
   const stageHostRef = useRef<HTMLDivElement>(null);
+  const presentChromeHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [presenting, setPresenting] = useState(false);
+  const [presentChromeVisible, setPresentChromeVisible] = useState(false);
   /** True only when signed-in user owns this deck (GET /api/decks/:id). */
   const [isOwner, setIsOwner] = useState(false);
   const [meta, setMeta] = useState<ViewMeta | null>(null);
@@ -337,6 +345,36 @@ export function DeckView() {
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
+  const clearPresentChromeHide = useCallback(() => {
+    if (presentChromeHideRef.current != null) {
+      clearTimeout(presentChromeHideRef.current);
+      presentChromeHideRef.current = null;
+    }
+  }, []);
+
+  const schedulePresentChromeHide = useCallback(() => {
+    clearPresentChromeHide();
+    presentChromeHideRef.current = setTimeout(() => {
+      presentChromeHideRef.current = null;
+      setPresentChromeVisible(false);
+    }, PRESENT_CHROME_HIDE_MS);
+  }, [clearPresentChromeHide]);
+
+  const revealPresentChrome = useCallback(() => {
+    setPresentChromeVisible(true);
+    schedulePresentChromeHide();
+  }, [schedulePresentChromeHide]);
+
+  useEffect(() => {
+    if (!presenting) {
+      clearPresentChromeHide();
+      setPresentChromeVisible(false);
+      return;
+    }
+    revealPresentChrome();
+    return () => clearPresentChromeHide();
+  }, [presenting, revealPresentChrome, clearPresentChromeHide]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (isTypingTarget(e.target)) return;
@@ -405,7 +443,7 @@ export function DeckView() {
   }
 
   const structureReady = Boolean(
-    me && meta && meta.status === "ready" && !building && !rewriteBusy,
+    me && isOwner && meta && meta.status === "ready" && !building && !rewriteBusy,
   );
 
   async function runStructure(
@@ -513,7 +551,9 @@ export function DeckView() {
   }
 
   const slides = meta?.slides ?? [];
-  const rewriteReady = Boolean(me && meta && meta.status === "ready" && !building && !rewriteBusy);
+  const rewriteReady = Boolean(
+    me && isOwner && meta && meta.status === "ready" && !building && !rewriteBusy,
+  );
   const shellClass = [
     "deck-shell",
     mobileOverview ? "is-mobile-overview" : "",
@@ -546,6 +586,16 @@ export function DeckView() {
       await document.exitFullscreen();
     } catch {
       /* ignore */
+    }
+  }
+
+  function onPresentHostMouseMove(e: MouseEvent<HTMLDivElement>) {
+    if (!presenting) return;
+    const host = stageHostRef.current;
+    if (!host) return;
+    const rect = host.getBoundingClientRect();
+    if (isPresentChromeRevealZone(e.clientY, { top: rect.top, height: rect.height })) {
+      revealPresentChrome();
     }
   }
 
@@ -721,7 +771,7 @@ export function DeckView() {
                   active={s.index === current}
                 />
               </button>
-              {me && meta?.status === "ready" ? (
+              {isOwner && meta?.status === "ready" ? (
                 <div className="deck-thumb-actions">
                   <button
                     type="button"
@@ -740,7 +790,7 @@ export function DeckView() {
             </div>
             );
           })}
-          {me && meta?.status === "ready" ? (
+          {isOwner && meta?.status === "ready" ? (
             <button
               type="button"
               className="deck-thumb-add"
@@ -754,9 +804,13 @@ export function DeckView() {
         </nav>
         {showStage ? (
           <div
-            className={`deck-stage${me && meta?.status === "ready" && !mobilePresent && !presenting ? " has-rewrite" : ""}`}
+            className={`deck-stage${isOwner && meta?.status === "ready" && !mobilePresent && !presenting ? " has-rewrite" : ""}`}
           >
-            <div className="deck-stage-host" ref={stageHostRef}>
+            <div
+              className="deck-stage-host"
+              ref={stageHostRef}
+              onMouseMove={onPresentHostMouseMove}
+            >
               <div className="deck-stage-frame">
                 {id && meta && !err ? (
                   <iframe
@@ -784,17 +838,39 @@ export function DeckView() {
                 </div>
               </div>
               {presenting ? (
-                <div className="deck-present-chrome">
+                <div
+                  className={`deck-present-chrome${presentChromeVisible ? "" : " is-hidden"}`}
+                  onMouseEnter={clearPresentChromeHide}
+                  onMouseLeave={schedulePresentChromeHide}
+                >
+                  <button
+                    type="button"
+                    className="pk ghost deck-present-nav"
+                    aria-label="Предыдущий слайд"
+                    disabled={current <= 1}
+                    onClick={() => go(current - 1)}
+                  >
+                    ←
+                  </button>
                   <span className="deck-pos">
                     {current} / {last}
                   </span>
+                  <button
+                    type="button"
+                    className="pk ghost deck-present-nav"
+                    aria-label="Следующий слайд"
+                    disabled={current >= last}
+                    onClick={() => go(current + 1)}
+                  >
+                    →
+                  </button>
                   <button type="button" className="pk ghost" onClick={() => void exitPresent()}>
                     Выйти
                   </button>
                 </div>
               ) : null}
             </div>
-            {meta && me && meta.status === "ready" && !mobilePresent && !presenting ? (
+            {meta && isOwner && meta.status === "ready" && !mobilePresent && !presenting ? (
               <form
                 className="deck-rewrite"
                 onSubmit={(e) => {

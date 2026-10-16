@@ -1201,23 +1201,40 @@ footer.foot a:hover { text-decoration: underline; }
 }
 .deck-present-chrome {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  left: 50%;
+  bottom: 28px;
   z-index: 2;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px 6px 12px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
+  transform: translateX(-50%);
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+.deck-present-chrome.is-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 .deck-present-chrome .deck-pos {
   color: #fff;
+  min-width: 4.5ch;
+  text-align: center;
 }
 .deck-present-chrome .pk.ghost {
   color: #fff;
   border-color: rgba(255, 255, 255, 0.35);
+}
+.deck-present-chrome .pk.ghost:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.deck-present-nav {
+  min-width: 2.5rem;
+  padding-inline: 0.6rem;
 }
 .deck-stage-frame {
   position: relative;
