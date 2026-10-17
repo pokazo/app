@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSubmitOutlineTool } from "./outline-layout-agent.js";
+import { createSubmitOutlineTool, summarizeOutlineIssues } from "./outline-layout-agent.js";
 import type { OutlineT } from "./outline.js";
 
 const emptyVisual = {
@@ -93,5 +93,23 @@ describe("createSubmitOutlineTool", () => {
     const issues = (result as { ok: false; issues: Array<{ expect?: { outlineFields?: string } }> })
       .issues;
     expect(issues.some((i) => i.expect?.outlineFields?.includes("features"))).toBe(true);
+  });
+});
+
+describe("summarizeOutlineIssues", () => {
+  it("returns dash for empty", () => {
+    expect(summarizeOutlineIssues([])).toBe("-");
+  });
+
+  it("compacts and caps issues", () => {
+    const issues = Array.from({ length: 8 }, (_, i) => ({
+      slide: i + 1,
+      code: "empty_slide",
+      message: `slide   ${i + 1}\nprocess пустой`,
+    }));
+    const s = summarizeOutlineIssues(issues, 3);
+    expect(s).toContain("#1 empty_slide: slide 1 process пустой");
+    expect(s).toContain("+5 more");
+    expect(s).not.toContain("\n");
   });
 });

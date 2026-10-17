@@ -39,6 +39,102 @@ function skipOutlinePlan(): boolean {
   return process.env.SKIP_OUTLINE_PLAN === "1";
 }
 
+/** One-line-per-issue summary for server logs (no expect/iconHints noise). */
+export function summarizeOutlineIssues(
+  issues: Array<{ slide?: number; code?: string; message?: string }>,
+  max = 6,
+): string {
+  if (!issues.length) return "-";
+  const parts = issues.slice(0, max).map((i) => {
+    const msg = (i.message ?? "").replace(/\s+/g, " ").slice(0, 160);
+    return `#${i.slide ?? "?"} ${i.code ?? "issue"}: ${msg}`;
+  });
+  if (issues.length > max) parts.push(`+${issues.length - max} more`);
+  return parts.join(" | ");
+}
+
+/** Shared counters so a fallback can say *why* submit_outline never landed. */
+export type OutlineAgentTrace = {
+  steps: number;
+  validateCalls: number;
+  validateOk: number;
+  lastValidateIssues: string;
+  submitCalls: number;
+  lastSubmitIssues: string;
+  finishReason: string;
+  lastText: string;
+};
+
+function newTrace(): OutlineAgentTrace {
+  return {
+    steps: 0,
+    validateCalls: 0,
+    validateOk: 0,
+    lastValidateIssues: "-",
+    submitCalls: 0,
+    lastSubmitIssues: "-",
+    finishReason: "-",
+    lastText: "",
+  };
+}
+
+function formatTrace(t: OutlineAgentTrace): string {
+  return (
+    `steps=${t.steps} finish=${t.finishReason} ` +
+    `validate=${t.validateOk}/${t.validateCalls}ok submit_calls=${t.submitCalls} ` +
+    `lastValidateIssues=${t.lastValidateIssues} lastSubmitIssues=${t.lastSubmitIssues}` +
+    (t.lastText ? ` lastText=${JSON.stringify(t.lastText.slice(0, 200))}` : "")
+  );
+}
+
+function recordToolResults(
+  trace: OutlineAgentTrace,
+  results: Array<{ toolName: string; result?: unknown }>,
+): void {
+  for (const r of results) {
+    if (r.toolName !== "outline-validate" && r.toolName !== "submit_outline") continue;
+    const body = unwrapToolResult(r.result);
+    const ok = body?.ok === true;
+    const issues = Array.isArray(body?.issues)
+      ? summarizeOutlineIssues(body.issues as Array<{ slide?: number; code?: string; message?: string }>)
+      : typeof body?.issues === "string"
+        ? body.issues.slice(0, 300)
+        : "-";
+    if (r.toolName === "outline-validate") {
+      trace.validateCalls += 1;
+      if (ok) trace.validateOk += 1;
+      else trace.lastValidateIssues = issues;
+    } else {
+      trace.submitCalls += 1;
+      if (!ok) trace.lastSubmitIssues = issues;
+    }
+    console.info(
+      `[outline] ${r.toolName} ok=${ok}${ok ? "" : ` issues=${issues}`}`,
+    );
+  }
+}
+
+/** MCP tools wrap payloads as { content:[{type:"text",text:"<json>"}] }; submit_outline returns plain object. */
+function unwrapToolResult(result: unknown): { ok?: boolean; issues?: unknown } | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  if ("ok" in r) return r as { ok?: boolean; issues?: unknown };
+  const content = r.content;
+  if (Array.isArray(content)) {
+    for (const c of content) {
+      const text = (c as { text?: unknown })?.text;
+      if (typeof text !== "string") continue;
+      try {
+        const parsed = JSON.parse(text) as { ok?: boolean; issues?: unknown };
+        if (parsed && typeof parsed === "object") return parsed;
+      } catch {
+        /* not json */
+      }
+    }
+  }
+  return null;
+}
+
 export function createSubmitOutlineTool(opts: {
   slideCount: number;
   onAccepted: (outline: OutlineT) => void;
@@ -84,6 +180,8 @@ export async function generateOutlineWithLayoutMcp(opts: {
 }> {
   const mcpCalls: McpCallLog[] = [];
   let accepted: OutlineT | null = null;
+  const trace = newTrace();
+  const maxSteps = opts.maxSteps ?? 24;
 
   await withLayoutMcp(
     async (layoutTools) => {
@@ -109,7 +207,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
           model: opts.model,
           system: OUTLINE_LAYOUT_SYSTEM,
           tools: tools as never,
-          maxSteps: opts.maxSteps ?? 24,
+          maxSteps,
           prompt: outlineUserPrompt({
             topic: opts.topic,
             locale: opts.locale,
@@ -119,13 +217,23 @@ export async function generateOutlineWithLayoutMcp(opts: {
           }),
           onStepFinish: async (step) => {
             const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-            console.info(`[llm] outline step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
+            trace.steps += 1;
+            trace.finishReason = String(step.finishReason);
+            if (step.text?.trim()) trace.lastText = step.text.trim();
+            console.info(
+              `[llm] outline step ${trace.steps}/${maxSteps} finish=${step.finishReason} tools=${names.join(",") || "-"}`,
+            );
+            recordToolResults(
+              trace,
+              (step.toolResults ?? []) as Array<{ toolName: string; result?: unknown }>,
+            );
             if (!activity) return;
             if (names.length) await activity.set(activityLabelForTools(names));
             if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
           },
         });
       } catch (err) {
+        console.error(`[outline] agent threw ${formatTrace(trace)}`);
         logAiError("outline", err, { topic: opts.topic, slideCount: opts.slideCount });
         throw err;
       }
@@ -140,7 +248,12 @@ export async function generateOutlineWithLayoutMcp(opts: {
     return { outline: accepted, via: "submit_outline", mcpCalls };
   }
 
-  console.warn("[generate] outline MCP submit_outline missing — falling back to generateObject");
+  const hitStepCap = trace.steps >= maxSteps;
+  console.warn(
+    `[generate] outline MCP submit_outline missing — falling back to generateObject ` +
+      `reason=${trace.submitCalls === 0 ? "never_called_submit" : "submit_rejected"}${hitStepCap ? " step_cap" : ""} ` +
+      formatTrace(trace),
+  );
   const first = await generateObject({
     model: opts.reviseModel ?? opts.model,
     schema: Outline,
@@ -160,6 +273,9 @@ export async function generateOutlineWithLayoutMcp(opts: {
     slideCount: opts.slideCount,
     maxAttempts: 3,
     revise: async (current, issues) => {
+      console.warn(
+        `[outline] fallback revise issues=${summarizeOutlineIssues(issues)}`,
+      );
       const revised = await generateObject({
         model: opts.reviseModel ?? opts.model,
         schema: Outline,
@@ -176,7 +292,15 @@ export async function generateOutlineWithLayoutMcp(opts: {
       return revised.object;
     },
   });
+  console.info(
+    `[outline] fallback done attempts=${refined.attempts} ok=${refined.issues.length === 0}` +
+      (refined.issues.length ? ` issues=${summarizeOutlineIssues(refined.issues)}` : ""),
+  );
   if (refined.issues.length) {
+    console.error(
+      `[outline] FAILED after fallback attempts=${refined.attempts} agent: ${formatTrace(trace)} ` +
+        `finalIssues=${summarizeOutlineIssues(refined.issues)}`,
+    );
     throw new Error(
       `Outline plan failed validation:\n${formatEnrichedPlanIssues(refined.outline, refined.issues)}`,
     );
