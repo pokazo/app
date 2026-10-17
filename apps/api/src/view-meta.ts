@@ -140,8 +140,15 @@ export function slidesForView(opts: {
     slides = withSlideImages(outlineSlides, images);
   }
 
-  if (!progressive) return slides;
+  // Ready decks: never list outline rows beyond slides.md — filmstrip delete/move
+  // validates against md blocks and returns "bad slide" for phantom indices.
   const mdCount = images.length;
+  if (!progressive) {
+    if (mdCount > 0 && slides.length > mdCount) {
+      return slides.slice(0, mdCount);
+    }
+    return slides;
+  }
   const built = Math.max(1, Math.floor(builtSlideCount ?? 1));
   if (orphan) {
     return slides.filter((s) => s.slidevIndex <= built);

@@ -12,19 +12,33 @@ import { applySlideStructure, type StructureOp } from "./slide-structure.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { billingLog, finalizeDeckBilling } from "./billing.js";
 
-let queue: Queue | null = null;
-let workerStarted = false;
+let generateQueue: Queue | null = null;
+let editQueue: Queue | null = null;
+let workersStarted = false;
 
 function redis() {
   return new Redis(config.redisUrl, { maxRetriesPerRequest: null });
 }
 
+/**
+ * Generate and edit run on separate BullMQ queues so compose load cannot starve
+ * filmstrip delete/move/insert or single-slide rewrite.
+ * Many generates run in parallel (`DECK_GENERATE_CONCURRENCY`, default 8).
+ * The generate worker still accepts legacy rewrite/structure job names that
+ * were already waiting on `decks` before the split.
+ */
 export function startDeckWorker(): Queue | null {
   if (!config.redisUrl) return null;
   try {
-    if (!queue) queue = new Queue("decks", { connection: redis() });
-    if (!workerStarted) {
-      workerStarted = true;
+    if (!generateQueue) generateQueue = new Queue("decks", { connection: redis() });
+    if (!editQueue) editQueue = new Queue("deck-edits", { connection: redis() });
+    if (!workersStarted) {
+      workersStarted = true;
+      const generateConcurrency = config.deckGenerateConcurrency;
+      const editConcurrency = config.deckEditConcurrency;
+      console.info(
+        `[queue] workers generate=${generateConcurrency} edits=${editConcurrency}`,
+      );
       new Worker(
         "decks",
         async (job) => {
@@ -46,15 +60,42 @@ export function startDeckWorker(): Queue | null {
         },
         {
           connection: redis(),
-          concurrency: 1,
+          concurrency: generateConcurrency,
+        },
+      );
+      new Worker(
+        "deck-edits",
+        async (job) => {
+          if (job.name === "rewrite-slide") {
+            const id = String(job.data.id);
+            const slide = Number(job.data.slide);
+            const instruction = String(job.data.instruction ?? "");
+            await processRewriteSlide(id, slide, instruction);
+            return;
+          }
+          if (job.name === "structure-slide") {
+            await processStructureSlide(String(job.data.id), job.data.op as StructureOp);
+            return;
+          }
+          throw new Error(`unknown deck-edits job: ${job.name}`);
+        },
+        {
+          connection: redis(),
+          concurrency: editConcurrency,
         },
       );
     }
-    return queue;
+    return generateQueue;
   } catch (err) {
     console.error("redis worker", err);
     return null;
   }
+}
+
+function startEditQueue(): Queue | null {
+  const gen = startDeckWorker();
+  if (!gen) return null;
+  return editQueue;
 }
 
 export async function processDeck(
@@ -194,7 +235,7 @@ export async function enqueueRewriteSlide(opts: {
 }): Promise<void> {
   const jobId = `rewrite-${opts.id}`;
   try {
-    const q = startDeckWorker();
+    const q = startEditQueue();
     if (q) {
       await q.add(
         "rewrite-slide",
@@ -249,7 +290,7 @@ export async function enqueueStructureSlide(opts: {
 }): Promise<void> {
   const jobId = `structure-${opts.id}`;
   try {
-    const q = startDeckWorker();
+    const q = startEditQueue();
     if (q) {
       await q.add(
         "structure-slide",

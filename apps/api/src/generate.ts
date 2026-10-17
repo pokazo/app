@@ -350,12 +350,25 @@ export async function generateDeck(opts: {
 
   const base = deckServeBase(opts.id);
   const renderThumbs = async (slideCount?: number) => {
-    const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
-    await tryRenderDeckFilmstripThumbs({
-      workDir: opts.workDir,
-      deckId: opts.id,
-      slideCount,
-    });
+    const { ensureDeckFilmstripThumbs, tryRenderDeckFilmstripThumbs } =
+      await import("./deck-thumbs.js");
+    try {
+      // Prefer ensure: write only missing WebPs so a mid-pass crash still gets filled.
+      await ensureDeckFilmstripThumbs({
+        workDir: opts.workDir,
+        deckId: opts.id,
+        slideCount,
+      });
+    } catch (err) {
+      console.warn(
+        `[generate] thumbs ensure failed: ${String(err).slice(0, 300)} — retry full pass`,
+      );
+      await tryRenderDeckFilmstripThumbs({
+        workDir: opts.workDir,
+        deckId: opts.id,
+        slideCount,
+      });
+    }
   };
   const buildAndGate = async (label: string) => {
     await setActivity(activityLabelForPhase(label === "preview" ? "preview" : "final_build"));

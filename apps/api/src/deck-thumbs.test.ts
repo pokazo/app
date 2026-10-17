@@ -6,8 +6,10 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import {
   FILMSTRIP_THUMB_WIDTH,
+  filmstripThumbAbsV2,
   filmstripThumbPath,
   filmstripThumbPathV2,
+  missingFilmstripThumbIndices,
   renderDeckFilmstripThumbs,
 } from "./deck-thumbs.js";
 import { buildSlidev, writeSlides } from "./slidev.js";
@@ -71,6 +73,21 @@ describe("renderDeckFilmstripThumbs requires dist", () => {
     await expect(
       renderDeckFilmstripThumbs({ workDir: dir, deckId: "x", slideCount: 1 }),
     ).rejects.toThrow(/dist not ready/);
+  });
+});
+
+describe("missingFilmstripThumbIndices", () => {
+  it("lists gaps under dist/thumbs/v2", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pokazo-thumb-gap-"));
+    const dist = join(dir, "dist");
+    mkdirSync(join(dist, "thumbs", "v2"), { recursive: true });
+    writeFileSync(filmstripThumbAbsV2(dist, 1), Buffer.from("a"));
+    writeFileSync(filmstripThumbAbsV2(dist, 2), Buffer.from("b"));
+    // 3 missing, 4 missing
+    expect(missingFilmstripThumbIndices(dist, 4)).toEqual([3, 4]);
+    writeFileSync(filmstripThumbAbsV2(dist, 3), Buffer.from("c"));
+    writeFileSync(filmstripThumbAbsV2(dist, 4), Buffer.from("d"));
+    expect(missingFilmstripThumbIndices(dist, 4)).toEqual([]);
   });
 });
 

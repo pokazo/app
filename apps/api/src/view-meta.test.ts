@@ -241,10 +241,18 @@ layout: default
   });
 
   it("returns full deck when not progressive", () => {
+    expect(
+      slidesForView({ outlineSlides: outline, markdown: growing, progressive: false }),
+    ).toEqual([
+      { index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 },
+      { index: 2, heading: "Body", image: "/b.jpg", imageThumb: null, slidevIndex: 2 },
+      { index: 3, heading: "End", image: null, imageThumb: null, slidevIndex: 3 },
+    ]);
+  });
+
+  it("clamps ready view to md when outline is ahead of slides.md", () => {
     expect(slidesForView({ outlineSlides: outline, markdown: md, progressive: false })).toEqual([
       { index: 1, heading: "Hero", image: "/h.jpg", imageThumb: null, slidevIndex: 1 },
-      { index: 2, heading: "Body", image: null, imageThumb: null, slidevIndex: 2 },
-      { index: 3, heading: "End", image: null, imageThumb: null, slidevIndex: 3 },
     ]);
   });
 
