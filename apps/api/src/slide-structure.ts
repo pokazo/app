@@ -7,6 +7,7 @@ import { writeRewriteStatus } from "./rewrite-status.js";
 import { Outline, parseOutline, type OutlineSlide, type OutlineT } from "./outline.js";
 import { SPEECH_JSON, parseSpeechJson, type SpeechDocT } from "./speech.js";
 import { buildSlidev, deckServeBase, writeSlides } from "./slidev.js";
+import { withDeckBuildPublish } from "./deck-ws-publish.js";
 import { sanitizePickerTheme } from "./themes.js";
 
 export const SLIDE_COUNT_MIN = 3;
@@ -282,7 +283,9 @@ export async function applySlideStructure(opts: {
 
   // Must match generate/rewrite: absolute /p/:id/ so BASE_URL keeps images + router
   // under the deck path (base "./" resolves /slide-N.jpg to api origin → 404).
-  await buildSlidev(workDir, deckServeBase(id));
+  await withDeckBuildPublish(id, "structure", async () => {
+    await buildSlidev(workDir, deckServeBase(id));
+  });
 
   const sourceDir = filmstripThumbBackupDir(workDir);
   let thumbsOk = false;

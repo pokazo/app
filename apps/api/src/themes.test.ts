@@ -54,6 +54,16 @@ describe("picker theme", () => {
 });
 
 describe("md-guard theme", () => {
+  it("pins lean Slidev tooling flags in headmatter", () => {
+    const out = guardMarkdown(`---\ntheme: default\ntitle: Hi\nmonaco: true\n---\n\n# Hi`, "default");
+    expect(out).toMatch(/^monaco: false$/m);
+    expect(out).toMatch(/^twoslash: false$/m);
+    expect(out).toMatch(/^remoteAssets: false$/m);
+    expect(out).toMatch(/^record: false$/m);
+    expect(out).toMatch(/^drawings:\n {2}enabled: false$/m);
+    expect(out).not.toMatch(/monaco: true/);
+  });
+
   it("pins the chosen Slidev theme in headmatter", () => {
     const out = guardMarkdown(`---\ntheme: evil\ntitle: Hi\n---\n\n# Hi`, "seriph");
     expect(out).toMatch(/^theme: seriph$/m);

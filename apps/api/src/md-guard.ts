@@ -108,6 +108,37 @@ export function sanitizeHeroVariantFrontmatter(md: string): string {
   });
 }
 
+const LEAN_HEADMATTER = `monaco: false
+twoslash: false
+remoteAssets: false
+record: false
+drawings:
+  enabled: false`;
+
+/**
+ * Pin lean Slidev headmatter so unused tooling stays out of the SPA bundle.
+ * Monaco is already tree-shaken when unused; explicit false avoids accidental enable.
+ * Build-time win is small (~0–3% on prod fixture); keeps player surface smaller.
+ */
+export function pinLeanSlidevHeadmatter(md: string): string {
+  if (!md.trim().startsWith("---")) {
+    return `---\n${LEAN_HEADMATTER}\n---\n\n${md}`;
+  }
+  const block = md.match(/^---\n([\s\S]*?)\n---/);
+  if (!block) return md;
+  let body = block[1];
+  // Drop prior lean keys / drawings block so re-pin is idempotent.
+  body = body
+    .replace(/^monaco:\s*.+$/m, "")
+    .replace(/^twoslash:\s*.+$/m, "")
+    .replace(/^remoteAssets:\s*.+$/m, "")
+    .replace(/^record:\s*.+$/m, "")
+    .replace(/^drawings:\n(?:[ \t]+.+\n)*/m, "")
+    .replace(/^drawings:\s*.+\n?/m, "");
+  body = `${LEAN_HEADMATTER}\n${body}`.replace(/\n{3,}/g, "\n\n").trim();
+  return md.replace(block[0], `---\n${body}\n---`);
+}
+
 export function guardMarkdown(md: string, theme = "default"): string {
   const pinned = slidevThemeId(theme);
   const palette = layoutPalette(theme);
@@ -130,6 +161,7 @@ export function guardMarkdown(md: string, theme = "default"): string {
   out = sanitizeImageFrontmatter(out);
   out = sanitizeHeroVariantFrontmatter(out);
   out = normalizeStatsFrontmatter(out);
+  out = pinLeanSlidevHeadmatter(out);
   return quoteFrontmatterTitle(pinPalette(pinTheme(out, pinned), palette));
 }
 

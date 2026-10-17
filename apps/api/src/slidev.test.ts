@@ -40,11 +40,33 @@ describe("slidevMcpSpawnSpec", () => {
 describe("ensureDeckViteConfig", () => {
   it("writes faster build flags for repeated structure rebuilds", async () => {
     const dir = mkdtempSync(join(tmpdir(), "pokazo-vite-cfg-"));
-    await ensureDeckViteConfig(dir);
-    const raw = readFileSync(join(dir, "vite.config.ts"), "utf8");
-    expect(raw).toBe(DECK_VITE_CONFIG);
-    expect(raw).toContain("minify: false");
-    expect(raw).toContain("cacheDir: \".vite-cache\"");
+    const prev = process.env.SLIDEV_VITE_CACHE;
+    delete process.env.SLIDEV_VITE_CACHE;
+    try {
+      await ensureDeckViteConfig(dir);
+      const raw = readFileSync(join(dir, "vite.config.ts"), "utf8");
+      expect(raw).toBe(DECK_VITE_CONFIG);
+      expect(raw).toContain("minify: false");
+      expect(raw).toContain("sourcemap: false");
+      expect(raw).toContain("cacheDir: \".vite-cache\"");
+    } finally {
+      if (prev === undefined) delete process.env.SLIDEV_VITE_CACHE;
+      else process.env.SLIDEV_VITE_CACHE = prev;
+    }
+  });
+
+  it("honors absolute SLIDEV_VITE_CACHE for shared cache experiments", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pokazo-vite-cfg-"));
+    const prev = process.env.SLIDEV_VITE_CACHE;
+    process.env.SLIDEV_VITE_CACHE = "/tmp/pokazo-vite-shared";
+    try {
+      await ensureDeckViteConfig(dir);
+      const raw = readFileSync(join(dir, "vite.config.ts"), "utf8");
+      expect(raw).toContain("cacheDir: \"/tmp/pokazo-vite-shared\"");
+    } finally {
+      if (prev === undefined) delete process.env.SLIDEV_VITE_CACHE;
+      else process.env.SLIDEV_VITE_CACHE = prev;
+    }
   });
 });
 

@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { publishDeckActivityFromWorkDir } from "./deck-ws-publish.js";
 
 const THINKING = "Думаю…";
 
@@ -100,6 +101,11 @@ export async function writeDeckActivity(workDir: string, label: string): Promise
       JSON.stringify({ label: "", at: new Date().toISOString() }, null, 2),
       "utf8",
     );
+    try {
+      publishDeckActivityFromWorkDir(workDir, "");
+    } catch {
+      /* ws optional */
+    }
     return;
   }
   await writeFile(
@@ -107,6 +113,11 @@ export async function writeDeckActivity(workDir: string, label: string): Promise
     JSON.stringify({ label: trimmed, at: new Date().toISOString() }, null, 2),
     "utf8",
   );
+  try {
+    publishDeckActivityFromWorkDir(workDir, trimmed);
+  } catch {
+    /* ws optional */
+  }
 }
 
 export async function readDeckActivity(workDir: string): Promise<DeckActivity | null> {

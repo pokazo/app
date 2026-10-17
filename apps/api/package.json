@@ -36,6 +36,7 @@
     "pino": "^9.6.0",
     "playwright-chromium": "^1.63.0",
     "sharp": "^0.35.5",
+    "ws": "^8.22.0",
     "zod": "^3.24.4"
   },
   "devDependencies": {
@@ -44,6 +45,7 @@
     "@types/pg": "^8.15.2",
     "@types/pixelmatch": "^7.1.0",
     "@types/pngjs": "^6.0.5",
+    "@types/ws": "^8.18.2",
     "pixelmatch": "^8.0.0",
     "pngjs": "^7.0.0",
     "tsx": "^4.19.4",

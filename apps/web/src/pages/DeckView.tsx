@@ -31,6 +31,9 @@ import { APP_HISTORY_PATH, SLIDE_COUNT_MAX, SLIDE_COUNT_MIN } from "../decks";
 import { thumbCoverPath, thumbReactKey } from "../deck-thumb-preview";
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
+import { BuildLoader } from "../components/BuildLoader";
+import { shouldShowBuildLoader } from "../deck-ws";
+import { useDeckSocket } from "../useDeckSocket";
 
 type Me = { id: string; email: string; name: string };
 type Slide = {
@@ -118,6 +121,22 @@ export function DeckView() {
     rewriteBusyRef.current = busy;
     setRewriteBusy(busy);
   };
+
+  const deckSocket = useDeckSocket(isDeckId(id) ? id : undefined, Boolean(id));
+  useEffect(() => {
+    if (deckSocket.activity != null && deckSocket.activity.trim()) {
+      setActivity(deckSocket.activity.trim());
+    }
+  }, [deckSocket.activity]);
+  const liveActivity = (deckSocket.activity ?? activity).trim();
+  const showBuildLoader = shouldShowBuildLoader({
+    buildLive: deckSocket.buildLive,
+    activity: liveActivity || activity,
+  });
+  const buildLoaderLabel = liveActivity || activity || "Собираю показ";
+  const showRewriteForm = Boolean(
+    meta && isOwner && meta.status === "ready" && !mobilePresent && !presenting,
+  );
 
   const embedBase = apiUrl(`/p/${id}/`);
   const idOk = isDeckId(id);
@@ -680,10 +699,15 @@ export function DeckView() {
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
-      {waiting && !err && (activity || awaitingPreview) ? (
-        <p className="app-note deck-building">{activity || VIEW_WAITING_NOTE}</p>
+      {waiting && !err && !showStage && (activity || awaitingPreview || showBuildLoader) ? (
+        <div className="deck-waiting-build">
+          {showBuildLoader ? <BuildLoader label={buildLoaderLabel} /> : null}
+          {!showBuildLoader ? (
+            <p className="app-note deck-building">{activity || VIEW_WAITING_NOTE}</p>
+          ) : null}
+        </div>
       ) : null}
-      {building && meta ? (
+      {building && meta && !showBuildLoader ? (
         <p className="app-note deck-building">
           {rewritingSlide != null
             ? activity || `Правлю слайд ${rewritingSlide}…`
@@ -900,8 +924,11 @@ export function DeckView() {
                   </button>
                 </div>
               ) : null}
+              {!showRewriteForm && showBuildLoader ? (
+                <BuildLoader label={buildLoaderLabel} corner />
+              ) : null}
             </div>
-            {meta && isOwner && meta.status === "ready" && !mobilePresent && !presenting ? (
+            {showRewriteForm ? (
               <form
                 className="deck-rewrite"
                 onSubmit={(e) => {
@@ -962,6 +989,7 @@ export function DeckView() {
                       ? activity || "Правлю слайд…"
                       : "изменить"}
                   </button>
+                  {showBuildLoader ? <BuildLoader label={buildLoaderLabel} /> : null}
                 </div>
                 {rewriteFiles.length ? (
                   <p className="deck-rewrite-hint">

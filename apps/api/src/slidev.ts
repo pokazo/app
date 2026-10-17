@@ -108,24 +108,39 @@ export async function writeSlides(workDir: string, markdown: string, theme = "de
 }
 
 /**
- * Per-deck Vite config: skip minify + keep cacheDir so repeated `slidev build`
- * (structure move/delete) is faster. Artifact is still a static SPA under dist/.
+ * Per-deck Vite config: skip minify/sourcemaps + keep cacheDir so repeated
+ * `slidev build` (structure move/delete) is faster. Artifact is still a static SPA.
+ *
+ * Optional shared cache: set `SLIDEV_VITE_CACHE` to an absolute dir (e.g.
+ * `/app/data/cache/vite`). Prod bench showed ~0–3% vs per-deck `.vite-cache` —
+ * keep for experiments; default stays per-deck.
  */
-export const DECK_VITE_CONFIG = `import { defineConfig } from "vite";
+export function deckViteConfigSource(cacheDir = ".vite-cache"): string {
+  return `import { defineConfig } from "vite";
 
 export default defineConfig({
-  cacheDir: ".vite-cache",
+  cacheDir: ${JSON.stringify(cacheDir)},
   build: {
     minify: false,
     cssMinify: false,
     reportCompressedSize: false,
+    sourcemap: false,
   },
 });
 `;
+}
+
+/** @deprecated use deckViteConfigSource(); kept for tests that compare full file */
+export const DECK_VITE_CONFIG = deckViteConfigSource();
+
+export function resolveSlidevViteCacheDir(): string {
+  const shared = process.env.SLIDEV_VITE_CACHE?.trim();
+  return shared && shared.startsWith("/") ? shared : ".vite-cache";
+}
 
 export async function ensureDeckViteConfig(workDir: string): Promise<void> {
   await mkdir(workDir, { recursive: true });
-  await writeFile(join(workDir, "vite.config.ts"), DECK_VITE_CONFIG, "utf8");
+  await writeFile(join(workDir, "vite.config.ts"), deckViteConfigSource(resolveSlidevViteCacheDir()), "utf8");
 }
 
 function runSlidev(spec: SlidevSpawnSpec, timeoutMs: number, label: string): Promise<string> {
