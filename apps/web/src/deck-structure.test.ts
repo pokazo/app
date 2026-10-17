@@ -13,5 +13,6 @@ describe("structureErrorMessage", () => {
   it("maps known API errors", () => {
     expect(structureErrorMessage("min slides")).toMatch(/минимум 3/);
     expect(structureErrorMessage("max slides")).toMatch(/максимум 16/);
+    expect(structureErrorMessage("bad slide")).toMatch(/сдвинуть/);
   });
 });

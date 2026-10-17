@@ -81,20 +81,21 @@ export const OutlineSlide = z.object({
   stats: z.array(StatItem).max(4),
   skills: z.array(SkillItem).max(8),
   /** Feature cards when visual is cards; mapped to frontmatter items. */
-  cards: z.array(CardItem).max(4),
+  cards: z.array(CardItem).max(4).default([]),
   /** Icon columns when visual is features; mapped to frontmatter items. */
-  features: z.array(FeatureItem).max(3),
+  features: z.array(FeatureItem).max(3).default([]),
   /** Horizontal flow when visual is process. */
-  process: z.array(ProcessStep).max(5),
+  process: z.array(ProcessStep).max(5).default([]),
   /**
    * Layout palette id when visual is spotlight (cream|ink|ocean|…).
    * Empty string for other visuals.
+   * Default so decks saved before spotlight/pie still parse for structure ops.
    */
-  palette: z.string(),
+  palette: z.string().default(""),
   /** Pie slices when visual is pie; mapped to frontmatter items. */
-  pie: z.array(PieSlice).max(5),
+  pie: z.array(PieSlice).max(5).default([]),
   /** Chart title above pie when visual is pie; otherwise "". */
-  chartTitle: z.string(),
+  chartTitle: z.string().default(""),
 });
 
 export const Outline = z.object({

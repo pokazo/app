@@ -54,7 +54,7 @@ export function focusAfterStructure(acceptedSlide: number, maxSlides: number): n
 export function structureErrorMessage(raw: string): string {
   if (/min slides/i.test(raw)) return "Нельзя удалить — минимум 3 слайда";
   if (/max slides/i.test(raw)) return "Нельзя добавить — максимум 16 слайдов";
-  if (/bad move|bad target/i.test(raw)) return "Нельзя сдвинуть этот слайд";
+  if (/bad move|bad target|bad slide/i.test(raw)) return "Нельзя сдвинуть этот слайд";
   if (/busy/i.test(raw)) return "Подождите, идёт сборка";
   if (/unauthorized|401/i.test(raw)) return "Войдите, чтобы править слайды";
   return "Не удалось изменить слайды";

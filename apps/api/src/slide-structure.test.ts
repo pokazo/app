@@ -114,6 +114,32 @@ describe("mutateSlideStructure move", () => {
       /bad move/,
     );
   });
+
+  it("moves after parsing a legacy outline missing palette/pie/chartTitle", () => {
+    const md = makeMd(["statement", "fact", "quote"]);
+    const legacy = Outline.parse({
+      title: "Demo",
+      slides: ["A", "B", "C"].map((heading) => ({
+        heading,
+        points: [],
+        intent: heading,
+        visual: "statement",
+        imageQuery: "",
+        iconHint: "",
+        kicker: "",
+        source: "",
+        steps: [],
+        stats: [],
+        skills: [],
+        cards: [],
+        features: [],
+        process: [],
+      })),
+    });
+    const result = mutateSlideStructure(md, legacy, { op: "move", from: 1, to: 3 });
+    expect(result.outline.slides.map((s) => s.heading)).toEqual(["B", "C", "A"]);
+    expect(result.outline.slides[0]?.palette).toBe("");
+  });
 });
 
 describe("mutateSlideStructure delete", () => {

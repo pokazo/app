@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, onUpdated, ref } from 'vue'
 import {
   assertPieLayout,
   PIE_CONTENT_LIMITS,
@@ -92,6 +92,28 @@ const chartTitle = computed(() =>
 )
 
 const paletteClass = resolvePaletteClass(props.palette)
+
+const leftCenterEl = ref<HTMLElement | null>(null)
+function centerLeftCopy() {
+  const root = leftCenterEl.value
+  if (!root) return
+  root.querySelectorAll("h1, p").forEach((node) => {
+    const el = node as HTMLElement
+    el.style.setProperty("text-align", "center", "important")
+    el.style.setProperty("margin-left", "auto", "important")
+    el.style.setProperty("margin-right", "auto", "important")
+    el.style.setProperty("width", "100%", "important")
+  })
+}
+onMounted(async () => {
+  await nextTick()
+  centerLeftCopy()
+  requestAnimationFrame(centerLeftCopy)
+  setTimeout(centerLeftCopy, 50)
+})
+onUpdated(() => {
+  centerLeftCopy()
+})
 </script>
 
 <template>
@@ -99,12 +121,14 @@ const paletteClass = resolvePaletteClass(props.palette)
     <div class="pk-brick__grid" />
     <div class="pk-brick__inner">
       <div class="pk-left">
-        <div class="pk-kicker" v-if="kicker">
-          <span class="pk-kicker__line" />
-          <span class="pk-kicker__text">{{ kicker }}</span>
-        </div>
-        <div class="pk-title">
-          <slot />
+        <div class="pk-left__center" ref="leftCenterEl">
+          <div class="pk-kicker" v-if="kicker">
+            <span class="pk-kicker__line" />
+            <span class="pk-kicker__text">{{ kicker }}</span>
+          </div>
+          <div class="pk-title">
+            <slot />
+          </div>
         </div>
       </div>
       <div class="pk-right">
@@ -113,8 +137,8 @@ const paletteClass = resolvePaletteClass(props.palette)
           <svg
             class="pk-chart-svg"
             viewBox="0 0 240 240"
-            width="240"
-            height="240"
+            width="680"
+            height="680"
             aria-hidden="true"
           >
             <path
@@ -182,25 +206,49 @@ const paletteClass = resolvePaletteClass(props.palette)
   opacity: 0.35;
 }
 .pk-brick__inner {
+  --pk-pie-card-w: min(62%, 1100px);
+  /* 0 so copy centers in the true band left-of-card (any gap shifts optical center left). */
+  --pk-pie-copy-gap: 0px;
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 56px 64px 48px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: 48px;
-  align-items: center;
+  padding: 20px 24px;
   box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
 }
+/* Free space = [left pad → card]; copy is flex-centered exactly in that band. */
 .pk-left {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+  bottom: 20px;
+  right: calc(24px + var(--pk-pie-card-w) + var(--pk-pie-copy-gap));
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
-  max-width: 28ch;
+  box-sizing: border-box;
+  text-align: center;
+  z-index: 1;
+}
+.pk-left__center {
+  width: min(300px, 90%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.pk-left__center :deep(*) {
+  text-align: center !important;
 }
 .pk-kicker {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin-bottom: 14px;
+  width: auto;
 }
 .pk-kicker__line {
   width: 28px;
@@ -216,66 +264,86 @@ const paletteClass = resolvePaletteClass(props.palette)
   text-transform: uppercase;
   color: var(--pk-accent);
 }
+.pk-title {
+  width: 100%;
+  text-align: center !important;
+}
 .pk-title :deep(h1) {
   margin: 0 0 18px;
-  font-size: 44px;
-  line-height: 1.12;
+  font-size: 40px;
+  line-height: 1.15;
   font-weight: 800;
   letter-spacing: -0.035em;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  text-align: center !important;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 .pk-title :deep(p) {
-  margin: 0;
+  margin: 0 auto;
   font-size: 18px;
   line-height: 1.45;
   color: var(--pk-sub);
   font-weight: 500;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  text-align: center !important;
 }
 .pk-title :deep(ul),
 .pk-title :deep(ol) {
   display: none;
 }
 .pk-right {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  bottom: 20px;
+  width: var(--pk-pie-card-w);
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: stretch;
+  align-items: stretch;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  z-index: 1;
 }
 .pk-chart-card {
   width: 100%;
-  max-width: 440px;
+  height: 100%;
+  max-width: 100%;
   background: var(--pk-card);
   border: 1px solid var(--pk-card-border);
   border-radius: 20px;
-  padding: 28px 28px 24px;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.06);
+  padding: 2px 4px 2px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.07);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  gap: 0;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
 }
 .pk-chart-title {
   width: 100%;
-  text-align: left;
-  font-size: 16px;
+  text-align: center;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.3;
+  line-height: 1.2;
   color: var(--pk-ink);
+  flex: 0 0 auto;
 }
 .pk-chart-svg {
-  flex: none;
+  flex: 1 1 0;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  aspect-ratio: 1;
+  min-height: 0;
+  align-self: center;
 }
 .pk-slice-pct {
   fill: var(--pk-paper);
-  font-size: 15px;
+  font-size: 22px;
   font-weight: 800;
   font-family: ui-sans-serif, system-ui, sans-serif;
   paint-order: stroke;
@@ -286,8 +354,9 @@ const paletteClass = resolvePaletteClass(props.palette)
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px 16px;
+  gap: 8px 16px;
   width: 100%;
+  flex: 0 0 auto;
 }
 .pk-legend__item {
   display: flex;
@@ -295,13 +364,13 @@ const paletteClass = resolvePaletteClass(props.palette)
   gap: 8px;
 }
 .pk-legend__swatch {
-  width: 18px;
-  height: 12px;
+  width: 20px;
+  height: 14px;
   border-radius: 4px;
   flex: none;
 }
 .pk-legend__label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--pk-ink);
 }
@@ -452,5 +521,16 @@ const paletteClass = resolvePaletteClass(props.palette)
   --pk-slice-3: #88b000;
   --pk-slice-4: #507000;
   --pk-slice-5: #304000;
+}
+</style>
+
+<style>
+/* Beat Slidev theme text-align on slot markdown */
+.pk-pie .pk-left,
+.pk-pie .pk-left__center,
+.pk-pie .pk-left__center .pk-title,
+.pk-pie .pk-left__center h1,
+.pk-pie .pk-left__center p {
+  text-align: center !important;
 }
 </style>

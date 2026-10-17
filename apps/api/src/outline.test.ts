@@ -142,4 +142,63 @@ describe("Outline schema", () => {
       }),
     ).toThrow();
   });
+
+  it("fills palette/pie/chartTitle defaults for decks saved before those fields existed", () => {
+    const parsed = Outline.parse({
+      title: "Груша",
+      slides: [
+        {
+          heading: "A",
+          points: [],
+          intent: "open",
+          visual: "hero",
+          imageQuery: "pear tree",
+          iconHint: "",
+          kicker: "",
+          source: "",
+          steps: [],
+          stats: [],
+          skills: [],
+          cards: [],
+          features: [],
+          process: [],
+        },
+        {
+          heading: "B",
+          points: ["x"],
+          intent: "body",
+          visual: "image-right",
+          imageQuery: "pears",
+          iconHint: "",
+          kicker: "",
+          source: "",
+          steps: [],
+          stats: [],
+          skills: [],
+          cards: [],
+          features: [],
+          process: [],
+        },
+        {
+          heading: "C",
+          points: [],
+          intent: "close",
+          visual: "statement",
+          imageQuery: "",
+          iconHint: "",
+          kicker: "",
+          source: "",
+          steps: [],
+          stats: [],
+          skills: [],
+          cards: [],
+          features: [],
+          process: [],
+        },
+      ],
+    });
+    expect(parsed.slides[0]?.palette).toBe("");
+    expect(parsed.slides[0]?.pie).toEqual([]);
+    expect(parsed.slides[0]?.chartTitle).toBe("");
+  });
 });

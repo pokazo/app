@@ -636,9 +636,13 @@ export function createApp() {
     let outline;
     let slidesMd: string;
     try {
-      outline = Outline.parse(JSON.parse(await readFile(join(dir, "outline.json"), "utf8")));
       slidesMd = await readFile(join(dir, "slides.md"), "utf8");
-    } catch {
+      outline = Outline.parse(JSON.parse(await readFile(join(dir, "outline.json"), "utf8")));
+    } catch (err) {
+      // Missing files → 404; corrupt/outdated outline → 400 (defaults in Outline cover additive fields).
+      if (err && typeof err === "object" && "issues" in err) {
+        return c.json({ error: "bad outline" }, 400);
+      }
       return c.json({ error: "not found" }, 404);
     }
     try {
