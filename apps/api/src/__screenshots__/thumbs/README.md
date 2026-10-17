@@ -1,6 +1,8 @@
 # Filmstrip thumb screenshot goldens
 
-Visual contract for `/thumbs/N.webp` filmstrip (full slide raster) and cover-fallback UI.
+Visual contract for `/thumbs/v2/N.webp` filmstrip (full slide raster) and heading-only placeholder UI.
+
+Legacy `/thumbs/N.webp` remains readable for old decks but new builds write only v2.
 
 ## Regenerate
 
@@ -19,8 +21,9 @@ RUN_THUMB_E2E=1 pnpm exec vitest run src/deck-thumbs.test.ts src/deck-thumb-shot
 
 | File | Meaning |
 |------|---------|
-| `thumb-page-1.png` / `thumb-page-2.png` | Decoded WebP of each slide shot |
+| `thumb-page-1.png` / `thumb-page-2.png` | Decoded WebP of each slide shot (from v2) |
 | `filmstrip-slide-shots.png` | Column of slide shots (no heading overlay) |
 | `thumb-size-compare.png` | 1280 capture vs 400 WebP side-by-side |
-| `filmstrip-cover-fallback.png` | Photo+label / heading-only before shots exist |
-| `ui-*.png` | Markup-only UI strips (no Slidev build) |
+| `filmstrip-heading-only.png` | Heading placeholders before shots exist |
+| `ui-slide-shot-strip.png` | Markup-only slide-shot strip |
+| `ui-heading-only-strip.png` | Markup-only heading placeholders |

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { thumbIsSlideShot, thumbPlaceholderLayers } from "../deck-thumb-preview";
 
-/** Static filmstrip cell — slide screenshot WebP (or cover fallback). No Slidev iframe. */
+/** Static filmstrip cell — backend slide screenshot WebP only. No Slidev iframe. */
 export function DeckThumbPreview(props: {
   index: number;
   heading: string;
@@ -38,9 +38,7 @@ export function DeckThumbPreview(props: {
           />
         ) : null}
         {layers.showHeading ? (
-          <span className={layers.showImage ? "deck-thumb-ph-label" : "deck-thumb-fallback"}>
-            {layers.label}
-          </span>
+          <span className="deck-thumb-fallback">{layers.label}</span>
         ) : null}
       </span>
       <span className="deck-thumb-n">{props.index}</span>

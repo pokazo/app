@@ -11,7 +11,7 @@ describe("thumbPlaceholderLayers", () => {
     expect(
       thumbPlaceholderLayers({
         heading: "Что такое фотосинтез",
-        imageUrl: "https://api.pokazo.ru/p/x/thumbs/1.webp",
+        imageUrl: "https://api.pokazo.ru/p/x/thumbs/v2/1.webp",
       }),
     ).toEqual({
       showHeading: false,
@@ -20,12 +20,25 @@ describe("thumbPlaceholderLayers", () => {
     });
   });
 
-  it("cover photo fallback keeps heading overlay", () => {
+  it("legacy /thumbs/N.webp is also a slide shot", () => {
+    expect(
+      thumbPlaceholderLayers({
+        heading: "Hero",
+        imageUrl: "https://api.pokazo.ru/p/x/thumbs/1.webp",
+      }),
+    ).toEqual({
+      showHeading: false,
+      showImage: true,
+      label: "Hero",
+    });
+  });
+
+  it("non-thumb URL is ignored — heading placeholder only", () => {
     const layers = thumbPlaceholderLayers({
       heading: "Что такое фотосинтез",
       imageUrl: "https://api.pokazo.ru/p/x/slide-1.jpg",
     });
-    expect(layers.showImage).toBe(true);
+    expect(layers.showImage).toBe(false);
     expect(layers.showHeading).toBe(true);
   });
 
@@ -37,13 +50,16 @@ describe("thumbPlaceholderLayers", () => {
 });
 
 describe("thumbCoverPath / thumbIsSlideShot", () => {
-  it("prefers imageThumb over full image", () => {
-    expect(thumbCoverPath({ imageThumb: "/thumbs/2.webp", image: "/a.jpg" })).toBe("/thumbs/2.webp");
-    expect(thumbCoverPath({ imageThumb: null, image: "/a.jpg" })).toBe("/a.jpg");
+  it("uses imageThumb only — never full cover image", () => {
+    expect(thumbCoverPath({ imageThumb: "/thumbs/v2/2.webp", image: "/a.jpg" })).toBe(
+      "/thumbs/v2/2.webp",
+    );
+    expect(thumbCoverPath({ imageThumb: null, image: "/a.jpg" })).toBe(null);
   });
 
-  it("detects filmstrip slide shots", () => {
+  it("detects filmstrip slide shots (v1 and v2)", () => {
     expect(thumbIsSlideShot("/thumbs/1.webp")).toBe(true);
+    expect(thumbIsSlideShot("/thumbs/v2/1.webp")).toBe(true);
     expect(thumbIsSlideShot("/slide-1.thumb.webp")).toBe(false);
   });
 });

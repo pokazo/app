@@ -18,25 +18,15 @@ function coverDataUri(hue: number): string {
 }
 
 describe("filmstrip markup contract (unit)", () => {
-  it("slide-shot has image and no heading label", () => {
+  it("slide-shot has image and no heading label (v2 path)", () => {
     const html = filmstripCellHtml({
       index: 1,
-      src: "/thumbs/1.webp",
+      src: "/thumbs/v2/1.webp",
       mode: "slide-shot",
     });
     expect(html).toContain('class="deck-thumb-ph"');
+    expect(html).toContain("/thumbs/v2/1.webp");
     expect(html).not.toContain("deck-thumb-ph-label");
-  });
-
-  it("cover-fallback keeps heading label over photo", () => {
-    const html = filmstripCellHtml({
-      index: 1,
-      src: "/slide-1.jpg",
-      heading: "Что такое фотосинтез",
-      mode: "cover-fallback",
-    });
-    expect(html).toContain("deck-thumb-ph-label");
-    expect(html).toContain("Что такое фотосинтез");
   });
 
   it("heading-only has fallback text, no img", () => {
@@ -72,22 +62,21 @@ describe.skipIf(!e2e)("filmstrip UI screenshot goldens (RUN_THUMB_E2E=1)", () =>
   );
 
   it(
-    "cover-fallback strip shows heading band on photo",
+    "heading-only strip before backend shots exist",
     async () => {
-      const photo = await vividPhotoPng(400, 225);
-      const uri = `data:image/png;base64,${photo.toString("base64")}`;
       const html = filmstripPageHtml([
         filmstripCellHtml({
           index: 1,
-          src: uri,
+          src: "",
           heading: "Что такое фотосинтез",
-          mode: "cover-fallback",
+          mode: "heading-only",
+          current: true,
         }),
         filmstripCellHtml({
           index: 2,
-          src: coverDataUri(140),
+          src: "",
           heading: "Где происходит фотосинтез",
-          mode: "cover-fallback",
+          mode: "heading-only",
         }),
         filmstripCellHtml({
           index: 3,
@@ -97,34 +86,7 @@ describe.skipIf(!e2e)("filmstrip UI screenshot goldens (RUN_THUMB_E2E=1)", () =>
         }),
       ]);
       const buf = await screenshotHtml({ html, viewport: { width: 240, height: 420 } });
-      await assertPngGolden(buf, "ui-cover-fallback-strip", { update });
-    },
-    60_000,
-  );
-
-  it(
-    "cover-only bug strip differs from labeled fallback",
-    async () => {
-      const photo = await vividPhotoPng(400, 225);
-      const uri = `data:image/png;base64,${photo.toString("base64")}`;
-      const bug = filmstripPageHtml([
-        // Intentionally wrong: photo without heading (old bug).
-        `<span class="deck-thumb-frame"><img class="deck-thumb-ph" src="${uri}" alt=""><span class="deck-thumb-n">1</span></span>`,
-      ]);
-      const fix = filmstripPageHtml([
-        filmstripCellHtml({
-          index: 1,
-          src: uri,
-          heading: "Что такое фотосинтез",
-          mode: "cover-fallback",
-        }),
-      ]);
-      const bugBuf = await screenshotHtml({ html: bug, viewport: { width: 240, height: 160 } });
-      const fixBuf = await screenshotHtml({ html: fix, viewport: { width: 240, height: 160 } });
-      await assertPngGolden(bugBuf, "ui-cover-bug-no-label", { update });
-      await assertPngGolden(fixBuf, "ui-cover-fix-with-label", { update });
-      const { comparePngBuffers } = await import("./layout-png-compare.js");
-      expect(comparePngBuffers(bugBuf, fixBuf).ok).toBe(false);
+      await assertPngGolden(buf, "ui-heading-only-strip", { update });
     },
     60_000,
   );

@@ -1078,50 +1078,20 @@ footer.foot a:hover { text-decoration: underline; }
   container-name: deck-thumb;
 }
 .deck-thumb.is-current .deck-thumb-frame { box-shadow: none; }
-/* Full slide at 1280×720, uniform scale into the 16:9 thumb (same ratio as stage). */
-.deck-thumb-scaler {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1280px;
-  height: 720px;
-  transform: scale(min(100cqi / 1280px, 100cqh / 720px));
-  transform-origin: top left;
-  z-index: 1;
-}
-.deck-thumb-scaler iframe {
-  width: 1280px;
-  height: 720px;
-  border: 0;
-  display: block;
-  background: #fff;
-}
 .deck-thumb-ph-wrap {
   position: absolute;
   inset: 0;
   z-index: 0;
 }
+/* Backend shot is already the full 16:9 slide — contain avoids crop bugs. */
 .deck-thumb-ph {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
-}
-.deck-thumb-ph-label {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
-  padding: 18px 8px 6px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: #fff;
-  background: linear-gradient(transparent, rgba(18, 18, 18, 0.78));
+  background: #fff;
 }
 .deck-thumb-n {
   position: absolute;
@@ -1383,10 +1353,6 @@ footer.foot a:hover { text-decoration: underline; }
     width: 100%;
     height: auto;
     aspect-ratio: 16 / 9;
-  }
-  .deck-shell.is-mobile-overview .deck-thumb-ph {
-    object-fit: contain;
-    background: #fff;
   }
 }
 @media (max-width: 640px) {

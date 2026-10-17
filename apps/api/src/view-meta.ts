@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { filmstripThumbPath } from "./filmstrip-thumb-path.js";
-import { thumbVariantPath } from "./image-variants.js";
+import { filmstripThumbPath, filmstripThumbPathV2 } from "./filmstrip-thumb-path.js";
 import { parseSlideBlocks } from "./layout-md-assert.js";
 import { hasOrphanLeadingHero } from "./rewrite-lock.js";
 
@@ -10,8 +9,8 @@ export type ViewSlide = {
   heading: string;
   image: string | null;
   /**
-   * Filmstrip preview: prefer full-slide screenshot `/thumbs/N.webp`,
-   * else cover `.thumb.webp` sibling when present.
+   * Filmstrip preview: prefer `/thumbs/v2/N.webp`, else legacy `/thumbs/N.webp`.
+   * No cover-photo fallback — null means heading placeholder until shot exists.
    */
   imageThumb: string | null;
   /** Slidev page number for iframe navigate / thumb embed (may differ from index). */
@@ -77,17 +76,17 @@ export function withSlideImages(
 
 /**
  * Attach `imageThumb` for the filmstrip.
- * Prefer post-build slide screenshot `/thumbs/{slidevIndex}.webp`, then cover `.thumb.webp`.
+ * Prefer v2 `/thumbs/v2/{N}.webp`, else legacy `/thumbs/{N}.webp`, else null.
  */
 export function withImageThumbs(slides: ViewSlide[], assetDir: string): ViewSlide[] {
   return slides.map((s) => {
-    const shot = filmstripThumbPath(s.slidevIndex);
-    const shotAbs = join(assetDir, shot.replace(/^\//, ""));
-    if (existsSync(shotAbs)) return { ...s, imageThumb: shot };
-    const cover = thumbVariantPath(s.image);
-    if (!cover) return { ...s, imageThumb: null };
-    const coverAbs = join(assetDir, cover.replace(/^\//, ""));
-    return { ...s, imageThumb: existsSync(coverAbs) ? cover : null };
+    const v2 = filmstripThumbPathV2(s.slidevIndex);
+    const v2Abs = join(assetDir, v2.replace(/^\//, ""));
+    if (existsSync(v2Abs)) return { ...s, imageThumb: v2 };
+    const v1 = filmstripThumbPath(s.slidevIndex);
+    const v1Abs = join(assetDir, v1.replace(/^\//, ""));
+    if (existsSync(v1Abs)) return { ...s, imageThumb: v1 };
+    return { ...s, imageThumb: null };
   });
 }
 

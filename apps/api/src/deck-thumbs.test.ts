@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   FILMSTRIP_THUMB_WIDTH,
   filmstripThumbPath,
+  filmstripThumbPathV2,
   renderDeckFilmstripThumbs,
 } from "./deck-thumbs.js";
 import { buildSlidev, writeSlides } from "./slidev.js";
@@ -52,9 +53,14 @@ async function writePhotoCover(workDir: string): Promise<void> {
 }
 
 describe("filmstripThumbPath", () => {
-  it("maps 1-based Slidev index to /thumbs/N.webp", () => {
+  it("maps 1-based Slidev index to legacy /thumbs/N.webp", () => {
     expect(filmstripThumbPath(1)).toBe("/thumbs/1.webp");
     expect(filmstripThumbPath(3)).toBe("/thumbs/3.webp");
+  });
+
+  it("maps 1-based Slidev index to /thumbs/v2/N.webp", () => {
+    expect(filmstripThumbPathV2(1)).toBe("/thumbs/v2/1.webp");
+    expect(filmstripThumbPathV2(3)).toBe("/thumbs/v2/3.webp");
   });
 });
 
@@ -70,7 +76,7 @@ describe("renderDeckFilmstripThumbs requires dist", () => {
 
 describe.skipIf(!e2e)("filmstrip thumbs screenshot goldens (RUN_THUMB_E2E=1)", () => {
   it(
-    "builds photo+text slides, small WebPs, and image goldens",
+    "builds photo+text slides, small WebPs under thumbs/v2, and image goldens",
     async () => {
       const dir = mkdtempSync(join(tmpdir(), "pokazo-filmstrip-thumb-"));
       const deckId = dir.split("/").pop()!;
@@ -78,12 +84,21 @@ describe.skipIf(!e2e)("filmstrip thumbs screenshot goldens (RUN_THUMB_E2E=1)", (
       await writeSlides(dir, PHOTO_SLIDES, "default");
       await buildSlidev(dir, `/p/${deckId}/`, 300_000);
 
+      // Legacy v1 file must survive a v2 render.
+      const legacyDir = join(dir, "dist", "thumbs");
+      mkdirSync(legacyDir, { recursive: true });
+      const legacyBytes = Buffer.from("legacy-v1-keep");
+      writeFileSync(join(legacyDir, "1.webp"), legacyBytes);
+
       const result = await renderDeckFilmstripThumbs({ workDir: dir, deckId, slideCount: 2 });
       expect(result.written).toBe(2);
       expect(result.slides.length).toBe(2);
+      expect(result.paths).toEqual(["/thumbs/v2/1.webp", "/thumbs/v2/2.webp"]);
 
       const s1 = result.slides[0]!;
       const s2 = result.slides[1]!;
+      expect(s1.path).toBe("/thumbs/v2/1.webp");
+      expect(s2.path).toBe("/thumbs/v2/2.webp");
       const meta1 = await sharp(s1.webp).metadata();
       expect(meta1.format).toBe("webp");
       expect(meta1.width).toBeLessThanOrEqual(FILMSTRIP_THUMB_WIDTH);
@@ -127,13 +142,13 @@ describe.skipIf(!e2e)("filmstrip thumbs screenshot goldens (RUN_THUMB_E2E=1)", (
       });
       await assertPngGolden(compare, "thumb-size-compare", { update });
 
-      const coverUri = `data:image/png;base64,${(await vividPhotoPng(400, 225)).toString("base64")}`;
-      const fallbackHtml = filmstripPageHtml([
+      // Before shots exist: heading-only placeholder (no cover photo overlay).
+      const placeholderHtml = filmstripPageHtml([
         filmstripCellHtml({
           index: 1,
-          src: coverUri,
+          src: "",
           heading: "Neon cities",
-          mode: "cover-fallback",
+          mode: "heading-only",
         }),
         filmstripCellHtml({
           index: 2,
@@ -142,14 +157,18 @@ describe.skipIf(!e2e)("filmstrip thumbs screenshot goldens (RUN_THUMB_E2E=1)", (
           mode: "heading-only",
         }),
       ]);
-      const fallbackStrip = await screenshotHtml({
-        html: fallbackHtml,
+      const placeholderStrip = await screenshotHtml({
+        html: placeholderHtml,
         viewport: { width: 240, height: 320 },
       });
-      await assertPngGolden(fallbackStrip, "filmstrip-cover-fallback", { update });
+      await assertPngGolden(placeholderStrip, "filmstrip-heading-only", { update });
 
-      // On-disk files match returned buffers.
-      expect(readFileSync(join(dir, "dist", "thumbs", "1.webp"))).toEqual(s1.webp);
+      // On-disk v2 files match returned buffers.
+      expect(readFileSync(join(dir, "dist", "thumbs", "v2", "1.webp"))).toEqual(s1.webp);
+      expect(readFileSync(join(dir, "dist", "thumbs", "v2", "2.webp"))).toEqual(s2.webp);
+      // Legacy v1 untouched.
+      expect(readFileSync(join(dir, "dist", "thumbs", "1.webp"))).toEqual(legacyBytes);
+      expect(existsSync(join(dir, "dist", "thumbs", "2.webp"))).toBe(false);
     },
     360_000,
   );

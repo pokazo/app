@@ -494,8 +494,12 @@ export function createApp() {
       join(dir, "dist"),
     );
     const thumbHits = slides.filter((s) => s.imageThumb).length;
+    const v2Hits = slides.filter((s) => s.imageThumb?.includes("/thumbs/v2/")).length;
+    const v1Hits = slides.filter(
+      (s) => s.imageThumb?.startsWith("/thumbs/") && !s.imageThumb.includes("/thumbs/v2/"),
+    ).length;
     console.info(
-      `[view] deck=${id} slides=${slides.length} filmstripThumbs=${thumbHits} shots=${slides.filter((s) => s.imageThumb?.startsWith("/thumbs/")).length} coverThumbs=${slides.filter((s) => s.imageThumb?.includes(".thumb.webp")).length}`,
+      `[view] deck=${id} slides=${slides.length} filmstripThumbs=${thumbHits} v2=${v2Hits} v1=${v1Hits}`,
     );
     const activity =
       progressive || rewriting

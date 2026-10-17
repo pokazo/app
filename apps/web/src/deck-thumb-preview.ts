@@ -1,19 +1,19 @@
 /**
- * Filmstrip shows a static slide screenshot (`/thumbs/N.webp`) when available.
- * Cover photo is a weak fallback — heading stays visible so thumbs are not “photo only”.
+ * Filmstrip shows a static slide screenshot (`/thumbs/…` or `/thumbs/v2/…`) when available.
+ * No cover-photo fallback — heading placeholder until the backend shot exists.
  */
 export function thumbPlaceholderLayers(opts: {
   heading: string;
   imageUrl?: string | null;
 }): { showHeading: boolean; showImage: boolean; label: string } {
   const label = opts.heading.trim() || "Слайд";
-  const isSlideShot = Boolean(opts.imageUrl?.includes("/thumbs/"));
+  const isSlideShot = thumbIsSlideShot(opts.imageUrl);
   if (isSlideShot) {
     return { showHeading: false, showImage: true, label };
   }
   return {
     showHeading: true,
-    showImage: Boolean(opts.imageUrl),
+    showImage: false,
     label,
   };
 }
@@ -25,15 +25,15 @@ export function thumbReactKey(index: number): string {
   return `thumb-${index}`;
 }
 
-/** Prefer filmstrip screenshot / cover thumb; fall back to full cover path. */
+/** Only backend slide screenshots — never full cover `image`. */
 export function thumbCoverPath(opts: {
   imageThumb?: string | null;
   image?: string | null;
 }): string | null {
-  return opts.imageThumb || opts.image || null;
+  return opts.imageThumb || null;
 }
 
-/** True when URL is a post-build slide raster under /thumbs/. */
+/** True when URL is a post-build slide raster under /thumbs/ (v1 or v2). */
 export function thumbIsSlideShot(url?: string | null): boolean {
   return Boolean(url?.includes("/thumbs/"));
 }

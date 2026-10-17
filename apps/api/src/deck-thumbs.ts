@@ -9,9 +9,9 @@ import {
   injectPlayerChromeHide,
 } from "./player-chrome.js";
 import { countDeckSlides } from "./deck-export-render.js";
-import { filmstripThumbPath } from "./filmstrip-thumb-path.js";
+import { filmstripThumbPathV2 } from "./filmstrip-thumb-path.js";
 
-export { filmstripThumbPath } from "./filmstrip-thumb-path.js";
+export { filmstripThumbPath, filmstripThumbPathV2 } from "./filmstrip-thumb-path.js";
 
 /** Capture viewport — matches player aspect; then downscale to WebP. */
 export const FILMSTRIP_CAPTURE_W = 1280;
@@ -20,8 +20,14 @@ export const FILMSTRIP_CAPTURE_H = 720;
 export const FILMSTRIP_THUMB_WIDTH = 400;
 export const FILMSTRIP_WEBP_QUALITY = 72;
 
+/** Legacy v1 abs path — kept for readers; new builds do not write here. */
 export function filmstripThumbAbs(distDir: string, slidevIndex: number): string {
   return join(distDir, "thumbs", `${Math.max(1, Math.floor(slidevIndex))}.webp`);
+}
+
+/** v2 abs path under dist/thumbs/v2/{N}.webp */
+export function filmstripThumbAbsV2(distDir: string, slidevIndex: number): string {
+  return join(distDir, "thumbs", "v2", `${Math.max(1, Math.floor(slidevIndex))}.webp`);
 }
 
 function startDistServer(workDir: string, deckId: string): Promise<{ server: Server; port: number }> {
@@ -72,8 +78,9 @@ function startDistServer(workDir: string, deckId: string): Promise<{ server: Ser
 }
 
 /**
- * After Slidev build: rasterize each page → small WebP under `dist/thumbs/`.
+ * After Slidev build: rasterize each page → small WebP under `dist/thumbs/v2/`.
  * These are the filmstrip images (full slide, not cover photo).
+ * Legacy `dist/thumbs/{N}.webp` is left untouched.
  */
 export type FilmstripThumbSlide = {
   index: number;
@@ -97,7 +104,7 @@ export async function renderDeckFilmstripThumbs(opts: {
   const deckId = opts.deckId || basename(opts.workDir);
   const slideCount = opts.slideCount ?? (await countDeckSlides(opts.workDir));
   const n = Math.max(1, Math.min(16, Math.floor(slideCount)));
-  const outDir = join(dist, "thumbs");
+  const outDir = join(dist, "thumbs", "v2");
   await mkdir(outDir, { recursive: true });
 
   const t0 = Date.now();
@@ -125,9 +132,9 @@ export async function renderDeckFilmstripThumbs(opts: {
         .resize({ width: FILMSTRIP_THUMB_WIDTH, withoutEnlargement: true })
         .webp({ quality: FILMSTRIP_WEBP_QUALITY })
         .toBuffer();
-      const abs = filmstripThumbAbs(dist, i);
+      const abs = filmstripThumbAbsV2(dist, i);
       await writeFile(abs, webp);
-      const path = filmstripThumbPath(i);
+      const path = filmstripThumbPathV2(i);
       paths.push(path);
       slides.push({
         index: i,

@@ -27,13 +27,7 @@ export const FILMSTRIP_THUMB_CSS = `
   .deck-thumb-ph-wrap { position: absolute; inset: 0; }
   .deck-thumb-ph {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; display: block;
-  }
-  .deck-thumb-ph-label {
-    position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
-    padding: 18px 8px 6px; text-align: left; font-size: 11px; font-weight: 600;
-    line-height: 1.25; color: #fff;
-    background: linear-gradient(transparent, rgba(18, 18, 18, 0.78));
+    object-fit: contain; display: block; background: #fff;
   }
   .deck-thumb-fallback {
     position: absolute; inset: 0; display: flex; align-items: center;
@@ -111,8 +105,8 @@ export function filmstripCellHtml(opts: {
   index: number;
   src: string;
   heading?: string;
-  /** slide shot = no heading overlay; cover fallback = heading band */
-  mode: "slide-shot" | "cover-fallback" | "heading-only";
+  /** slide shot = backend raster only; heading-only = placeholder before shot */
+  mode: "slide-shot" | "heading-only";
   current?: boolean;
 }): string {
   const n = `<span class="deck-thumb-n">${opts.index}</span>`;
@@ -120,13 +114,7 @@ export function filmstripCellHtml(opts: {
   if (opts.mode === "heading-only") {
     return `<span class="${frameClass}"><span class="deck-thumb-fallback">${opts.heading ?? ""}</span>${n}</span>`;
   }
-  if (opts.mode === "slide-shot") {
-    return `<span class="${frameClass}"><span class="deck-thumb-ph-wrap"><img class="deck-thumb-ph" src="${opts.src}" alt=""></span>${n}</span>`;
-  }
-  return `<span class="${frameClass}"><span class="deck-thumb-ph-wrap">
-    <img class="deck-thumb-ph" src="${opts.src}" alt="">
-    <span class="deck-thumb-ph-label">${opts.heading ?? ""}</span>
-  </span>${n}</span>`;
+  return `<span class="${frameClass}"><span class="deck-thumb-ph-wrap"><img class="deck-thumb-ph" src="${opts.src}" alt=""></span>${n}</span>`;
 }
 
 export function filmstripPageHtml(cells: string[]): string {
