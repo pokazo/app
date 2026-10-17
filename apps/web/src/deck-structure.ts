@@ -35,6 +35,17 @@ export function moveDeckSlide(deckId: string, from: number, to: number) {
   });
 }
 
+/** Target index for ↑/↓ filmstrip buttons; null when move is not allowed. */
+export function thumbMoveTarget(
+  from: number,
+  direction: "up" | "down",
+  last: number,
+): number | null {
+  if (!Number.isInteger(from) || from < 1 || last < 1) return null;
+  if (direction === "up") return from > 1 ? from - 1 : null;
+  return from < last ? from + 1 : null;
+}
+
 export function deleteDeckSlide(deckId: string, n: number) {
   return structureFetch(`/api/decks/${deckId}/slides/${n}`, { method: "DELETE" });
 }

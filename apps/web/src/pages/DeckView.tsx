@@ -25,6 +25,7 @@ import {
   insertDeckSlide,
   moveDeckSlide,
   structureErrorMessage,
+  thumbMoveTarget,
 } from "../deck-structure";
 import { APP_HISTORY_PATH, SLIDE_COUNT_MAX, SLIDE_COUNT_MIN } from "../decks";
 import { thumbCoverPath, thumbReactKey } from "../deck-thumb-preview";
@@ -479,6 +480,12 @@ export function DeckView() {
     await runStructure(to, "Правлю слайды…", () => moveDeckSlide(id, from, to));
   }
 
+  async function onMoveSlide(n: number, direction: "up" | "down") {
+    const to = thumbMoveTarget(n, direction, last);
+    if (to == null) return;
+    await onMoveSlideTo(n, to);
+  }
+
   async function onDeleteSlide(n: number) {
     setDeleteConfirm(null);
     await runStructure(n, "Правлю слайды…", () => deleteDeckSlide(id, n));
@@ -773,6 +780,30 @@ export function DeckView() {
               </button>
               {isOwner && meta?.status === "ready" ? (
                 <div className="deck-thumb-actions">
+                  <button
+                    type="button"
+                    className="deck-thumb-action"
+                    aria-label={`Слайд ${s.index} вверх`}
+                    disabled={!canEdit || thumbMoveTarget(s.index, "up", last) == null}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void onMoveSlide(s.index, "up");
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="deck-thumb-action"
+                    aria-label={`Слайд ${s.index} вниз`}
+                    disabled={!canEdit || thumbMoveTarget(s.index, "down", last) == null}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void onMoveSlide(s.index, "down");
+                    }}
+                  >
+                    ↓
+                  </button>
                   <button
                     type="button"
                     className="deck-thumb-action danger"
