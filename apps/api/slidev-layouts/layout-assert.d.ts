@@ -65,8 +65,8 @@ export const SPOTLIGHT_CONTENT_LIMITS: {
   readonly maxKickerChars: 28;
   readonly maxH1Chars: 42;
   readonly maxDescChars: 90;
-  readonly maxPairTitleChars: 18;
-  readonly maxPairBodyChars: 48;
+  readonly maxPairTitleChars: 14;
+  readonly maxPairBodyChars: 40;
   readonly pairCount: 4;
 };
 

@@ -262,8 +262,9 @@ export const SPOTLIGHT_CONTENT_LIMITS = Object.freeze({
   maxKickerChars: 28,
   maxH1Chars: 42,
   maxDescChars: 90,
-  maxPairTitleChars: 18,
-  maxPairBodyChars: 48,
+  // Edge columns are 200px wide; title is one line (22px bold), body ≤3 lines at 16ch.
+  maxPairTitleChars: 14,
+  maxPairBodyChars: 40,
   pairCount: 4,
 });
 

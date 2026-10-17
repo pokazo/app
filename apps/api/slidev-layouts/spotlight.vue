@@ -223,8 +223,10 @@ const paletteClass = resolvePaletteClass(props.palette)
   line-height: 1.2;
   margin-bottom: 8px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .pk-pair__body {
   font-size: 15px;

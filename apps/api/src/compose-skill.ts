@@ -37,7 +37,7 @@ Visual rules:
 - For visual statement: layout: statement. Body = bold H1 + short supporting line (bottom-anchored). Optional kicker. Prefer dark/ink closing or manifesto slides.
 - For visual features: layout: features. Put kicker and items (exactly 3): title, body, iconHint — ONLY from allowlist (${LAYOUT_ICON_HINTS}). Body is only the H1. Map outline.features → items:. Never invent icon names outside the list.
 - For visual process: layout: process. Put kicker and steps (3–5): title, iconHint — same allowlist. Body is only the H1. Map outline.process → steps:.
-- For visual spotlight: layout: spotlight. REQUIRED frontmatter: palette (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt — model picks bg), image: /local.png, items: exactly 4 {title,body}. Map outline.cards → items: (never cards:). Map outline.palette → palette:. Body = H1 + one description paragraph from points[0] (no bullets). Honor fields[].limit char caps (H1≤42, desc≤90, title≤18, body≤48). Center image; pairs at edges — do not omit palette.
+- For visual spotlight: layout: spotlight. REQUIRED frontmatter: palette (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt — model picks bg), image: /local.png, items: exactly 4 {title,body}. Map outline.cards → items: (never cards:). Map outline.palette → palette:. Body = H1 + one description paragraph from points[0] (no bullets). Honor fields[].limit char caps (H1≤42, desc≤90, title≤14 — one line, 1–2 short words, no wrapping/ellipsis; body≤40). Center image; pairs at edges — do not omit palette.
 - For visual pie: layout: pie. Frontmatter: chartTitle?, items: 3–5 {label, value} (never pie: as key). Map outline.pie → items:, outline.chartTitle → chartTitle:. Body = H1 + description from points[0]. Honor char caps (H1≤42, desc≤90, label≤16, chartTitle≤48). Values are share weights (normalized to %); no photo required.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
 - Photo slides (visual image-right, image-left, spotlight, and any remaining slide with a non-empty imageQuery — NOT slide 1):
@@ -102,7 +102,7 @@ process — массив {title,iconHint} только для visual=process (3�
 palette — id фона (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt) только для visual=spotlight, иначе "".
 pie — массив {label,value} только для visual=pie (3–5 шт, value>0), иначе [].
 chartTitle — короткий заголовок над pie только для visual=pie, иначе "".
-Для visual=spotlight: imageQuery обязателен; points[0] = description (≤90 символов); cards ровно 4 (title≤18, body≤48 символов); heading ≤42 символов; palette обязателен.
+Для visual=spotlight: imageQuery обязателен; points[0] = description (≤90 символов); cards ровно 4 (title≤14 символов — одна строка, 1–2 коротких слова, иначе обрежется «…»; body≤40 символов); heading ≤42 символов; palette обязателен.
 Для visual=pie: pie 3–5 slices; points[0]=description (≤90); heading ≤42; label ≤16; chartTitle ≤48.
 Для visual=icon поле iconHint — из того же allowlist.
 kicker/source — короткие подписи или "". Для stats/timeline с цифрами source обязателен (откуда факт), иначе "".

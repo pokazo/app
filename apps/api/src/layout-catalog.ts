@@ -511,7 +511,7 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
       f.kicker(`2–5 short words, ALL CAPS (≤${SPOTLIGHT_CONTENT_LIMITS.maxKickerChars} chars)`),
       f.items(
         `exactly ${SPOTLIGHT_CONTENT_LIMITS.pairCount}`,
-        `YAML items: [{title, body}] — never use cards: as key. title ≤${SPOTLIGHT_CONTENT_LIMITS.maxPairTitleChars} chars; body ≤${SPOTLIGHT_CONTENT_LIMITS.maxPairBodyChars} chars`,
+        `YAML items: [{title, body}] — never use cards: as key. title ≤${SPOTLIGHT_CONTENT_LIMITS.maxPairTitleChars} chars (one line, 1–2 short words — longer is clipped with …); body ≤${SPOTLIGHT_CONTENT_LIMITS.maxPairBodyChars} chars`,
       ),
       f.h1(
         `≤${SPOTLIGHT_CONTENT_LIMITS.maxH1Chars} chars (≈2–8 words)`,

@@ -134,7 +134,7 @@ Field rules (match chosen layout contract from layout-get fields[]):
 - timeline: steps in frontmatter; body = H1
 - stats: items: (not stats:); body = H1
 - skills | features | process: frontmatter items/steps; body = H1
-- spotlight: palette + local image: + items exactly 4 {title,body}; body = H1 + description paragraph; honor char limits (H1≤42, desc≤90, title≤18, body≤48)
+- spotlight: palette + local image: + items exactly 4 {title,body}; body = H1 + description paragraph; honor char limits (H1≤42, desc≤90, title≤14 (single line, else clipped with …), body≤40)
 - pie: chartTitle? + items 3–5 {label,value}; body = H1 + description; honor char limits (H1≤42, desc≤90, label≤16, chartTitle≤48)
 - image-right | image-left: local image: path when updating photo; honor fields[].limit (short kicker/H1, ≤3 short bullets)
 iconHint allowlist: ${LAYOUT_ICON_HINTS}.

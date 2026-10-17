@@ -64,8 +64,8 @@ describe("layout catalog", () => {
     expect(spot.fields.find((f) => f.name === "H1")?.limit).toMatch(/≤42/);
     expect(spot.fields.find((f) => f.name === "description")?.limit).toMatch(/≤90/);
     expect(spot.fields.find((f) => f.name === "items")?.limit).toMatch(/exactly 4/);
-    expect(spot.fields.find((f) => f.name === "items[].title")?.limit).toMatch(/≤18/);
-    expect(spot.fields.find((f) => f.name === "items[].body")?.limit).toMatch(/≤48/);
+    expect(spot.fields.find((f) => f.name === "items[].title")?.limit).toMatch(/≤14/);
+    expect(spot.fields.find((f) => f.name === "items[].body")?.limit).toMatch(/≤40/);
   });
 
   it("layout-match prefers spotlight for product photo + 4 features", () => {
