@@ -12,7 +12,7 @@ import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
 import { createImageGenTools, type GenToolAttribution } from "./assets-gen-tools.js";
 import { createYandexImageTools, type YandexToolAttribution } from "./assets-yandex-tools.js";
 import { mergeComposeTools, pickHeroTools, pickRewriteTools } from "./generate-helpers.js";
-import { Outline, OutlineSlide, type OutlineT } from "./outline.js";
+import { Outline, OutlineSlide, parseOutline, type OutlineT } from "./outline.js";
 import { emptySlideIssues, formatOutlinePlanIssues, textOnlySlideIssues } from "./outline-plan.js";
 import { parseSlideBlocks } from "./layout-md-assert.js";
 import {
@@ -606,7 +606,7 @@ export async function rewriteSlide(opts: {
   if (instruction.length < 2) throw new Error("bad instruction");
 
   const outlineRaw = JSON.parse(await readFile(join(opts.workDir, "outline.json"), "utf8"));
-  const outline = Outline.parse(outlineRaw) as OutlineT;
+  const outline = parseOutline(outlineRaw);
   let slidesMd = "";
   try {
     slidesMd = await readFile(join(opts.workDir, "slides.md"), "utf8");

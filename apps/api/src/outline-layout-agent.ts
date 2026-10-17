@@ -6,7 +6,7 @@ import {
   wrapToolsWithActivity,
 } from "./activity.js";
 import { logAiError } from "./format-ai-error.js";
-import { Outline, type OutlineT } from "./outline.js";
+import { Outline, safeParseOutline, type OutlineT } from "./outline.js";
 import { refineOutlineUntilValid } from "./outline-plan.js";
 import {
   formatEnrichedPlanIssues,
@@ -49,7 +49,7 @@ export function createSubmitOutlineTool(opts: {
     parameters: Outline,
     execute: async (raw) => {
       if (skipOutlinePlan()) {
-        const parsed = Outline.safeParse(raw);
+        const parsed = safeParseOutline(raw);
         if (!parsed.success) {
           return { ok: false, issues: String(parsed.error) };
         }

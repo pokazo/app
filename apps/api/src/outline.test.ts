@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Outline } from "./outline.js";
+import { Outline, parseOutline } from "./outline.js";
 
 const emptyVisual = {
   imageQuery: "",
@@ -143,8 +143,39 @@ describe("Outline schema", () => {
     ).toThrow();
   });
 
-  it("fills palette/pie/chartTitle defaults for decks saved before those fields existed", () => {
-    const parsed = Outline.parse({
+  it("strict Outline.parse rejects slides missing cards (OpenAI required)", () => {
+    expect(() =>
+      Outline.parse({
+        title: "X",
+        slides: [
+          {
+            heading: "A",
+            points: [],
+            intent: "a",
+            visual: "hero",
+            imageQuery: "",
+            iconHint: "",
+            kicker: "",
+            source: "",
+            steps: [],
+            stats: [],
+            skills: [],
+            // cards missing — must fail for tool schema parity
+            features: [],
+            process: [],
+            palette: "",
+            pie: [],
+            chartTitle: "",
+          },
+          { heading: "B", points: [], intent: "b", visual: "end", ...emptyVisual },
+          { heading: "C", points: [], intent: "c", visual: "end", ...emptyVisual },
+        ],
+      }),
+    ).toThrow(/cards/i);
+  });
+
+  it("parseOutline fills additive defaults for decks saved before those fields existed", () => {
+    const parsed = parseOutline({
       title: "Груша",
       slides: [
         {
@@ -159,9 +190,6 @@ describe("Outline schema", () => {
           steps: [],
           stats: [],
           skills: [],
-          cards: [],
-          features: [],
-          process: [],
         },
         {
           heading: "B",
@@ -175,9 +203,6 @@ describe("Outline schema", () => {
           steps: [],
           stats: [],
           skills: [],
-          cards: [],
-          features: [],
-          process: [],
         },
         {
           heading: "C",
@@ -191,12 +216,12 @@ describe("Outline schema", () => {
           steps: [],
           stats: [],
           skills: [],
-          cards: [],
-          features: [],
-          process: [],
         },
       ],
     });
+    expect(parsed.slides[0]?.cards).toEqual([]);
+    expect(parsed.slides[0]?.features).toEqual([]);
+    expect(parsed.slides[0]?.process).toEqual([]);
     expect(parsed.slides[0]?.palette).toBe("");
     expect(parsed.slides[0]?.pie).toEqual([]);
     expect(parsed.slides[0]?.chartTitle).toBe("");

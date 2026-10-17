@@ -1,5 +1,5 @@
 import { layoutCatalogById } from "./layout-catalog.js";
-import { Outline, type OutlineT } from "./outline.js";
+import { safeParseOutline, type OutlineT } from "./outline.js";
 import {
   formatOutlinePlanIssues,
   type OutlinePlanIssue,
@@ -82,7 +82,7 @@ export function outlineValidate(
   raw: unknown,
   opts?: { slideCount?: number },
 ): OutlineValidateResult {
-  const parsed = Outline.safeParse(raw);
+  const parsed = safeParseOutline(raw);
   if (!parsed.success) {
     const message = parsed.error.issues
       .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)

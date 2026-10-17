@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { writeDeckActivity, activityLabelForPhase } from "./activity.js";
 import { mapViewSlideToOutline } from "./rewrite-lock.js";
 import { writeRewriteStatus } from "./rewrite-status.js";
-import { Outline, type OutlineSlide, type OutlineT } from "./outline.js";
+import { Outline, parseOutline, type OutlineSlide, type OutlineT } from "./outline.js";
 import { SPEECH_JSON, parseSpeechJson, type SpeechDocT } from "./speech.js";
 import { buildSlidev, deckServeBase, writeSlides } from "./slidev.js";
 import { sanitizePickerTheme } from "./themes.js";
@@ -223,7 +223,7 @@ export async function applySlideStructure(opts: {
 }): Promise<{ focusViewIndex: number; slideCount: number }> {
   const { id, workDir, op } = opts;
   const outlineRaw = JSON.parse(await readFile(join(workDir, "outline.json"), "utf8"));
-  const outline = Outline.parse(outlineRaw) as OutlineT;
+  const outline = parseOutline(outlineRaw);
   const slidesMd = await readFile(join(workDir, "slides.md"), "utf8");
 
   let theme = "default";

@@ -27,7 +27,7 @@ import {
 } from "./deck-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
-import { Outline } from "./outline.js";
+import { parseOutline } from "./outline.js";
 import { maxViewSlideCount } from "./rewrite-lock.js";
 import {
   mutateSlideStructure,
@@ -641,9 +641,9 @@ export function createApp() {
     let slidesMd: string;
     try {
       slidesMd = await readFile(join(dir, "slides.md"), "utf8");
-      outline = Outline.parse(JSON.parse(await readFile(join(dir, "outline.json"), "utf8")));
+      outline = parseOutline(JSON.parse(await readFile(join(dir, "outline.json"), "utf8")));
     } catch (err) {
-      // Missing files → 404; corrupt/outdated outline → 400 (defaults in Outline cover additive fields).
+      // Missing files → 404; corrupt/outdated outline → 400 (parseOutline fills additive fields).
       if (err && typeof err === "object" && "issues" in err) {
         return c.json({ error: "bad outline" }, 400);
       }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Outline, type OutlineT } from "./outline.js";
+import { Outline, parseOutline, type OutlineT } from "./outline.js";
 import {
   EMPTY_SLIDE_HEADING,
   SLIDE_COUNT_MAX,
@@ -115,9 +115,9 @@ describe("mutateSlideStructure move", () => {
     );
   });
 
-  it("moves after parsing a legacy outline missing palette/pie/chartTitle", () => {
+  it("moves after parsing a legacy outline missing cards/palette/pie/chartTitle", () => {
     const md = makeMd(["statement", "fact", "quote"]);
-    const legacy = Outline.parse({
+    const legacy = parseOutline({
       title: "Demo",
       slides: ["A", "B", "C"].map((heading) => ({
         heading,
@@ -131,13 +131,11 @@ describe("mutateSlideStructure move", () => {
         steps: [],
         stats: [],
         skills: [],
-        cards: [],
-        features: [],
-        process: [],
       })),
     });
     const result = mutateSlideStructure(md, legacy, { op: "move", from: 1, to: 3 });
     expect(result.outline.slides.map((s) => s.heading)).toEqual(["B", "C", "A"]);
+    expect(result.outline.slides[0]?.cards).toEqual([]);
     expect(result.outline.slides[0]?.palette).toBe("");
   });
 });
