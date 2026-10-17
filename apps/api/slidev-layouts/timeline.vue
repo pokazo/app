@@ -209,6 +209,7 @@ const paletteClass = resolvePaletteClass(props.palette)
   --pk-sub: #c5c7ca;
   --pk-accent: #c8102e;
   --pk-faint: #8a8c8f;
+  --pk-card: #25282d;
 }
 .pk-palette-ocean {
   --pk-paper: #e8eef2;
