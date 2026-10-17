@@ -4,8 +4,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertSlidevDist,
+  DECK_VITE_CONFIG,
   deckServeBase,
   ensureDeckNodeModules,
+  ensureDeckViteConfig,
   installDeckLayouts,
   scaffoldMarkdown,
   slidevMcpSpawnSpec,
@@ -32,6 +34,17 @@ describe("slidevMcpSpawnSpec", () => {
     expect(spec.cwd).toBe("/tmp/deck-id");
     expect(spec.args).toEqual(["mcp", "slides.md"]);
     expect(spec.bin).toMatch(/slidev$/);
+  });
+});
+
+describe("ensureDeckViteConfig", () => {
+  it("writes faster build flags for repeated structure rebuilds", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pokazo-vite-cfg-"));
+    await ensureDeckViteConfig(dir);
+    const raw = readFileSync(join(dir, "vite.config.ts"), "utf8");
+    expect(raw).toBe(DECK_VITE_CONFIG);
+    expect(raw).toContain("minify: false");
+    expect(raw).toContain("cacheDir: \".vite-cache\"");
   });
 });
 

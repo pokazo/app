@@ -107,6 +107,27 @@ export async function writeSlides(workDir: string, markdown: string, theme = "de
   return file;
 }
 
+/**
+ * Per-deck Vite config: skip minify + keep cacheDir so repeated `slidev build`
+ * (structure move/delete) is faster. Artifact is still a static SPA under dist/.
+ */
+export const DECK_VITE_CONFIG = `import { defineConfig } from "vite";
+
+export default defineConfig({
+  cacheDir: ".vite-cache",
+  build: {
+    minify: false,
+    cssMinify: false,
+    reportCompressedSize: false,
+  },
+});
+`;
+
+export async function ensureDeckViteConfig(workDir: string): Promise<void> {
+  await mkdir(workDir, { recursive: true });
+  await writeFile(join(workDir, "vite.config.ts"), DECK_VITE_CONFIG, "utf8");
+}
+
 function runSlidev(spec: SlidevSpawnSpec, timeoutMs: number, label: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(spec.bin, spec.args, {
@@ -147,12 +168,15 @@ function runSlidev(spec: SlidevSpawnSpec, timeoutMs: number, label: string): Pro
 export async function buildSlidev(workDir: string, base = "./", timeoutMs = 180_000): Promise<void> {
   ensureDeckNodeModules(workDir);
   installDeckLayouts(workDir);
+  await ensureDeckViteConfig(workDir);
   const slidesPath = join(workDir, "slides.md");
   if (existsSync(slidesPath)) {
     assertLayoutsInMarkdown(readFileSync(slidesPath, "utf8"));
   }
   const spec = slidevSpawnSpec(workDir, base);
+  const t0 = Date.now();
   const log = await runSlidev(spec, timeoutMs, "slidev build");
+  console.info(`[timing] slidev-build ${workDir.split("/").pop()} ms=${Date.now() - t0}`);
   try {
     assertSlidevDist(workDir);
   } catch (err) {

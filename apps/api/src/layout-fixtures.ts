@@ -242,23 +242,27 @@ items:
 
 ---
 layout: timeline
-kicker: ROADMAP
+kicker: ИСТОРИЯ
 steps:
-  - phase: Start
-    title: Discover
-    body: Research
+  - phase: 159 г. до н.э.
+    title: Основание города
+    body: Первое упоминание Анталии
     state: done
-  - phase: Build
-    title: Ship
-    body: Release
+  - phase: Римская эпоха
+    title: Античное наследие
+    body: Памятники римской эпохи в городе
+    state: done
+  - phase: Византийская и сельджукская эпохи
+    title: Средневековое наследие
+    body: Архитектурные памятники тех эпох
     state: current
-  - phase: Grow
-    title: Scale
-    body: Expand
+  - phase: 1972 г.
+    title: Охрана старого города
+    body: Калеичи признан памятником архитектуры
     state: todo
 ---
 
-# Timeline title
+# Исторический путь Анталии
 
 ---
 layout: stats

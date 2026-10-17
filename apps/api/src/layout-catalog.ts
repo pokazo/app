@@ -46,6 +46,13 @@ export type LayoutCatalogEntry = {
  * Content caps for image-right/left half-pane — keep in sync with fields[].limit.
  * Used by markdown assert so overflow fails the gate instead of clipping silently.
  */
+/** Timeline column caps — keep in sync with timeline.vue 2-line phase clamp. */
+export const TIMELINE_CONTENT_LIMITS = {
+  maxPhaseChars: 40,
+  maxTitleChars: 28,
+  maxBodyChars: 48,
+} as const;
+
 export const IMAGE_SPLIT_CONTENT_LIMITS = {
   maxBullets: 3,
   /** Uppercase + letter-spacing makes long kickers clip; keep well under half-pane width. */
@@ -371,19 +378,22 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     id: "timeline",
     summary: "Horizontal phases with progress rail",
     whenToUse: "History, roadmap phases with phase/title/body/state",
-    antiPatterns: "Simple pipeline of icon steps (use process); <3 steps",
+    antiPatterns: "Simple pipeline of icon steps (use process); <3 steps; phase longer than 2 lines",
     outlineFields: "visual=timeline; steps 3–5 {phase,title,body,state}; source if numbers",
     frontmatter: "layout: timeline; steps: …; source?",
     body: "H1 only",
     displays: "Rail + phase columns",
     example:
-      '{ "visual": "timeline", "heading": "Roadmap", "steps": [{"phase":"2024","title":"Launch","body":"…","state":"done"},{"phase":"2025","title":"Scale","body":"…","state":"current"},{"phase":"2026","title":"Expand","body":"…","state":"todo"}], "source": "Plan" }',
+      '{ "visual": "timeline", "heading": "Исторический путь Анталии", "steps": [{"phase":"159 г. до н.э.","title":"Основание города","body":"Первое упоминание Анталии","state":"done"},{"phase":"Византийская и сельджукская эпохи","title":"Средневековое наследие","body":"Архитектурные памятники тех эпох","state":"current"},{"phase":"1972 г.","title":"Охрана старого города","body":"Калеичи — памятник архитектуры","state":"todo"}], "kicker": "ИСТОРИЯ" }',
     tags: ["steps", "time"],
     fields: [
       f.layout("timeline"),
       f.kicker(),
       f.source(),
-      f.steps("3–5 steps", "steps: [{phase, title, body, state}] — phase is a human label, not state"),
+      f.steps(
+        "3–5 steps",
+        `steps: [{phase, title, body, state}] — phase ≤${TIMELINE_CONTENT_LIMITS.maxPhaseChars} chars (2 lines); title ≤${TIMELINE_CONTENT_LIMITS.maxTitleChars}; body ≤${TIMELINE_CONTENT_LIMITS.maxBodyChars}`,
+      ),
       f.h1("≈2–8 words", "Title only"),
     ],
   },

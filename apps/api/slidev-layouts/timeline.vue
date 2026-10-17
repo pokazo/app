@@ -124,6 +124,7 @@ const paletteClass = resolvePaletteClass(props.palette)
   display: none;
 }
 .pk-timeline__rail {
+  --pk-phase-h: calc(13px * 1.25 * 2);
   position: relative;
   margin-top: auto;
 }
@@ -131,7 +132,8 @@ const paletteClass = resolvePaletteClass(props.palette)
 .pk-timeline__progress {
   position: absolute;
   left: 0;
-  top: 42px;
+  /* phase box (2 lines) + dot margin-top + half dot − half track */
+  top: calc(var(--pk-phase-h) + 8px + 9px - 1.5px);
   height: 3px;
 }
 .pk-timeline__track {
@@ -146,10 +148,16 @@ const paletteClass = resolvePaletteClass(props.palette)
   gap: 28px;
 }
 .pk-timeline__phase {
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.25;
   color: var(--pk-accent);
-  height: 24px;
+  height: var(--pk-phase-h);
   font-family: ui-monospace, monospace;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
 }
 .pk-timeline__col[data-state="current"] .pk-timeline__phase,
 .pk-timeline__col[data-state="todo"] .pk-timeline__phase {
