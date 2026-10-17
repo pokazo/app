@@ -5,6 +5,7 @@ import {
   createActivityPublisher,
   wrapToolsWithActivity,
 } from "./activity.js";
+import { logAiError } from "./format-ai-error.js";
 import { Outline, type OutlineT } from "./outline.js";
 import { refineOutlineUntilValid } from "./outline-plan.js";
 import {
@@ -103,26 +104,31 @@ export async function generateOutlineWithLayoutMcp(opts: {
         ? wrapToolsWithActivity(rawTools, (label) => activity.set(label))
         : rawTools;
       if (activity) await activity.set(activityLabelForPhase("thinking"));
-      await generateText({
-        model: opts.model,
-        system: OUTLINE_LAYOUT_SYSTEM,
-        tools: tools as never,
-        maxSteps: opts.maxSteps ?? 24,
-        prompt: outlineUserPrompt({
-          topic: opts.topic,
-          locale: opts.locale,
-          audience: opts.audience,
-          slideCount: opts.slideCount,
-          researchMarkdown: opts.researchMarkdown,
-        }),
-        onStepFinish: async (step) => {
-          const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-          console.info(`[llm] outline step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
-          if (!activity) return;
-          if (names.length) await activity.set(activityLabelForTools(names));
-          if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
-        },
-      });
+      try {
+        await generateText({
+          model: opts.model,
+          system: OUTLINE_LAYOUT_SYSTEM,
+          tools: tools as never,
+          maxSteps: opts.maxSteps ?? 24,
+          prompt: outlineUserPrompt({
+            topic: opts.topic,
+            locale: opts.locale,
+            audience: opts.audience,
+            slideCount: opts.slideCount,
+            researchMarkdown: opts.researchMarkdown,
+          }),
+          onStepFinish: async (step) => {
+            const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+            console.info(`[llm] outline step finish=${step.finishReason} tools=${names.join(",") || "-"}`);
+            if (!activity) return;
+            if (names.length) await activity.set(activityLabelForTools(names));
+            if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
+          },
+        });
+      } catch (err) {
+        logAiError("outline", err, { topic: opts.topic, slideCount: opts.slideCount });
+        throw err;
+      }
     },
     (entry) => {
       mcpCalls.push(entry);

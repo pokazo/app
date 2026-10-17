@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { config } from "./env.js";
+import { formatAiError, logAiError } from "./format-ai-error.js";
 import { pool } from "./migrate.js";
 import { generateDeck } from "./generate.js";
 import { rewriteSlide } from "./rewrite-slide.js";
@@ -128,9 +129,11 @@ export async function processDeck(
     );
     await db.query(`UPDATE deck SET status='ready', updated_at=now() WHERE id=$1`, [id]);
   } catch (err) {
+    const detail = formatAiError(err);
+    logAiError("generate", err, { deckId: id, finalAttempt });
     await db.query(
       `UPDATE deck SET status=$2, error=$3, updated_at=now() WHERE id=$1`,
-      [id, finalAttempt ? "failed" : "queued", String(err)],
+      [id, finalAttempt ? "failed" : "queued", detail],
     );
     if (finalAttempt) {
       try {
@@ -157,10 +160,12 @@ export async function processRewriteSlide(
   try {
     await rewriteSlide({ id, workDir, slideIndex: slide, instruction });
   } catch (err) {
+    const detail = formatAiError(err);
+    logAiError("rewrite", err, { deckId: id, slide });
     await writeRewriteStatus(workDir, {
       slide,
       status: "failed",
-      error: String(err).slice(0, 2000),
+      error: detail,
       instruction,
       updatedAt: new Date().toISOString(),
     });
@@ -224,10 +229,12 @@ export async function processStructureSlide(id: string, op: StructureOp): Promis
       },
     });
   } catch (err) {
+    const detail = formatAiError(err);
+    logAiError("structure", err, { deckId: id, op: op.op });
     await writeRewriteStatus(workDir, {
       slide: slideHint,
       status: "failed",
-      error: String(err).slice(0, 2000),
+      error: detail,
       instruction: `structure:${op.op}`,
       updatedAt: new Date().toISOString(),
     });
