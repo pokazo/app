@@ -236,7 +236,9 @@ export async function applySlideStructure(opts: {
     /* defaults */
   }
 
+  const oldViewCount = splitRawSlideBlocks(slidesMd).length;
   const mutated = mutateSlideStructure(slidesMd, outline, op);
+  const newViewCount = splitRawSlideBlocks(mutated.md).length;
   await writeSlides(workDir, mutated.md, theme);
   await writeFile(join(workDir, "outline.json"), JSON.stringify(mutated.outline, null, 2), "utf8");
 
@@ -265,14 +267,98 @@ export async function applySlideStructure(opts: {
     /* optional */
   }
 
+  const distDir = join(workDir, "dist");
+  // slidev build empties dist — stash thumbs outside first, remap after.
+  const {
+    backupFilmstripThumbs,
+    filmstripThumbBackupDir,
+    remapFilmstripThumbs,
+    shiftFilmstripThumbsAfterDelete,
+    shiftFilmstripThumbsAfterInsert,
+    syncFilmstripThumbBackup,
+    viewIndexMapAfterMove,
+  } = await import("./filmstrip-thumb-remap.js");
+  await backupFilmstripThumbs(workDir, distDir, oldViewCount);
+
   // Must match generate/rewrite: absolute /p/:id/ so BASE_URL keeps images + router
   // under the deck path (base "./" resolves /slide-N.jpg to api origin → 404).
   await buildSlidev(workDir, deckServeBase(id));
+
+  const sourceDir = filmstripThumbBackupDir(workDir);
+  let thumbsOk = false;
   try {
-    const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
-    await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });
+    if (op.op === "move") {
+      const map = viewIndexMapAfterMove(oldViewCount, op.from, op.to);
+      const result = await remapFilmstripThumbs({ sourceDir, distDir, oldToNew: map });
+      thumbsOk = result.ok;
+      if (!result.ok) {
+        console.warn(
+          `[structure] thumb remap move missing=${result.missing.join(",")} deck=${id}`,
+        );
+      }
+    } else if (op.op === "delete") {
+      const result = await shiftFilmstripThumbsAfterDelete({
+        sourceDir,
+        distDir,
+        deletedIndex: op.viewIndex,
+        oldCount: oldViewCount,
+      });
+      thumbsOk = result.ok;
+      if (!result.ok) {
+        console.warn(
+          `[structure] thumb remap delete missing=${result.missing.join(",")} deck=${id}`,
+        );
+      }
+    } else {
+      const shifted = await shiftFilmstripThumbsAfterInsert({
+        sourceDir,
+        distDir,
+        afterIndex: op.after,
+        oldCount: oldViewCount,
+      });
+      if (shifted.ok) {
+        try {
+          const { renderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
+          await renderDeckFilmstripThumbs({
+            workDir,
+            deckId: id,
+            slideCount: newViewCount,
+            indices: [shifted.newIndex],
+          });
+          thumbsOk = true;
+        } catch (err) {
+          console.warn(
+            `[structure] thumb capture insert ${id}: ${String(err).slice(0, 200)}`,
+          );
+        }
+      } else {
+        console.warn(
+          `[structure] thumb remap insert missing=${shifted.missing.join(",")} deck=${id}`,
+        );
+      }
+    }
   } catch (err) {
-    console.warn(`[structure] thumbs ${id}: ${String(err).slice(0, 200)}`);
+    console.warn(`[structure] thumb remap ${id}: ${String(err).slice(0, 200)}`);
+  }
+
+  const { missingFilmstripThumbIndices, ensureDeckFilmstripThumbs } =
+    await import("./deck-thumbs.js");
+  if (!thumbsOk || missingFilmstripThumbIndices(distDir, newViewCount).length > 0) {
+    try {
+      await ensureDeckFilmstripThumbs({
+        workDir,
+        deckId: id,
+        slideCount: newViewCount,
+      });
+    } catch (err) {
+      console.warn(`[structure] thumbs fallback ${id}: ${String(err).slice(0, 200)}`);
+    }
+  }
+
+  try {
+    await syncFilmstripThumbBackup(workDir, distDir, newViewCount);
+  } catch {
+    /* non-fatal */
   }
 
   await writeRewriteStatus(workDir, {
