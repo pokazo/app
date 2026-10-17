@@ -108,10 +108,14 @@ export function sanitizeHeroVariantFrontmatter(md: string): string {
   });
 }
 
+/** Deck-wide slide transition (Slidev built-in). Plays in the player only; PDF/PPTX/thumbs ignore it. */
+export const SLIDE_TRANSITION = "fade";
+
 const LEAN_HEADMATTER = `monaco: false
 twoslash: false
 remoteAssets: false
 record: false
+transition: ${SLIDE_TRANSITION}
 drawings:
   enabled: false`;
 
@@ -133,6 +137,7 @@ export function pinLeanSlidevHeadmatter(md: string): string {
     .replace(/^twoslash:\s*.+$/m, "")
     .replace(/^remoteAssets:\s*.+$/m, "")
     .replace(/^record:\s*.+$/m, "")
+    .replace(/^transition:\s*.+$/m, "")
     .replace(/^drawings:\n(?:[ \t]+.+\n)*/m, "")
     .replace(/^drawings:\s*.+\n?/m, "");
   body = `${LEAN_HEADMATTER}\n${body}`.replace(/\n{3,}/g, "\n\n").trim();
