@@ -10,7 +10,11 @@ import {
   deckBusyLabel,
   deckStatusLabel,
   deckViewable,
+  findPendingBuildDeck,
   formatWhen,
+  getInFlightBuild,
+  homeStartAction,
+  rememberInFlightBuild,
   sanitizeDeckTheme,
   sanitizeSlideCount,
 } from "./decks";
@@ -106,5 +110,99 @@ describe("slide count picker", () => {
     expect(sanitizeSlideCount(99)).toBe(SLIDE_COUNT_MAX);
     expect(sanitizeSlideCount("nope")).toBe(SLIDE_COUNT_DEFAULT);
     expect(sanitizeSlideCount(null)).toBe(SLIDE_COUNT_DEFAULT);
+  });
+});
+
+describe("findPendingBuildDeck", () => {
+  const now = Date.parse("2026-10-18T10:00:00Z");
+  const deck = (deckId: string, status: string, createdAt: string) => ({
+    deckId,
+    topic: deckId,
+    status,
+    error: null,
+    slideCount: 8,
+    createdAt,
+    viewUrl: null,
+  });
+
+  it("returns the newest deck that is still being written", () => {
+    const decks = [
+      deck("a", "ready", "2026-10-18T09:59:00Z"),
+      deck("b", "generating", "2026-10-18T09:58:00Z"),
+      deck("c", "queued", "2026-10-18T09:50:00Z"),
+    ];
+    expect(findPendingBuildDeck(decks, now)?.deckId).toBe("b");
+  });
+
+  it("resumes preview — slides are still assembling, Home must not start another", () => {
+    expect(
+      findPendingBuildDeck([deck("a", "preview", "2026-10-18T09:59:00Z")], now)?.deckId,
+    ).toBe("a");
+  });
+
+  it("ignores ready, failed and stale decks", () => {
+    const decks = [
+      deck("a", "ready", "2026-10-18T09:59:00Z"),
+      deck("b", "failed", "2026-10-18T09:58:00Z"),
+      deck("c", "generating", "2026-10-18T08:00:00Z"),
+    ];
+    expect(findPendingBuildDeck(decks, now)).toBeNull();
+  });
+});
+
+describe("homeStartAction", () => {
+  const pending = {
+    deckId: "b",
+    topic: "Фотосинтез",
+    status: "generating",
+    error: null,
+    slideCount: 8,
+    createdAt: "2026-10-18T09:58:00Z",
+    viewUrl: null,
+  };
+
+  it("resumes an in-flight build instead of auto-creating from the URL topic", () => {
+    expect(
+      homeStartAction({
+        pending,
+        topicFromUrl: "другая новая тема для доклада",
+        alreadyCreating: false,
+      }),
+    ).toBe("resume");
+  });
+
+  it("auto-creates from the URL when nothing is being built", () => {
+    expect(
+      homeStartAction({
+        pending: null,
+        topicFromUrl: "другая новая тема для доклада",
+        alreadyCreating: false,
+      }),
+    ).toBe("auto-create");
+  });
+
+  it("stays idle when the form has no URL topic and no build", () => {
+    expect(
+      homeStartAction({ pending: null, topicFromUrl: "", alreadyCreating: false }),
+    ).toBe("idle");
+  });
+});
+
+describe("in-flight build memory", () => {
+  it("survives Home unmount so history → back still shows the assembly", () => {
+    rememberInFlightBuild(null);
+    expect(getInFlightBuild()).toBeNull();
+    rememberInFlightBuild({
+      deckId: "b",
+      status: "generating",
+      activity: "Пишем слайды",
+      startedAt: Date.parse("2026-10-18T09:58:00Z"),
+    });
+    expect(getInFlightBuild(Date.parse("2026-10-18T10:00:00Z"))).toMatchObject({
+      deckId: "b",
+      status: "generating",
+    });
+    rememberInFlightBuild(null);
+    expect(getInFlightBuild()).toBeNull();
   });
 });

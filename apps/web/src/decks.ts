@@ -44,6 +44,70 @@ export function deckViewable(status: string) {
   return status === "preview" || status === "ready";
 }
 
+/** Ignore decks stuck in a busy status (crashed worker) so Home does not lock forever. */
+export const PENDING_BUILD_MAX_AGE_MS = 30 * 60 * 1000;
+
+/**
+ * Deck still being written (queued / generating / preview / building).
+ * Home resumes its build screen instead of letting the user start another one.
+ * `preview` counts: remaining slides are still assembling.
+ * `decks` is expected newest first (as returned by GET /api/decks).
+ */
+export function findPendingBuildDeck(
+  decks: Deck[],
+  now: number = Date.now(),
+): Deck | null {
+  for (const d of decks) {
+    if (!deckBusy(d.status)) continue;
+    const created = new Date(d.createdAt).getTime();
+    if (Number.isFinite(created) && now - created > PENDING_BUILD_MAX_AGE_MS) continue;
+    return d;
+  }
+  return null;
+}
+
+export type HomeStartAction = "resume" | "auto-create" | "idle";
+
+/** Home prefers an in-flight build over starting another from ?topic=. */
+export function homeStartAction(opts: {
+  pending: Deck | null;
+  topicFromUrl: string;
+  alreadyCreating: boolean;
+}): HomeStartAction {
+  if (opts.pending) return "resume";
+  if (opts.alreadyCreating) return "idle";
+  if (opts.topicFromUrl.trim().length >= 5) return "auto-create";
+  return "idle";
+}
+
+export type InFlightBuild = {
+  deckId: string;
+  status: string;
+  activity?: string;
+  startedAt: number;
+};
+
+let inFlightBuild: InFlightBuild | null = null;
+
+/** Survives AppHome unmount (history → back) so the create button keeps showing the assembly. */
+export function rememberInFlightBuild(build: InFlightBuild | null) {
+  inFlightBuild = build;
+}
+
+export function getInFlightBuild(now: number = Date.now()): InFlightBuild | null {
+  const v = inFlightBuild;
+  if (!v) return null;
+  if (now - v.startedAt > PENDING_BUILD_MAX_AGE_MS) {
+    inFlightBuild = null;
+    return null;
+  }
+  if (!deckBusy(v.status)) {
+    inFlightBuild = null;
+    return null;
+  }
+  return v;
+}
+
 export function formatWhen(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";

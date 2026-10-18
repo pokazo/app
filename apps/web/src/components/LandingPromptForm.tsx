@@ -1,11 +1,19 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PkButton } from "./PkButton";
 import { ThemePicker } from "./ThemePicker";
 import { SlideCountPicker } from "./SlideCountPicker";
 import { UploadAttach } from "./UploadAttach";
-import { apiUrl } from "../safe";
-import { sanitizeDeckTheme, SLIDE_COUNT_DEFAULT } from "../decks";
+import { api, apiUrl } from "../api";
+import {
+  Deck,
+  SLIDE_COUNT_DEFAULT,
+  deckBusyLabel,
+  findPendingBuildDeck,
+  getInFlightBuild,
+  rememberInFlightBuild,
+  sanitizeDeckTheme,
+} from "../decks";
 import { sanitizeAudience, type AudienceSlug } from "../audience-pages";
 import { stashPendingUploadFiles } from "../pending-uploads";
 
@@ -19,9 +27,41 @@ export function LandingPromptForm(props: {
   const [slideCount, setSlideCount] = useState(SLIDE_COUNT_DEFAULT);
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
+  const [lockLabel, setLockLabel] = useState(() => {
+    const inflight = getInFlightBuild();
+    return inflight ? deckBusyLabel(inflight.status, inflight.activity) : "";
+  });
   const nav = useNavigate();
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });
+        if (!res.ok) return;
+        const data = await api<{ decks: Deck[] }>("/api/decks");
+        if (cancelled) return;
+        const found = findPendingBuildDeck(data.decks);
+        if (found) {
+          setLockLabel(deckBusyLabel(found.status));
+        } else {
+          if (getInFlightBuild()?.deckId !== "pending") rememberInFlightBuild(null);
+          setLockLabel("");
+        }
+      } catch {
+        /* landing stays a normal create form */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function goCreate(t: string) {
+    if (lockLabel) {
+      nav("/app");
+      return;
+    }
     const text = t.trim();
     if (text.length < 5 || busy) return;
     setBusy(true);
@@ -54,14 +94,19 @@ export function LandingPromptForm(props: {
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           placeholder={props.placeholder}
+          disabled={Boolean(lockLabel)}
         />
         <div className="actions">
           <div className="prompt-card-actions-left">
-            <UploadAttach files={files} onChange={setFiles} disabled={busy} />
-            <SlideCountPicker value={slideCount} onChange={setSlideCount} />
+            <UploadAttach files={files} onChange={setFiles} disabled={busy || Boolean(lockLabel)} />
+            <SlideCountPicker value={slideCount} onChange={setSlideCount} disabled={Boolean(lockLabel)} />
           </div>
-          <PkButton data-pk="cta-create" disabled={topic.trim().length < 5 || busy} type="submit">
-            Создать
+          <PkButton
+            data-pk="cta-create"
+            disabled={!lockLabel && (topic.trim().length < 5 || busy)}
+            type="submit"
+          >
+            {lockLabel || (busy ? "Создаём…" : "Создать")}
           </PkButton>
         </div>
         {files.length ? (
@@ -70,7 +115,7 @@ export function LandingPromptForm(props: {
           </p>
         ) : null}
       </form>
-      <ThemePicker value={theme} onChange={setTheme} />
+      <ThemePicker value={theme} onChange={setTheme} disabled={Boolean(lockLabel)} />
     </>
   );
 }

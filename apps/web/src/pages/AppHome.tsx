@@ -9,7 +9,11 @@ import {
   deckBusyLabel,
   deckStatusLabel,
   deckViewable,
+  findPendingBuildDeck,
   formatWhen,
+  getInFlightBuild,
+  homeStartAction,
+  rememberInFlightBuild,
   sanitizeDeckTheme,
   sanitizeSlideCount,
 } from "../decks";
@@ -40,10 +44,11 @@ export function AppHome() {
   const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
   const [audience] = useState(() => sanitizeAudience(params.get("audience")));
   const [files, setFiles] = useState<File[]>(() => getPendingUploadFiles());
-  const [status, setStatus] = useState("");
-  const [activity, setActivity] = useState("");
+  const [status, setStatus] = useState(() => getInFlightBuild()?.status ?? "");
+  const [activity, setActivity] = useState(() => getInFlightBuild()?.activity ?? "");
   const [err, setErr] = useState("");
   const creatingRef = useRef(false);
+  const aliveRef = useRef(true);
   const topicRef = useRef(topic);
   const themeRef = useRef(theme);
   const slideCountRef = useRef(slideCount);
@@ -54,6 +59,13 @@ export function AppHome() {
   slideCountRef.current = slideCount;
   audienceRef.current = audience;
   filesRef.current = files;
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     fetch(apiUrl("/api/auth/me"), { credentials: "include" })
@@ -130,8 +142,72 @@ export function AppHome() {
     };
   }, [me, params, setParams]);
 
+  function noteInFlight(deckId: string, nextStatus: string, nextActivity?: string | null) {
+    if (nextStatus === "ready" || nextStatus === "failed") {
+      rememberInFlightBuild(null);
+      return;
+    }
+    const prev = getInFlightBuild();
+    rememberInFlightBuild({
+      deckId,
+      status: nextStatus,
+      activity: nextActivity ?? "",
+      startedAt: prev?.deckId === deckId ? prev.startedAt : Date.now(),
+    });
+  }
+
+  /** Poll one deck until the player can open it (or it fails). Stops if Home unmounts. */
+  async function trackDeck(deckId: string, openWhenViewable = true) {
+    let failures = 0;
+    while (aliveRef.current) {
+      await new Promise((r) => setTimeout(r, 1000));
+      if (!aliveRef.current) return;
+      let d: {
+        status: string;
+        viewUrl: string | null;
+        error?: string;
+        activity?: string | null;
+      };
+      try {
+        d = await api(`/api/decks/${deckId}`);
+      } catch (error) {
+        failures += 1;
+        if (failures >= 5) throw error;
+        continue;
+      }
+      failures = 0;
+      if (!aliveRef.current) return;
+      setStatus(d.status);
+      setActivity(d.activity ?? "");
+      noteInFlight(deckId, d.status, d.activity);
+      if (d.status === "failed") {
+        setErr(d.error || "Не собралось");
+        setStatus("");
+        setActivity("");
+        creatingRef.current = false;
+        return;
+      }
+      if (d.status === "ready") {
+        creatingRef.current = false;
+        if (openWhenViewable) {
+          nav(`/view/${deckId}`, { state: { awaitingPreview: true } });
+        } else {
+          setStatus("");
+          setActivity("");
+        }
+        return;
+      }
+      if (openWhenViewable && deckViewable(d.status)) {
+        nav(`/view/${deckId}`, { state: { awaitingPreview: true } });
+        return;
+      }
+    }
+  }
+
   async function createDeck() {
     if (creatingRef.current) return;
+    const inflight = getInFlightBuild();
+    if (inflight && inflight.deckId && inflight.deckId !== "pending") return;
     creatingRef.current = true;
     const topicNow = topicRef.current.trim();
     const themeNow = themeRef.current;
@@ -142,6 +218,7 @@ export function AppHome() {
     setErr("");
     setStatus("queued");
     setActivity("Создаём…");
+    noteInFlight("pending", "queued", "Создаём…");
     try {
       let created: { deckId: string };
       if (filesNow.length > 0) {
@@ -168,28 +245,8 @@ export function AppHome() {
           }),
         });
       }
-      for (;;) {
-        await new Promise((r) => setTimeout(r, 1000));
-        const d = await api<{
-          status: string;
-          viewUrl: string | null;
-          error?: string;
-          activity?: string | null;
-        }>(`/api/decks/${created.deckId}`);
-        setStatus(d.status);
-        setActivity(d.activity ?? "");
-        if (deckViewable(d.status)) {
-          nav(`/view/${created.deckId}`, { state: { awaitingPreview: true } });
-          return;
-        }
-        if (d.status === "failed") {
-          setErr(d.error || "Не собралось");
-          setStatus("");
-          setActivity("");
-          creatingRef.current = false;
-          return;
-        }
-      }
+      noteInFlight(created.deckId, "queued", "Создаём…");
+      await trackDeck(created.deckId);
     } catch (error) {
       if (error instanceof ApiError && error.status === 402) {
         const body = error.body as { billing?: BillingMe } | null;
@@ -199,6 +256,7 @@ export function AppHome() {
           setStatus("");
           setActivity("");
           creatingRef.current = false;
+          rememberInFlightBuild(null);
           return;
         }
       }
@@ -206,44 +264,97 @@ export function AppHome() {
       setStatus("");
       setActivity("");
       creatingRef.current = false;
+      rememberInFlightBuild(null);
     }
   }
 
-  // Landing/login send ?topic=… — start generate immediately (no second Create click).
+  function stripTopicParam() {
+    setParams((current) => {
+      if (!current.get("topic")) return current;
+      const next = new URLSearchParams(current);
+      next.delete("topic");
+      return next;
+    }, { replace: true });
+  }
+
+  // Resume an in-flight build after history/back; otherwise auto-create from ?topic=.
   useEffect(() => {
     if (!me) return;
-    const qTopic = (params.get("topic") ?? "").trim();
-    if (qTopic.length < 5) return;
+    let cancelled = false;
 
-    const lock = params.toString();
-    if (autoCreateLocks.has(lock)) {
-      setParams((current) => {
-        if (!current.get("topic")) return current;
-        const next = new URLSearchParams(current);
-        next.delete("topic");
-        return next;
-      }, { replace: true });
-      return;
-    }
+    void (async () => {
+      const qTopic = (params.get("topic") ?? "").trim();
+      let pending: Deck | null = null;
+      let listOk = false;
+      try {
+        const data = await api<{ decks: Deck[] }>("/api/decks");
+        pending = findPendingBuildDeck(data.decks);
+        listOk = true;
+      } catch {
+        pending = null;
+      }
+      if (cancelled) return;
 
-    // Defer so React Strict Mode's effect cleanup can cancel the first mount.
-    const timer = window.setTimeout(() => {
-      if (autoCreateLocks.has(lock) || creatingRef.current) return;
+      const inflight = getInFlightBuild();
+      if (listOk && !pending && inflight?.deckId !== "pending") {
+        rememberInFlightBuild(null);
+      } else if (!pending && inflight && inflight.deckId && inflight.deckId !== "pending") {
+        pending = {
+          deckId: inflight.deckId,
+          topic: "",
+          status: inflight.status,
+          error: null,
+          slideCount: 0,
+          createdAt: new Date(inflight.startedAt).toISOString(),
+          viewUrl: null,
+        };
+      }
+
+      const action = homeStartAction({
+        pending,
+        topicFromUrl: qTopic,
+        alreadyCreating: creatingRef.current,
+      });
+
+      if (action === "resume" && pending) {
+        if (creatingRef.current) {
+          stripTopicParam();
+          return;
+        }
+        creatingRef.current = true;
+        setErr("");
+        setStatus(pending.status);
+        setActivity(inflight?.deckId === pending.deckId ? inflight.activity ?? "" : "");
+        stripTopicParam();
+        try {
+          await trackDeck(pending.deckId, false);
+        } catch {
+          if (!aliveRef.current) return;
+          setErr("Не удалось получить статус сборки");
+          setStatus("");
+          setActivity("");
+          creatingRef.current = false;
+          rememberInFlightBuild(null);
+        }
+        return;
+      }
+
+      if (action !== "auto-create") return;
+
+      const lock = params.toString();
+      if (autoCreateLocks.has(lock)) {
+        stripTopicParam();
+        return;
+      }
       autoCreateLocks.add(lock);
-      setParams((current) => {
-        if (!current.get("topic")) return current;
-        const next = new URLSearchParams(current);
-        next.delete("topic");
-        return next;
-      }, { replace: true });
+      stripTopicParam();
       void createDeck();
-    }, 0);
+    })();
 
     return () => {
-      window.clearTimeout(timer);
+      cancelled = true;
     };
-    // Intentionally once when session is ready; topic is stripped when create starts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-create from query
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once when session is ready
   }, [me]);
 
   async function onOut() {
