@@ -7,6 +7,7 @@ import { buildSlidev, deckServeBase, installDeckLayouts, scaffoldMarkdown, write
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp, type McpCallLog } from "./slidev-mcp.js";
 import { withHeroMcp } from "./hero-mcp.js";
+import { withLayoutMcp } from "./layout-mcp.js";
 import { composeSkill, composeUserPrompt } from "./compose-skill.js";
 import { heroMaxSteps, heroSkill, heroUserPrompt } from "./hero-skill.js";
 import { createStockTools, type StockToolAttribution } from "./assets-tools.js";
@@ -15,7 +16,9 @@ import { createYandexImageTools, type YandexToolAttribution } from "./assets-yan
 import {
   composeMaxSteps,
   mergeComposeTools,
+  pickComposeLayoutTools,
   pickHeroTools,
+  shouldRunLayoutRenderGate,
   stripComposeInspectTools,
 } from "./generate-helpers.js";
 import { validateOutlinePlan } from "./outline-plan.js";
@@ -375,11 +378,12 @@ export async function generateDeck(opts: {
     const kind = label === "preview" ? "preview" : "final";
     await setActivity(activityLabelForPhase(label === "preview" ? "preview" : "final_build"));
     await withDeckBuildPublish(opts.id, kind, async () => {
+      await guardWorkSlides(opts.workDir, theme);
       const t0 = Date.now();
       await buildSlidev(opts.workDir, base);
       const buildMs = Date.now() - t0;
       let gateMs = 0;
-      if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+      if (shouldRunLayoutRenderGate(label) && process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
         const g0 = Date.now();
         const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
         await assertDeckLayoutsRender(opts.workDir, opts.id);
@@ -436,6 +440,7 @@ export async function generateDeck(opts: {
           const t0 = Date.now();
           await setActivity(activityLabelForPhase("preview"));
           await withDeckBuildPublish(opts.id, "progressive", async () => {
+            await guardWorkSlides(opts.workDir, theme);
             await buildSlidev(opts.workDir, base);
             builtSlideCount = mdCount;
             await writePreviewBuild(opts.workDir, { builtSlideCount });
@@ -458,48 +463,51 @@ export async function generateDeck(opts: {
   await setActivity(activityLabelForPhase("compose"));
   stepTimers.set("compose", Date.now());
   await withOptionalUploadMcp(async (uploadSearchTools) => {
-    await withSlidevMcp(
-      opts.workDir,
-      async (slidevTools) => {
-        const tools = withLiveActivity(
-          stripComposeInspectTools(
-            mergeComposeTools(
-              slidevTools,
-              uploadSearchTools,
-              uploadUseTools,
-              yandexTools,
-              stockTools,
-              imageGenTools,
+    await withLayoutMcp(async (layoutTools) => {
+      await withSlidevMcp(
+        opts.workDir,
+        async (slidevTools) => {
+          const tools = withLiveActivity(
+            stripComposeInspectTools(
+              mergeComposeTools(
+                pickComposeLayoutTools(layoutTools),
+                slidevTools,
+                uploadSearchTools,
+                uploadUseTools,
+                yandexTools,
+                stockTools,
+                imageGenTools,
+              ),
             ),
-          ),
-        );
-        await setActivity(activityLabelForPhase("thinking"));
-        const result = await generateText({
-          model: model(config.composeModel),
-          system: skill,
-          tools: tools as never,
-          maxSteps,
-          prompt: composeUserPrompt(outline.object, opts.locale),
-          onStepFinish: async (step) => {
-            const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-            const prev = stepTimers.get("compose") ?? Date.now();
-            const ms = Date.now() - prev;
-            stepTimers.set("compose", Date.now());
-            console.info(
-              `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
-            );
-            if (names.length) await setActivity(activityLabelForTools(names));
-            if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
-            if (composeStepMayChangeDeck(names)) {
-              // Don't block the LLM on Slidev build — coalesce rebuilds in the background.
-              void publishProgressivePreview();
-            }
-          },
-        });
-        llm.push(summarizeGenerate("compose", result));
-      },
-      (call) => mcpCalls.push(call),
-    );
+          );
+          await setActivity(activityLabelForPhase("thinking"));
+          const result = await generateText({
+            model: model(config.composeModel),
+            system: skill,
+            tools: tools as never,
+            maxSteps,
+            prompt: composeUserPrompt(outline.object, opts.locale),
+            onStepFinish: async (step) => {
+              const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+              const prev = stepTimers.get("compose") ?? Date.now();
+              const ms = Date.now() - prev;
+              stepTimers.set("compose", Date.now());
+              console.info(
+                `[llm] compose step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+              );
+              if (names.length) await setActivity(activityLabelForTools(names));
+              if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
+              if (composeStepMayChangeDeck(names)) {
+                // Don't block the LLM on Slidev build — coalesce rebuilds in the background.
+                void publishProgressivePreview();
+              }
+            },
+          });
+          llm.push(summarizeGenerate("compose", result));
+        },
+        (call) => mcpCalls.push(call),
+      );
+    }, (call) => mcpCalls.push(call));
   });
   timer.mark("compose");
   await publishProgressivePreview();
@@ -515,42 +523,45 @@ export async function generateDeck(opts: {
     await setActivity(activityLabelForPhase("repair"));
     stepTimers.set("repair", Date.now());
     await withOptionalUploadMcp(async (uploadSearchTools) => {
-      await withSlidevMcp(
-        opts.workDir,
-        async (slidevTools) => {
-          const tools = withLiveActivity(
-            mergeComposeTools(
-              slidevTools,
-              uploadSearchTools,
-              uploadUseTools,
-              yandexTools,
-              stockTools,
-              imageGenTools,
-            ),
-          );
-          await setActivity(activityLabelForPhase("thinking"));
-          const result = await generateText({
-            model: model(config.composeModel),
-            system: skill,
-            tools: tools as never,
-            maxSteps: 24,
-            prompt: `Сборка Slidev / layout render упала. Исправь колоду только через tools (MCP update/insert/remove/move, upload-image / yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Если ошибка LayoutError[<layout>] — почини frontmatter/body именно этого слайда (stats/cards ≥2 items, timeline ≥3 steps, image-* local image:, hero valid variant+image when required). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
-            onStepFinish: async (step) => {
-              const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-              const prev = stepTimers.get("repair") ?? Date.now();
-              const ms = Date.now() - prev;
-              stepTimers.set("repair", Date.now());
-              console.info(
-                `[llm] repair step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
-              );
-              if (names.length) await setActivity(activityLabelForTools(names));
-              if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
-            },
-          });
-          llm.push(summarizeGenerate("repair", result));
-        },
-        (call) => mcpCalls.push(call),
-      );
+      await withLayoutMcp(async (layoutTools) => {
+        await withSlidevMcp(
+          opts.workDir,
+          async (slidevTools) => {
+            const tools = withLiveActivity(
+              mergeComposeTools(
+                pickComposeLayoutTools(layoutTools),
+                slidevTools,
+                uploadSearchTools,
+                uploadUseTools,
+                yandexTools,
+                stockTools,
+                imageGenTools,
+              ),
+            );
+            await setActivity(activityLabelForPhase("thinking"));
+            const result = await generateText({
+              model: model(config.composeModel),
+              system: skill,
+              tools: tools as never,
+              maxSteps: 24,
+              prompt: `Сборка Slidev / layout render упала. Исправь колоду только через tools (MCP update/insert/remove/move, layout-get, upload-image / yandex-image / stock / image-generate при необходимости; не переписывай весь файл текстом). Если ошибка LayoutError[<layout>] — почини frontmatter/body именно этого слайда (stats/cards ≥2 items, timeline ≥3 steps, image-* local image:, hero valid variant+image when required). Слайд 1 (hero) уже готов — не ломай его layout/variant/image без необходимости.\nОшибка:\n${String(err)}\nТекущий md (справочно):\n${md}`,
+              onStepFinish: async (step) => {
+                const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+                const prev = stepTimers.get("repair") ?? Date.now();
+                const ms = Date.now() - prev;
+                stepTimers.set("repair", Date.now());
+                console.info(
+                  `[llm] repair step finish=${step.finishReason} ms=${ms} tools=${names.join(",") || "-"}`,
+                );
+                if (names.length) await setActivity(activityLabelForTools(names));
+                if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
+              },
+            });
+            llm.push(summarizeGenerate("repair", result));
+          },
+          (call) => mcpCalls.push(call),
+        );
+      }, (call) => mcpCalls.push(call));
     });
     timer.mark("repair");
     md = await guardWorkSlides(opts.workDir, theme);

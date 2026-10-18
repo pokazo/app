@@ -29,7 +29,7 @@ export function createImageGenTools(
     onAttribution?: (entry: GenToolAttribution) => void;
   },
 ): Record<string, unknown> {
-  const configured = Boolean(opts.apiKey);
+  const configured = Boolean(opts.apiKey?.trim());
   const model = opts.model || DEFAULT_OPENAI_IMAGE_MODEL;
   const generate =
     opts.generate ??
@@ -57,7 +57,7 @@ export function createImageGenTools(
       execute: async ({ prompt, filename }) =>
         timedTool("image-generate", async () => {
           if (!configured) {
-            return { error: "OPENAI_API_KEY not configured — skip generate or use non-photo layouts" };
+            return { error: "OPENAI_API_KEY not configured — skip generate or use stock-download" };
           }
           try {
             const result = await generate({

@@ -57,4 +57,24 @@ describe("createYandexImageTools", () => {
     expect(out.source).toBe("yandex");
     expect(attributions[0]).toMatchObject({ source: "yandex", pageUrl: "https://uaz.ru/p" });
   });
+
+  it("after search fetch failed, later searches skip the network", async () => {
+    let calls = 0;
+    const tools = createYandexImageTools("/tmp/deck", {
+      baseUrl: "http://images.test",
+      search: async () => {
+        calls += 1;
+        throw new Error("fetch failed");
+      },
+    });
+    const search = tools["yandex-image-search"] as {
+      execute: (args: { query: string }) => Promise<{ error?: string; hint?: string }>;
+    };
+    const first = await search.execute({ query: "Ford" });
+    const second = await search.execute({ query: "Model T" });
+    expect(first.error).toMatch(/fetch failed/);
+    expect(second.error).toMatch(/fetch failed/);
+    expect(second.hint).toMatch(/stock-search/i);
+    expect(calls).toBe(1);
+  });
 });

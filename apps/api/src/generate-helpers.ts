@@ -7,6 +7,22 @@ export function mergeComposeTools(...maps: Record<string, unknown>[]): Record<st
   return Object.assign({}, ...maps);
 }
 
+const COMPOSE_LAYOUT_ALLOW = new Set(["layout-list", "layout-get", "layout-match"]);
+
+/** Compose: layout catalog only — no outline-validate (that is the outline agent). */
+export function pickComposeLayoutTools(tools: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [name, tool] of Object.entries(tools)) {
+    if (COMPOSE_LAYOUT_ALLOW.has(name)) out[name] = tool;
+  }
+  return out;
+}
+
+/** Playwright layout gate is for the final dist, not hero/progressive preview. */
+export function shouldRunLayoutRenderGate(label: string): boolean {
+  return label !== "preview" && label !== "progressive";
+}
+
 const HERO_TOOL_ALLOW = new Set([
   "hero-list",
   "hero-get",

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createImageGenTools } from "./assets-gen-tools.js";
 
 describe("createImageGenTools", () => {
-  it("exposes image-generate with stub error when key missing", async () => {
+  it("keeps a 0ms stub when key is missing so the model cannot NoSuchToolError", async () => {
     const tools = createImageGenTools("/tmp/deck", { apiKey: "" });
     expect(Object.keys(tools)).toEqual(["image-generate"]);
     const gen = tools["image-generate"] as {

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   composeMaxSteps,
   mergeComposeTools,
+  pickComposeLayoutTools,
   pickHeroTools,
   pickRewriteTools,
+  shouldRunLayoutRenderGate,
   stripComposeInspectTools,
 } from "./generate-helpers.js";
 
@@ -12,6 +14,28 @@ describe("composeMaxSteps", () => {
     expect(composeMaxSteps(6)).toBe(30);
     expect(composeMaxSteps(8)).toBe(38);
     expect(composeMaxSteps(16)).toBeLessThanOrEqual(48);
+  });
+});
+
+describe("pickComposeLayoutTools", () => {
+  it("keeps layout catalog and drops outline-validate", () => {
+    const picked = pickComposeLayoutTools({
+      "layout-list": 1,
+      "layout-get": 2,
+      "layout-match": 3,
+      "outline-validate": 4,
+      "slidev-insert-slide": 5,
+    });
+    expect(Object.keys(picked).sort()).toEqual(["layout-get", "layout-list", "layout-match"]);
+  });
+});
+
+describe("shouldRunLayoutRenderGate", () => {
+  it("runs on final builds only", () => {
+    expect(shouldRunLayoutRenderGate("preview")).toBe(false);
+    expect(shouldRunLayoutRenderGate("progressive")).toBe(false);
+    expect(shouldRunLayoutRenderGate("final")).toBe(true);
+    expect(shouldRunLayoutRenderGate("final_after_repair")).toBe(true);
   });
 });
 

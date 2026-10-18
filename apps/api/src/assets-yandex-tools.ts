@@ -45,9 +45,15 @@ export function createYandexImageTools(
   const configured = Boolean(opts.baseUrl?.trim());
   const search =
     opts.search ??
-    ((args) => searchYandexImages({ ...args, baseUrl: opts.baseUrl }));
+    ((args) => searchYandexImages({ ...args, baseUrl: opts.baseUrl, timeoutMs: 4_000 }));
   const download = opts.download ?? ((args) => downloadYandexImageToPublic(args));
   const cache = new Map<string, YandexImageHit>();
+  let searchDead = false;
+  let searchDeadReason = "";
+  const yandexDown = (message: string) => ({
+    error: message,
+    hint: "Yandex Images unreachable — use stock-search, then image-generate",
+  });
 
   return {
     "yandex-image-search": tool({
@@ -65,6 +71,7 @@ export function createYandexImageTools(
               error: "YANDEX_IMAGES_URL not configured — use stock-search or image-generate instead",
             };
           }
+          if (searchDead) return yandexDown(searchDeadReason);
           try {
             const hits = await search({
               baseUrl: opts.baseUrl,
@@ -91,7 +98,9 @@ export function createYandexImageTools(
             };
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            return { error: message, hint: "fall through to stock-search, then image-generate" };
+            searchDead = true;
+            searchDeadReason = message;
+            return yandexDown(message);
           }
         }, { query: String(query).slice(0, 80) }),
     }),
@@ -109,6 +118,7 @@ export function createYandexImageTools(
           if (!configured) {
             return { error: "YANDEX_IMAGES_URL not configured — skip yandex download" };
           }
+          if (searchDead) return yandexDown(searchDeadReason);
           const hit: YandexImageHit | undefined = id ? cache.get(id) : undefined;
           const downloadUrl = hit?.imageUrl ?? url;
           if (!downloadUrl) {
