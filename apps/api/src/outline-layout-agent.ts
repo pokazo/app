@@ -1,4 +1,4 @@
-import { generateObject, generateText, tool } from "ai";
+import { generateObject, generateText, jsonSchema, tool, zodSchema } from "ai";
 import {
   activityLabelForPhase,
   activityLabelForTools,
@@ -7,7 +7,11 @@ import {
 } from "./activity.js";
 import { logAiError } from "./format-ai-error.js";
 import { Outline, safeParseOutline, type OutlineT } from "./outline.js";
-import { refineOutlineUntilValid } from "./outline-plan.js";
+import {
+  demoteUnfilledSlides,
+  refineOutlineUntilValid,
+  validateOutlinePlan,
+} from "./outline-plan.js";
 import {
   formatEnrichedPlanIssues,
   outlineValidate,
@@ -26,14 +30,15 @@ You have MCP tools for layouts:
 - outline-validate — plan gate with exact expect contract per failing slide
 
 Rules:
-1. Before assigning visual on slides, call layout-list or layout-match (and layout-get for unfamiliar ids).
+1. Before assigning visual on slides, call layout-list or layout-match (and layout-get for unfamiliar ids). Both return limits (H1, kicker, …) — read them before picking a visual.
 2. Prefer variety; honor quotas in the user prompt (photos, structured payload, no text-only visuals).
 3. For visual=icon|features|process: every iconHint MUST be copied from that layout's iconHints allowlist (layout-get). Never invent Carbon names.
-4. Honor fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; spotlight: char caps + palette; pie: 3–5 slices + char caps).
-5. After drafting the full outline, call outline-validate (outlineJson + slideCount). If ok:false, fix each slide using issues[].expect (outlineFields, antiPatterns, example, iconHints) and call outline-validate again.
-6. Only when outline-validate returns ok:true, call submit_outline with the full outline object (title + slides).
-7. If submit_outline returns ok:false with issues, fix using expect and re-validate then submit again.
-8. Do not invent layout ids outside the catalog.`;
+4. Choose a visual only when heading/points fit that layout's limits.H1 (and other limits). If the idea needs a long thesis title, pick another layout (two-cols, cards, …) or shorten the heading — never assign statement/fact/quote with an overlong H1 (overflow clips).
+5. Honor limits from layout-list/match and fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; statement: H1 ≈3–10 words; spotlight: char caps + palette; pie: 3–5 slices + char caps).
+6. After drafting the full outline, call outline-validate (outlineJson + slideCount). If ok:false, fix each slide using issues[].expect (outlineFields, antiPatterns, example, limits, iconHints) and call outline-validate again.
+7. Only when outline-validate returns ok:true, call submit_outline with the full outline object (title + slides).
+8. If submit_outline returns ok:false with issues, fix using expect and re-validate then submit again.
+9. Do not invent layout ids outside the catalog.`;
 
 function skipOutlinePlan(): boolean {
   return process.env.SKIP_OUTLINE_PLAN === "1";
@@ -135,15 +140,47 @@ function unwrapToolResult(result: unknown): { ok?: boolean; issues?: unknown } |
   return null;
 }
 
+/**
+ * Same JSON schema the model sees (guidance unchanged), but NO SDK-side validation.
+ * With a zod `parameters`, a schema miss makes generateText throw
+ * `InvalidToolArgumentsError` and kills the whole run (seen with gemini-2.5-flash).
+ * Instead execute() validates and returns `{ ok:false, issues }` so the model can fix it.
+ */
+const submitOutlineParameters = jsonSchema<unknown>(zodSchema(Outline).jsonSchema, {
+  validate: (value) => ({ success: true, value }),
+});
+
+/** First pass + one retry turn when the agent stops without an accepted submit_outline. */
+const AGENT_ROUNDS = 2;
+const MAX_DRAFT_CHARS = 14_000;
+
+/** Prompt tail for the retry round: last issues + last draft, so the model fixes instead of restarting. */
+export function outlineRetryFeedback(trace: OutlineAgentTrace, lastDraft: string): string {
+  const issues =
+    trace.lastSubmitIssues !== "-" ? trace.lastSubmitIssues : trace.lastValidateIssues;
+  return [
+    "ПОВТОР: прошлая попытка закончилась без принятого submit_outline.",
+    issues !== "-" ? `Последние ошибки: ${issues}` : "",
+    lastDraft ? `Последний черновик outline (JSON, исправь его, не начинай с нуля):\n${lastDraft}` : "",
+    "Для каждого слайда с visual=features|process|timeline|stats|cards|spotlight|pie заполни payload полностью (features — ровно 3 items, process — 3–5 steps, iconHint только из allowlist). Если контента на такую раскладку нет — смени visual на image-right|image-left с points.",
+    "Сначала outline-validate, затем submit_outline. Не пиши JSON в обычном ответе — только вызовом инструмента.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function createSubmitOutlineTool(opts: {
   slideCount: number;
   onAccepted: (outline: OutlineT) => void;
+  /** Raw draft of every submit attempt (for the retry round). */
+  onAttempt?: (raw: unknown) => void;
 }) {
   return tool({
     description:
       "Submit the final outline JSON after outline-validate returned ok:true. Re-runs the same plan gate; on fail returns structured issues with expect contracts.",
-    parameters: Outline,
-    execute: async (raw) => {
+    parameters: submitOutlineParameters,
+    execute: async (raw: unknown) => {
+      opts.onAttempt?.(raw);
       if (skipOutlinePlan()) {
         const parsed = safeParseOutline(raw);
         if (!parsed.success) {
@@ -182,6 +219,8 @@ export async function generateOutlineWithLayoutMcp(opts: {
   let accepted: OutlineT | null = null;
   const trace = newTrace();
   const maxSteps = opts.maxSteps ?? 24;
+  let lastDraft = "";
+  let agentError: unknown = null;
 
   await withLayoutMcp(
     async (layoutTools) => {
@@ -189,6 +228,13 @@ export async function generateOutlineWithLayoutMcp(opts: {
         slideCount: opts.slideCount,
         onAccepted: (o) => {
           accepted = o;
+        },
+        onAttempt: (raw) => {
+          try {
+            lastDraft = JSON.stringify(raw).slice(0, MAX_DRAFT_CHARS);
+          } catch {
+            /* ignore unserializable draft */
+          }
         },
       });
       const rawTools = {
@@ -202,40 +248,56 @@ export async function generateOutlineWithLayoutMcp(opts: {
         ? wrapToolsWithActivity(rawTools, (label) => activity.set(label))
         : rawTools;
       if (activity) await activity.set(activityLabelForPhase("thinking"));
-      try {
-        await generateText({
-          model: opts.model,
-          system: OUTLINE_LAYOUT_SYSTEM,
-          tools: tools as never,
-          maxSteps,
-          prompt: outlineUserPrompt({
-            topic: opts.topic,
-            locale: opts.locale,
-            audience: opts.audience,
-            slideCount: opts.slideCount,
-            researchMarkdown: opts.researchMarkdown,
-          }),
-          onStepFinish: async (step) => {
-            const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
-            trace.steps += 1;
-            trace.finishReason = String(step.finishReason);
-            if (step.text?.trim()) trace.lastText = step.text.trim();
-            console.info(
-              `[llm] outline step ${trace.steps}/${maxSteps} finish=${step.finishReason} tools=${names.join(",") || "-"}`,
-            );
-            recordToolResults(
-              trace,
-              (step.toolResults ?? []) as Array<{ toolName: string; result?: unknown }>,
-            );
-            if (!activity) return;
-            if (names.length) await activity.set(activityLabelForTools(names));
-            if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
-          },
-        });
-      } catch (err) {
-        console.error(`[outline] agent threw ${formatTrace(trace)}`);
-        logAiError("outline", err, { topic: opts.topic, slideCount: opts.slideCount });
-        throw err;
+
+      const basePrompt = outlineUserPrompt({
+        topic: opts.topic,
+        locale: opts.locale,
+        audience: opts.audience,
+        slideCount: opts.slideCount,
+        researchMarkdown: opts.researchMarkdown,
+      });
+
+      for (let round = 1; round <= AGENT_ROUNDS && !accepted; round += 1) {
+        const prompt =
+          round === 1
+            ? basePrompt
+            : `${basePrompt}\n\n${outlineRetryFeedback(trace, lastDraft)}`;
+        if (round > 1) {
+          console.warn(
+            `[outline] agent round ${round}/${AGENT_ROUNDS} — no accepted submit yet; ${formatTrace(trace)}`,
+          );
+        }
+        try {
+          await generateText({
+            model: opts.model,
+            system: OUTLINE_LAYOUT_SYSTEM,
+            tools: tools as never,
+            maxSteps,
+            prompt,
+            onStepFinish: async (step) => {
+              const names = (step.toolCalls as Array<{ toolName: string }>).map((t) => t.toolName);
+              trace.steps += 1;
+              trace.finishReason = String(step.finishReason);
+              if (step.text?.trim()) trace.lastText = step.text.trim();
+              console.info(
+                `[llm] outline step ${trace.steps} (round ${round}) finish=${step.finishReason} tools=${names.join(",") || "-"}`,
+              );
+              recordToolResults(
+                trace,
+                (step.toolResults ?? []) as Array<{ toolName: string; result?: unknown }>,
+              );
+              if (!activity) return;
+              if (names.length) await activity.set(activityLabelForTools(names));
+              if (step.finishReason === "tool-calls") void activity.thinkAfterHold();
+            },
+          });
+        } catch (err) {
+          // Do not abort the deck: fall through to generateObject + demotion below.
+          agentError = err;
+          console.error(`[outline] agent round ${round} threw ${formatTrace(trace)}`);
+          logAiError("outline", err, { topic: opts.topic, slideCount: opts.slideCount });
+          break;
+        }
       }
     },
     (entry) => {
@@ -251,7 +313,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
   const hitStepCap = trace.steps >= maxSteps;
   console.warn(
     `[generate] outline MCP submit_outline missing — falling back to generateObject ` +
-      `reason=${trace.submitCalls === 0 ? "never_called_submit" : "submit_rejected"}${hitStepCap ? " step_cap" : ""} ` +
+      `reason=${agentError ? "agent_error" : trace.submitCalls === 0 ? "never_called_submit" : "submit_rejected"}${hitStepCap ? " step_cap" : ""} ` +
       formatTrace(trace),
   );
   const first = await generateObject({
@@ -297,6 +359,19 @@ export async function generateOutlineWithLayoutMcp(opts: {
       (refined.issues.length ? ` issues=${summarizeOutlineIssues(refined.issues)}` : ""),
   );
   if (refined.issues.length) {
+    // Last resort: unfilled features/process/… slides become plain image-right bullets.
+    const rescued = demoteUnfilledSlides(refined.outline);
+    if (rescued.demoted.length) {
+      const after = validateOutlinePlan(rescued.outline, { slideCount: opts.slideCount });
+      console.warn(
+        `[outline] demoted unfilled slides ${rescued.demoted
+          .map((d) => `#${d.slide}:${d.from}→image-right`)
+          .join(",")} remainingIssues=${summarizeOutlineIssues(after)}`,
+      );
+      if (!after.length) {
+        return { outline: rescued.outline, via: "generateObject_fallback", mcpCalls };
+      }
+    }
     console.error(
       `[outline] FAILED after fallback attempts=${refined.attempts} agent: ${formatTrace(trace)} ` +
         `finalIssues=${summarizeOutlineIssues(refined.issues)}`,

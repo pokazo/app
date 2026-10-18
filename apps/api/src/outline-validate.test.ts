@@ -113,6 +113,12 @@ describe("expectForVisual", () => {
     expect(p.outlineFields).toMatch(/process/);
     expect(p.antiPatterns.length).toBeGreaterThan(0);
   });
+
+  it("includes H1 limits for statement so validate feedback can shorten heading", () => {
+    const s = expectForVisual("statement");
+    expect(s.limits?.H1).toMatch(/3–10 words/);
+    expect(s.outlineFields).toMatch(/3–10 words/);
+  });
 });
 
 describe("outlineValidate", () => {

@@ -430,6 +430,87 @@ export function validateOutlinePlan(
   return issues;
 }
 
+const DEMOTABLE_VISUALS = new Set([
+  "features",
+  "process",
+  "timeline",
+  "stats",
+  "skills",
+  "cards",
+  "pie",
+  "spotlight",
+  "icon",
+]);
+
+const MAX_DEMOTED_POINTS = 3;
+const MAX_DEMOTED_KICKER = 28;
+
+function clip(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > max * 0.5 ? cut.slice(0, sp) : cut).trim();
+}
+
+/** Bullets for a demoted slide: keep own points, else squeeze structured payload into text. */
+function pointsFromPayload(slide: OutlineSlide): string[] {
+  const own = nonEmptyStrings(slide.points ?? []);
+  if (own.length) return own.slice(0, MAX_DEMOTED_POINTS);
+  const fromPayload: string[] = [];
+  const push = (title?: string, body?: string) => {
+    const t = [title?.trim(), body?.trim()].filter(Boolean).join(": ");
+    if (t) fromPayload.push(t);
+  };
+  for (const f of slide.features ?? []) push(f.title, f.body);
+  for (const p of slide.process ?? []) push(p.title);
+  for (const s of slide.steps ?? []) push(s.title, s.body);
+  for (const s of slide.stats ?? []) push(s.label, s.value);
+  for (const s of slide.skills ?? []) push(s.name);
+  for (const c of slide.cards ?? []) push(c.title, c.body);
+  for (const p of slide.pie ?? []) if (p.label?.trim()) fromPayload.push(p.label.trim());
+  return fromPayload.slice(0, MAX_DEMOTED_POINTS);
+}
+
+/**
+ * Last-resort rescue: a structured slide (features/process/…) whose payload the model
+ * never filled becomes a plain image-right slide with bullets, instead of failing the
+ * whole deck. Only slides that currently have plan issues are touched; slide count and
+ * order are preserved. Returns the new outline and the 1-based indexes that were demoted.
+ */
+export function demoteUnfilledSlides(
+  outline: OutlineT,
+): { outline: OutlineT; demoted: Array<{ slide: number; from: string }> } {
+  const demoted: Array<{ slide: number; from: string }> = [];
+  const slides = outline.slides.map((slide, i) => {
+    const index = i + 1;
+    if (!DEMOTABLE_VISUALS.has(slide.visual)) return slide;
+    const issues = [...emptySlideIssues(index, slide), ...textOnlySlideIssues(index, slide)];
+    if (!issues.length) return slide;
+    const points = pointsFromPayload(slide);
+    if (!points.length) return slide;
+    demoted.push({ slide: index, from: slide.visual });
+    return {
+      ...slide,
+      visual: "image-right" as const,
+      points,
+      imageQuery: slide.imageQuery?.trim() || slide.heading.trim(),
+      kicker: clip(slide.kicker ?? "", MAX_DEMOTED_KICKER),
+      iconHint: "",
+      palette: "",
+      chartTitle: "",
+      steps: [],
+      stats: [],
+      skills: [],
+      cards: [],
+      features: [],
+      process: [],
+      pie: [],
+    };
+  });
+  return { outline: { ...outline, slides }, demoted };
+}
+
 export function formatOutlinePlanIssues(issues: OutlinePlanIssue[]): string {
   return issues.map((i, n) => `${n + 1}. [${i.code}] ${i.message}`).join("\n");
 }

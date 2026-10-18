@@ -460,8 +460,10 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     id: "statement",
     summary: "Dark bottom-anchored closing line",
     whenToUse: "Manifesto, close, one takeaway — end or section breath",
-    antiPatterns: "Busy lists; mid-deck feature dump",
-    outlineFields: "visual=statement; heading + optional point",
+    antiPatterns:
+      "Long thesis H1 (>10 words — clips at top); busy lists; mid-deck feature dump",
+    outlineFields:
+      "visual=statement; heading ≈3–10 words (punchline, not a sentence); optional short point",
     frontmatter: "layout: statement; kicker?",
     body: "H1 + short supporting line",
     displays: "Ink slide, content bottom-left with rule",
@@ -470,7 +472,7 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
     fields: [
       f.layout("statement"),
       f.kicker(),
-      f.h1("≈3–10 words", "Bold closing line"),
+      f.h1("≈3–10 words", "Bold closing line — longer titles clip at the top"),
       {
         name: "support",
         required: false,
@@ -609,16 +611,38 @@ export function layoutCatalogById(id: string): LayoutCatalogEntry | undefined {
   return LAYOUT_CATALOG.find((e) => e.id === id);
 }
 
-export function layoutList(tag?: string): Array<Pick<LayoutCatalogEntry, "id" | "summary" | "whenToUse" | "outlineFields" | "tags">> {
+/** Soft copy caps from fields[].limit — shown at layout-list / layout-match so the model sees them before picking a visual. */
+export function layoutLimitsDigest(
+  entry: LayoutCatalogEntry,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of entry.fields) {
+    if (field.limit) out[field.name] = field.limit;
+  }
+  return out;
+}
+
+export type LayoutListRow = {
+  id: string;
+  summary: string;
+  whenToUse: string;
+  outlineFields: string;
+  /** Soft caps (H1, kicker, …) — honor when choosing this visual and writing heading. */
+  limits: Record<string, string>;
+  tags: string[];
+};
+
+export function layoutList(tag?: string): LayoutListRow[] {
   const rows = tag
     ? LAYOUT_CATALOG.filter((e) => e.tags.includes(tag.trim().toLowerCase()))
     : LAYOUT_CATALOG;
-  return rows.map(({ id, summary, whenToUse, outlineFields, tags }) => ({
-    id,
-    summary,
-    whenToUse,
-    outlineFields,
-    tags,
+  return rows.map((entry) => ({
+    id: entry.id,
+    summary: entry.summary,
+    whenToUse: entry.whenToUse,
+    outlineFields: entry.outlineFields,
+    limits: layoutLimitsDigest(entry),
+    tags: entry.tags,
   }));
 }
 
@@ -638,7 +662,13 @@ export type LayoutMatchInput = {
   featureCount?: number;
 };
 
-export type LayoutMatchHit = { id: string; score: number; reason: string };
+export type LayoutMatchHit = {
+  id: string;
+  score: number;
+  reason: string;
+  /** Soft caps from layout-get fields[].limit — check before assigning this visual. */
+  limits: Record<string, string>;
+};
 
 export function layoutMatch(input: LayoutMatchInput): LayoutMatchHit[] {
   const intent = (input.intent || "").toLowerCase();
@@ -694,15 +724,25 @@ export function layoutMatch(input: LayoutMatchInput): LayoutMatchHit[] {
     bump("pie", 4, "numbers + 3–5 parts");
   }
 
+  const withLimits = (id: string, score: number, reason: string): LayoutMatchHit => {
+    const entry = layoutCatalogById(id);
+    return {
+      id,
+      score,
+      reason,
+      limits: entry ? layoutLimitsDigest(entry) : {},
+    };
+  };
+
   const hits: LayoutMatchHit[] = [...scores.entries()]
-    .map(([id, v]) => ({ id, score: v.score, reason: v.reasons.join("; ") }))
+    .map(([id, v]) => withLimits(id, v.score, v.reasons.join("; ")))
     .sort((a, b) => b.score - a.score);
 
   if (hits.length === 0) {
     return [
-      { id: "image-right", score: 1, reason: "default photo story" },
-      { id: "cards", score: 1, reason: "default structured" },
-      { id: "two-cols", score: 1, reason: "default compare/list" },
+      withLimits("image-right", 1, "default photo story"),
+      withLimits("cards", 1, "default structured"),
+      withLimits("two-cols", 1, "default compare/list"),
     ];
   }
   return hits.slice(0, 5);

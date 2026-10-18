@@ -21,7 +21,7 @@ server.registerTool(
   "layout-list",
   {
     description:
-      "List Pokazo Slidev layouts with summary, whenToUse, and outlineFields. Pass tag to filter (photo, kpi, steps, features, voice, close, …) or empty string for all.",
+      "List Pokazo Slidev layouts with summary, whenToUse, outlineFields, and limits (H1/kicker/… soft caps). Read limits before assigning a visual — overlong H1 clips. Pass tag to filter (photo, kpi, steps, features, voice, close, …) or empty string for all.",
     inputSchema: {
       // Required (no .optional/.default): OpenAI/Azure strict tools need every properties key in `required`.
       tag: z.string().describe("Tag filter; use empty string for all layouts"),
@@ -63,7 +63,7 @@ server.registerTool(
   "layout-match",
   {
     description:
-      "Rank layout candidates for a slide intent. Returns top ids with scores/reasons — pick one and fill its outlineFields (use layout-get for details).",
+      "Rank layout candidates for a slide intent. Returns top ids with scores/reasons/limits — pick one only if heading fits limits.H1, then fill outlineFields (use layout-get for details).",
     inputSchema: {
       intent: z.string().describe("Slide intent / what the slide should communicate"),
       // Required booleans/numbers (no .optional): OpenAI/Azure strict tool schemas.

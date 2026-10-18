@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { createSubmitOutlineTool, summarizeOutlineIssues } from "./outline-layout-agent.js";
+import {
+  createSubmitOutlineTool,
+  OUTLINE_LAYOUT_SYSTEM,
+  outlineRetryFeedback,
+  summarizeOutlineIssues,
+} from "./outline-layout-agent.js";
 import type { OutlineT } from "./outline.js";
+
+describe("OUTLINE_LAYOUT_SYSTEM", () => {
+  it("requires reading limits before picking a visual", () => {
+    expect(OUTLINE_LAYOUT_SYSTEM).toMatch(/limits\.H1|limits \(H1/i);
+    expect(OUTLINE_LAYOUT_SYSTEM).toMatch(/statement: H1 ≈3–10 words/);
+  });
+});
 
 const emptyVisual = {
   imageQuery: "",
@@ -111,5 +123,53 @@ describe("summarizeOutlineIssues", () => {
     expect(s).toContain("#1 empty_slide: slide 1 process пустой");
     expect(s).toContain("+5 more");
     expect(s).not.toContain("\n");
+  });
+});
+
+describe("submit_outline with malformed args", () => {
+  it("returns ok:false issues instead of throwing", async () => {
+    let accepted: OutlineT | null = null;
+    const attempts: unknown[] = [];
+    const t = createSubmitOutlineTool({
+      slideCount: 4,
+      onAccepted: (o) => {
+        accepted = o;
+      },
+      onAttempt: (raw) => attempts.push(raw),
+    });
+    const result = (await t.execute!({ title: "T", slides: [{ heading: "A" }] } as never, {} as never)) as {
+      ok: boolean;
+      issues: unknown;
+    };
+    expect(result.ok).toBe(false);
+    expect(accepted).toBeNull();
+    expect(attempts).toHaveLength(1);
+  });
+});
+
+describe("outlineRetryFeedback", () => {
+  const trace = {
+    steps: 5,
+    validateCalls: 3,
+    validateOk: 0,
+    lastValidateIssues: "#2 empty_slide: features пустой",
+    submitCalls: 1,
+    lastSubmitIssues: "#5 empty_slide: process пустой",
+    finishReason: "stop",
+    lastText: "",
+  };
+
+  it("prefers submit issues and includes the last draft", () => {
+    const s = outlineRetryFeedback(trace, '{"title":"X"}');
+    expect(s).toContain("#5 empty_slide: process пустой");
+    expect(s).not.toContain("#2 empty_slide");
+    expect(s).toContain('{"title":"X"}');
+    expect(s).toContain("image-right");
+  });
+
+  it("falls back to validate issues and omits an empty draft", () => {
+    const s = outlineRetryFeedback({ ...trace, lastSubmitIssues: "-" }, "");
+    expect(s).toContain("#2 empty_slide: features пустой");
+    expect(s).not.toContain("черновик outline");
   });
 });

@@ -34,7 +34,7 @@ Visual rules:
 - For visual timeline: layout: timeline. Put kicker, source, and steps (3–5 objects: phase, title, body, state done|current|todo) in frontmatter. Body of the slide is only the H1 title.
 - For visual stats: layout: stats. Put kicker, source, and frontmatter items (not stats) — 2–4 objects: value, label, note. Body is only the H1. Key name is items: (YAML list). Never use stats: as the frontmatter key.
 - For visual skills: layout: skills. Put kicker and items (name, level, pct 0–100) in frontmatter. Body is only the H1.
-- For visual statement: layout: statement. Body = bold H1 + short supporting line (bottom-anchored). Optional kicker. Prefer dark/ink closing or manifesto slides.
+- For visual statement: layout: statement. Body = bold H1 (≈3–10 words — longer clips at top) + short supporting line (bottom-anchored). Optional kicker. Prefer dark/ink closing or manifesto slides.
 - For visual features: layout: features. Put kicker and items (exactly 3): title, body, iconHint — ONLY from allowlist (${LAYOUT_ICON_HINTS}). Body is only the H1. Map outline.features → items:. Never invent icon names outside the list.
 - For visual process: layout: process. Put kicker and steps (3–5): title, iconHint — same allowlist. Body is only the H1. Map outline.process → steps:.
 - For visual spotlight: layout: spotlight. REQUIRED frontmatter: palette (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt — model picks bg), image: /local.png, items: exactly 4 {title,body}. Map outline.cards → items: (never cards:). Map outline.palette → palette:. Body = H1 + one description paragraph from points[0] (no bullets). Honor fields[].limit char caps (H1≤42, desc≤90, title≤14 — one line, 1–2 short words, no wrapping/ellipsis; body≤40). Center image; pairs at edges — do not omit palette.
@@ -139,7 +139,7 @@ export function outlineRevisePrompt(opts: {
 Аудитория: ${audienceForPrompt(opts.audience)}
 Число слайдов: ровно ${opts.slideCount}
 ${researchBriefBlock(opts.researchMarkdown)}
-Ошибки тестов плана (каждая с expect.outlineFields / antiPatterns / example / iconHints — правь строго по expect):
+Ошибки тестов плана (каждая с expect.outlineFields / antiPatterns / example / limits / iconHints — правь строго по expect; limits.H1 не нарушай):
 ${opts.issues}
 
 Правила (обязательно устранить все ошибки):

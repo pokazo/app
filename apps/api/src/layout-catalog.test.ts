@@ -16,6 +16,21 @@ describe("layout catalog", () => {
     expect(photo.some((r) => r.id === "image-right")).toBe(true);
   });
 
+  it("layout-list exposes H1 limits so the model sees them before picking a visual", () => {
+    const statement = layoutList().find((r) => r.id === "statement");
+    expect(statement?.limits.H1).toMatch(/3–10 words/);
+    expect(statement?.outlineFields).toMatch(/3–10 words/);
+    const imageRight = layoutList().find((r) => r.id === "image-right");
+    expect(imageRight?.limits.H1).toMatch(/2–8 words/);
+    expect(imageRight?.limits.bullets).toMatch(/≤3/);
+  });
+
+  it("layout-match includes limits on each hit", () => {
+    const hits = layoutMatch({ intent: "closing takeaway manifesto" });
+    const statement = hits.find((h) => h.id === "statement");
+    expect(statement?.limits.H1).toMatch(/3–10 words/);
+  });
+
   it("layout-get returns full entry with Carbon iconHints allowlist", () => {
     const features = layoutGet("features");
     expect(features.outlineFields).toMatch(/iconHint/);

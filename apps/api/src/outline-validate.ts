@@ -1,4 +1,4 @@
-import { layoutCatalogById } from "./layout-catalog.js";
+import { layoutCatalogById, layoutLimitsDigest } from "./layout-catalog.js";
 import { safeParseOutline, type OutlineT } from "./outline.js";
 import {
   formatOutlinePlanIssues,
@@ -11,6 +11,8 @@ export type OutlineExpect = {
   outlineFields: string;
   antiPatterns: string;
   example: string;
+  /** Soft caps (H1, kicker, …) — shorten copy or change visual if heading exceeds. */
+  limits?: Record<string, string>;
   iconHints?: string[];
 };
 
@@ -51,10 +53,12 @@ export function expectForVisual(visual: string | undefined): OutlineExpect {
   if (!visual?.trim()) return UNKNOWN_VISUAL_EXPECT;
   const entry = layoutCatalogById(visual.trim());
   if (!entry) return UNKNOWN_VISUAL_EXPECT;
+  const limits = layoutLimitsDigest(entry);
   return {
     outlineFields: entry.outlineFields,
     antiPatterns: entry.antiPatterns,
     example: entry.example,
+    ...(Object.keys(limits).length ? { limits } : {}),
     ...(entry.iconHints?.length ? { iconHints: [...entry.iconHints] } : {}),
   };
 }
@@ -121,6 +125,9 @@ export function formatOutlineValidateIssues(issues: OutlineValidateIssue[]): str
         `expect.outlineFields: ${i.expect.outlineFields}`,
         `expect.antiPatterns: ${i.expect.antiPatterns}`,
         `expect.example: ${i.expect.example}`,
+        i.expect.limits && Object.keys(i.expect.limits).length
+          ? `expect.limits: ${JSON.stringify(i.expect.limits)}`
+          : null,
         i.expect.iconHints?.length
           ? `expect.iconHints: ${i.expect.iconHints.join(", ")}`
           : null,
@@ -144,7 +151,7 @@ export function formatEnrichedPlanIssues(
 /** MCP / tool description — exact contract the model must satisfy. */
 export const OUTLINE_VALIDATE_TOOL_DESCRIPTION = `Validate a full Pokazo outline JSON against plan rules BEFORE submit_outline. Never crashes — returns { ok: true, title, slides } or { ok: false, issues[] }.
 
-On ok:false each issue has message plus expect { outlineFields, antiPatterns, example, iconHints? } from the layout catalog — fix the slide using expect, then re-call.
+On ok:false each issue has message plus expect { outlineFields, antiPatterns, example, limits?, iconHints? } from the layout catalog — fix the slide using expect (honor limits.H1), then re-call.
 
 Hard payload rules:
 - features: exactly 3 items {title, body, iconHint}; iconHint ONLY from layout-get(features).iconHints (carbon-* allowlist)

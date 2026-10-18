@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { OutlineT } from "./outline.js";
 import {
+  demoteUnfilledSlides,
   formatOutlinePlanIssues,
   refineOutlineUntilValid,
   validateOutlinePlan,
@@ -418,5 +419,83 @@ describe("refineOutlineUntilValid", () => {
     expect(revise).toHaveBeenCalledTimes(2);
     expect(result.attempts).toBe(3);
     expect(result.issues.some((i) => i.code === "text_only")).toBe(true);
+  });
+});
+
+describe("demoteUnfilledSlides", () => {
+  const slide = (over: Partial<OutlineT["slides"][number]>): OutlineT["slides"][number] => ({
+    heading: "Слайд",
+    points: [],
+    intent: "x",
+    visual: "none",
+    ...base,
+    ...over,
+  });
+
+  it("turns an unfilled features slide into image-right bullets and passes the plan gate", () => {
+    const outline: OutlineT = {
+      title: "T",
+      slides: [
+        slide({ heading: "Тренды", visual: "features", points: ["Первый", "Второй", "Третий", "Четвёртый"] }),
+        slide({ heading: "Фото", visual: "image-right", points: ["а"], imageQuery: "sushi" }),
+        slide({ heading: "Фото 2", visual: "image-left", points: ["б"], imageQuery: "rolls" }),
+      ],
+    };
+    expect(validateOutlinePlan(outline)).not.toHaveLength(0);
+    const { outline: out, demoted } = demoteUnfilledSlides(outline);
+    expect(demoted).toEqual([{ slide: 1, from: "features" }]);
+    expect(out.slides).toHaveLength(3);
+    expect(out.slides[0]).toMatchObject({ visual: "image-right", imageQuery: "Тренды" });
+    expect(out.slides[0].points).toHaveLength(3);
+    expect(validateOutlinePlan(out)).toHaveLength(0);
+  });
+
+  it("squeezes partial payload into bullets when points are empty", () => {
+    const outline: OutlineT = {
+      title: "T",
+      slides: [
+        slide({
+          heading: "Виды",
+          visual: "features",
+          features: [
+            { title: "Нигири", body: "рис и рыба", iconHint: "carbon-star" },
+            { title: "Маки", body: "в нори", iconHint: "carbon-star" },
+          ],
+        }),
+      ],
+    };
+    const { outline: out, demoted } = demoteUnfilledSlides(outline);
+    expect(demoted).toHaveLength(1);
+    expect(out.slides[0].points).toEqual(["Нигири: рис и рыба", "Маки: в нори"]);
+    expect(out.slides[0].features).toEqual([]);
+  });
+
+  it("leaves valid slides and slides with nothing to say untouched", () => {
+    const outline: OutlineT = {
+      title: "T",
+      slides: [
+        slide({ heading: "Ок", visual: "image-right", points: ["а"], imageQuery: "q" }),
+        slide({ heading: "Пусто", visual: "process" }),
+      ],
+    };
+    const { outline: out, demoted } = demoteUnfilledSlides(outline);
+    expect(demoted).toEqual([]);
+    expect(out.slides[1].visual).toBe("process");
+  });
+
+  it("clips kicker to the image-right limit", () => {
+    const outline: OutlineT = {
+      title: "T",
+      slides: [
+        slide({
+          heading: "Т",
+          visual: "process",
+          points: ["а"],
+          kicker: "Очень длинный кикер который не влезает в лимит",
+        }),
+      ],
+    };
+    const { outline: out } = demoteUnfilledSlides(outline);
+    expect(out.slides[0].kicker.length).toBeLessThanOrEqual(28);
   });
 });
