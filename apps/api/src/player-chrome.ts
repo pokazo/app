@@ -34,6 +34,8 @@ html, body, #app, #slide-container,
  */
 export const PLAYER_NAV_SCRIPT = `
 (function () {
+  try { window.__pkAnimReady = true; } catch (e0) {}
+  try { console.info("[pk-anim] loaded"); } catch (e1) {}
   var DURATION = 650;
   var EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
   var busy = false;
@@ -42,7 +44,10 @@ export const PLAYER_NAV_SCRIPT = `
     try {
       if (localStorage.getItem("pkDebugAnim") === "1") return true;
     } catch (e) {}
-    return /(?:^|[?&])pkDebugAnim=1(?:&|$)/.test(location.search);
+    try {
+      if (window.__pkAnimDebug) return true;
+    } catch (e2) {}
+    return /(?:^|[?&])pkDebugAnim=1(?:&|$)/.test(location.search || "");
   }
   function log() {
     if (!debugOn()) return;
@@ -58,9 +63,9 @@ export const PLAYER_NAV_SCRIPT = `
   function ctx() {
     var el = document.getElementById("app");
     var app = el && el.__vue_app__;
-    return app && app._context && app._context.provides
-      ? app._context.provides["$$slidev-context"]
-      : null;
+    var prov = app && app._context && app._context.provides;
+    if (!prov) return null;
+    return prov["$$slidev-context"] || null;
   }
   function pageNo(slidev) {
     var n = slidev && slidev.nav && slidev.nav.currentSlideNo;
@@ -201,12 +206,16 @@ export const PLAYER_NAV_SCRIPT = `
   }
   function go(no, clicks) {
     var slidev = ctx();
-    if (!slidev) return false;
+    if (!slidev) {
+      log("wait-ctx", { no: no, clicks: clicks });
+      return false;
+    }
     var target = +no;
     var clickCount = clicks == null ? 0 : +clicks;
     return animateThenGo(slidev, target, clickCount);
   }
   function apply(no, clicks) {
+    log("navigate", { no: no, clicks: clicks });
     if (go(no, clicks)) return;
     var n = 0;
     var t = setInterval(function () {
@@ -218,7 +227,7 @@ export const PLAYER_NAV_SCRIPT = `
     var slidev = ctx();
     if (!slidev) return false;
     disableVueTransition(slidev);
-    log("boot", { page: pageNo(slidev), debug: true });
+    log("boot", { page: pageNo(slidev) });
     return true;
   }
   if (!boot()) {
@@ -228,11 +237,13 @@ export const PLAYER_NAV_SCRIPT = `
       if (boot() || boots > 80) clearInterval(bootT);
     }, 50);
   }
-  window.addEventListener("message", function (ev) {
-    var data = ev.data;
+  function onMessage(ev) {
+    var data = ev && ev.data;
     if (!data || data.target !== "slidev" || data.type !== "navigate") return;
     apply(data.no, data.clicks);
-  });
+  }
+  window.addEventListener("message", onMessage);
+  try { window.__pkAnimApply = apply; } catch (e3) {}
 })();
 `.trim();
 
@@ -285,10 +296,13 @@ export function injectPlayerChromeHide(html: string): string {
   let out = html;
   // Always refresh injected chrome so CSS/nav upgrades apply without rebuilding decks.
   out = out.replace(/<style id="pk-hide-slidev-chrome">[\s\S]*?<\/style>/i, "");
-  out = out.replace(/<script id="pk-slidev-nav">[\s\S]*?<\/script>/i, "");
+  out = out.replace(/<script\b[^>]*\bid="pk-slidev-nav"[^>]*>[\s\S]*?<\/script>/i, "");
+  out = out.replace(/<script\b[^>]*\bid="pk-slidev-nav"[^>]*\/>/i, "");
   const styleTag = `<style id="pk-hide-slidev-chrome">${PLAYER_CHROME_HIDE_CSS}</style>`;
   out = /<\/head>/i.test(out) ? out.replace(/<\/head>/i, `${styleTag}</head>`) : `${styleTag}${out}`;
-  const scriptTag = `<script id="pk-slidev-nav">${PLAYER_NAV_SCRIPT}</script>`;
+  // data: URL — executes reliably even when inline classic scripts are skipped in the embed iframe.
+  const scriptSrc = `data:text/javascript;charset=utf-8,${encodeURIComponent(PLAYER_NAV_SCRIPT)}`;
+  const scriptTag = `<script id="pk-slidev-nav" src="${scriptSrc}"></script>`;
   out = /<\/body>/i.test(out) ? out.replace(/<\/body>/i, `${scriptTag}</body>`) : `${out}${scriptTag}`;
   return out;
 }

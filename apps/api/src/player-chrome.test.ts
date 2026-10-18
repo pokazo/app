@@ -25,12 +25,12 @@ describe("injectPlayerChromeHide", () => {
   it("injects postMessage nav before </body>", () => {
     const out = injectPlayerChromeHide("<html><head></head><body></body></html>");
     expect(out).toContain('id="pk-slidev-nav"');
-    expect(out).toContain('target !== "slidev"');
+    expect(out).toContain("data:text/javascript");
     expect(out).toContain("animateThenGo");
     expect(out).toContain("fromEl.animate");
-    expect(out).toContain('configs.transition = null');
+    expect(out).toContain("configs.transition%20%3D%20null");
     expect(out).toContain("pkDebugAnim");
-    expect(out).toContain("[pk-anim]");
+    expect(out).toContain("%5Bpk-anim%5D");
     expect(out).toMatch(/<\/script>\s*<\/body>/i);
   });
 });
