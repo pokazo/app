@@ -34,7 +34,11 @@ html, body, #app, #slide-container,
  */
 export const PLAYER_NAV_SCRIPT = `
 (function () {
-  try { window.__pkAnimReady = true; } catch (e0) {}
+  try {
+    if (window.__pkAnimBound) return;
+    window.__pkAnimBound = true;
+    window.__pkAnimReady = true;
+  } catch (e0) {}
   try { console.info("[pk-anim] loaded"); } catch (e1) {}
   var DURATION = 650;
   var EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
