@@ -38,6 +38,22 @@ export const PLAYER_NAV_SCRIPT = `
   var EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
   var busy = false;
   var pending = null;
+  function debugOn() {
+    try {
+      if (localStorage.getItem("pkDebugAnim") === "1") return true;
+    } catch (e) {}
+    return /(?:^|[?&])pkDebugAnim=1(?:&|$)/.test(location.search);
+  }
+  function log() {
+    if (!debugOn()) return;
+    var args = ["[pk-anim]"].concat([].slice.call(arguments));
+    try { console.log.apply(console, args); } catch (e) {}
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ target: "pokazo", type: "anim-log", args: [].slice.call(arguments) }, "*");
+      }
+    } catch (e2) {}
+  }
 
   function ctx() {
     var el = document.getElementById("app");
@@ -136,6 +152,7 @@ export const PLAYER_NAV_SCRIPT = `
   function animateThenGo(slidev, target, clickCount) {
     var cur = pageNo(slidev);
     if (!cur || target === cur) {
+      log("skip same-page", { cur: cur, target: target, clickCount: clickCount });
       return navGo(slidev, target, clickCount);
     }
     disableVueTransition(slidev);
@@ -144,16 +161,25 @@ export const PLAYER_NAV_SCRIPT = `
     var toEl = slideEl(target);
     // Only adjacent slides animate; jumps stay instant.
     if (clickCount || Math.abs(delta) !== 1 || !fromEl || !toEl || typeof fromEl.animate !== "function") {
+      log("instant", {
+        cur: cur,
+        target: target,
+        reason: clickCount ? "clicks" : Math.abs(delta) !== 1 ? "jump" : !fromEl ? "no-from" : !toEl ? "no-to" : "no-waapi"
+      });
       return navGo(slidev, target, clickCount);
     }
     if (busy) {
       pending = { target: target, clickCount: clickCount };
+      log("queued", pending);
       return true;
     }
     busy = true;
     var dir = delta > 0 ? 1 : -1;
     var kind = ((Math.max(1, target) - 1) % 2 === 0) ? "slide" : "rise";
+    log("start", { cur: cur, target: target, kind: kind, dir: dir, ms: DURATION });
+    var t0 = performance.now();
     runWaapi(fromEl, toEl, kind, dir).then(function (anims) {
+      log("done", { cur: cur, target: target, kind: kind, ms: Math.round(performance.now() - t0) });
       navGo(slidev, target, clickCount);
       requestAnimationFrame(function () {
         finishAnims(anims, fromEl, toEl);
@@ -164,7 +190,8 @@ export const PLAYER_NAV_SCRIPT = `
           if (pageNo(ctx()) !== next.target) go(next.target, next.clickCount);
         }
       });
-    }).catch(function () {
+    }).catch(function (err) {
+      log("error", { cur: cur, target: target, err: String(err && err.message || err) });
       clearAnimStyles(fromEl);
       clearAnimStyles(toEl);
       busy = false;
@@ -191,6 +218,7 @@ export const PLAYER_NAV_SCRIPT = `
     var slidev = ctx();
     if (!slidev) return false;
     disableVueTransition(slidev);
+    log("boot", { page: pageNo(slidev), debug: true });
     return true;
   }
   if (!boot()) {

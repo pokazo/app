@@ -373,6 +373,16 @@ export function DeckView() {
   }, [current, stageReady, meta?.slides, showStage]);
 
   useEffect(() => {
+    function onAnimLog(ev: MessageEvent) {
+      const data = ev.data;
+      if (!data || data.target !== "pokazo" || data.type !== "anim-log") return;
+      console.log("[pk-anim]", ...(Array.isArray(data.args) ? data.args : []));
+    }
+    window.addEventListener("message", onAnimLog);
+    return () => window.removeEventListener("message", onAnimLog);
+  }, []);
+
+  useEffect(() => {
     function onFullscreenChange() {
       setPresenting(document.fullscreenElement === stageHostRef.current);
     }

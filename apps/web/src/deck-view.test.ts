@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  embedDebugQuery,
   embedDeckUrl,
   embedSlideUrl,
   slidevNavigateMessage,
@@ -8,6 +9,7 @@ import {
 
 describe("embed urls", () => {
   it("keeps one deck URL without a slide index", () => {
+    expect(embedDebugQuery()).toBe("");
     expect(embedDeckUrl("https://api.pokazo.ru/p/abc/")).toBe("https://api.pokazo.ru/p/abc/?embedded");
     expect(embedDeckUrl("https://api.pokazo.ru/p/abc")).toBe("https://api.pokazo.ru/p/abc/?embedded");
   });

@@ -1,11 +1,17 @@
+/** Forward player anim debug when the view URL has ?pkDebugAnim=1. */
+export function embedDebugQuery(): string {
+  if (typeof window === "undefined") return "";
+  return /(?:^|[?&])pkDebugAnim=1(?:&|$)/.test(window.location.search) ? "&pkDebugAnim=1" : "";
+}
+
 export function embedDeckUrl(embedBase: string): string {
   const base = embedBase.endsWith("/") ? embedBase : `${embedBase}/`;
-  return `${base}?embedded`;
+  return `${base}?embedded${embedDebugQuery()}`;
 }
 
 export function embedSlideUrl(embedBase: string, index: number): string {
   const base = embedBase.endsWith("/") ? embedBase : `${embedBase}/`;
-  return `${base}${index}?embedded`;
+  return `${base}${index}?embedded${embedDebugQuery()}`;
 }
 
 export function slidevNavigateMessage(page: number) {
