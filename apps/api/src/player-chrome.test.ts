@@ -10,6 +10,8 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toMatch(/background:\s*#fff/);
     expect(out).toContain("slidev-slide-loading");
     expect(out).toContain("overflow: hidden");
+    expect(out).toContain("-enter-active");
+    expect(out).toContain("transition: none");
     expect(out).toMatch(/<\/style>\s*<\/head>/i);
   });
 
@@ -32,7 +34,8 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toContain("side");
     expect(out).toContain("ignore-dup-inflight");
     expect(out).toContain("drop-pending-same");
-    expect(out).toContain("configs.transition%20%3D%20null");
+    expect(out).toContain("currentTransition");
+    expect(out).toContain("configs.transition%20%3D%20false");
     expect(out).toContain("pkDebugAnim");
     expect(out).toContain("%5Bpk-anim%5D");
     expect(out).toMatch(/<\/script>\s*<\/body>/i);

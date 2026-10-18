@@ -22,6 +22,24 @@ html, body, #app, #slide-container,
 .slidev-page {
   will-change: transform, opacity;
 }
+/*
+ * Kill Slidev/Vue route transitions in the embed. meta.transition is a getter
+ * (frontmatter) so nulling it does nothing — without this, nav.go() after WAAPI
+ * always plays a second fade/slide-left and the change looks double.
+ */
+.slidev-page[class*="-enter-active"],
+.slidev-page[class*="-leave-active"] {
+  transition: none !important;
+  animation: none !important;
+}
+.slidev-page[class*="-enter-from"],
+.slidev-page[class*="-leave-to"],
+.slidev-page[class*="-enter-to"],
+.slidev-page[class*="-leave-from"] {
+  opacity: 1 !important;
+  transform: none !important;
+  translate: none !important;
+}
 `.trim();
 
 /**
@@ -59,13 +77,15 @@ export const PLAYER_NAV_SCRIPT = `
   }
   function log() {
     if (!debugOn()) return;
-    var args = ["[pk-anim]"].concat([].slice.call(arguments));
-    try { console.log.apply(console, args); } catch (e) {}
+    var payload = [].slice.call(arguments);
+    // Prefer parent forward when embedded so DevTools on /view does not show each line twice.
     try {
       if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ target: "pokazo", type: "anim-log", args: [].slice.call(arguments) }, "*");
+        window.parent.postMessage({ target: "pokazo", type: "anim-log", args: payload }, "*");
+        return;
       }
-    } catch (e2) {}
+    } catch (e) {}
+    try { console.log.apply(console, ["[pk-anim]"].concat(payload)); } catch (e2) {}
   }
 
   function ctx() {
@@ -86,15 +106,14 @@ export const PLAYER_NAV_SCRIPT = `
   }
   function disableVueTransition(slidev) {
     if (!slidev) return;
-    try { slidev.configs.transition = null; } catch (e) {}
-    var slides = unwrap(slidev.nav && slidev.nav.slides);
-    if (!slides) return;
-    for (var i = 0; i < slides.length; i++) {
-      var meta = slides[i] && slides[i].meta;
-      if (meta) {
-        try { meta.transition = null; } catch (e2) {}
-      }
-    }
+    try { slidev.configs.transition = false; } catch (e) {}
+    // meta.transition is often a read-only frontmatter getter — nulling is a no-op.
+    // nav.currentTransition is what Vue Transition actually uses on go().
+    try {
+      var ct = slidev.nav && slidev.nav.currentTransition;
+      if (ct && typeof ct === "object" && "value" in ct) ct.value = false;
+      else if (slidev.nav) slidev.nav.currentTransition = false;
+    } catch (e2) {}
   }
   function slideEl(no) {
     return document.querySelector('.slidev-page[data-slidev-no="' + no + '"]');
@@ -117,6 +136,7 @@ export const PLAYER_NAV_SCRIPT = `
     } catch (e2) {}
   }
   function navGo(slidev, target, clickCount) {
+    disableVueTransition(slidev);
     if (slidev && slidev.nav && typeof slidev.nav.go === "function") {
       slidev.nav.go(target, clickCount);
       return true;
