@@ -9,6 +9,8 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toContain("html, body");
     expect(out).toMatch(/background:\s*#fff/);
     expect(out).toContain("slidev-slide-loading");
+    expect(out).toContain("slide-left-enter-active");
+    expect(out).toContain("transition-property: translate");
     expect(out).toMatch(/<\/style>\s*<\/head>/i);
   });
 
@@ -21,6 +23,8 @@ describe("injectPlayerChromeHide", () => {
     const out = injectPlayerChromeHide("<html><head></head><body></body></html>");
     expect(out).toContain('id="pk-slidev-nav"');
     expect(out).toContain('target !== "slidev"');
+    expect(out).toContain('configs.transition = "slide-left"');
+    expect(out).toContain("nextSlide");
     expect(out).toMatch(/<\/script>\s*<\/body>/i);
   });
 });

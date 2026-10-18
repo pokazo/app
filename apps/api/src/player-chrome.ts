@@ -14,11 +14,42 @@ html, body, #app, #slide-container,
 #slide-container > nav {
   display: none !important;
 }
+/* Force visible slide transitions in the embed player (incl. reduced-motion). */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active,
+.fade-enter-active,
+.fade-leave-active {
+  transition-duration: 0.45s !important;
+  transition-timing-function: ease !important;
+}
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition-property: translate !important;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition-property: opacity !important;
+}
+.slide-left-leave-active,
+.slide-right-leave-active,
+.fade-leave-active {
+  z-index: 1;
+}
+.slide-left-enter-active,
+.slide-right-enter-active,
+.fade-enter-active {
+  z-index: 2;
+}
 `.trim();
 
 /**
  * Slidev's own embed postMessage listener is __DEV__-only.
  * Mirror that protocol so the parent SPA can go(n) without reloading the iframe.
+ * Also pins slide-left on configs so already-built decks animate without a rebuild.
  */
 export const PLAYER_NAV_SCRIPT = `
 (function () {
@@ -29,18 +60,43 @@ export const PLAYER_NAV_SCRIPT = `
       ? app._context.provides["$$slidev-context"]
       : null;
   }
+  function pageNo(slidev) {
+    var n = slidev && slidev.nav && slidev.nav.currentSlideNo;
+    if (n && typeof n === "object" && "value" in n) n = n.value;
+    return +n || 0;
+  }
+  function pinTransition(slidev) {
+    if (!slidev || !slidev.configs) return;
+    try {
+      slidev.configs.transition = "slide-left";
+    } catch (e) {}
+  }
   function go(no, clicks) {
     var slidev = ctx();
-    if (slidev && slidev.nav && typeof slidev.nav.go === "function") {
-      slidev.nav.go(+no, clicks == null ? 0 : +clicks);
-      return true;
+    pinTransition(slidev);
+    var target = +no;
+    var clickCount = clicks == null ? 0 : +clicks;
+    if (slidev && slidev.nav) {
+      var cur = pageNo(slidev);
+      if (clickCount === 0 && cur > 0 && target === cur + 1 && typeof slidev.nav.nextSlide === "function") {
+        slidev.nav.nextSlide();
+        return true;
+      }
+      if (clickCount === 0 && cur > 1 && target === cur - 1 && typeof slidev.nav.prevSlide === "function") {
+        slidev.nav.prevSlide();
+        return true;
+      }
+      if (typeof slidev.nav.go === "function") {
+        slidev.nav.go(target, clickCount);
+        return true;
+      }
     }
     var el = document.getElementById("app");
     var router = el && el.__vue_app__ && el.__vue_app__.config.globalProperties.$router;
     if (router) {
       var q = Object.assign({}, router.currentRoute.value.query, { embedded: "true" });
-      if (clicks) q.clicks = String(clicks);
-      router.push({ path: "/" + no, query: q });
+      if (clickCount) q.clicks = String(clickCount);
+      router.push({ path: "/" + target, query: q });
       return true;
     }
     return false;

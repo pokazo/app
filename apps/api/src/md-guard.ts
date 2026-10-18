@@ -109,7 +109,7 @@ export function sanitizeHeroVariantFrontmatter(md: string): string {
 }
 
 /** Deck-wide slide transition (Slidev built-in). Plays in the player only; PDF/PPTX/thumbs ignore it. */
-export const SLIDE_TRANSITION = "fade";
+export const SLIDE_TRANSITION = "slide-left";
 
 const LEAN_HEADMATTER = `monaco: false
 twoslash: false

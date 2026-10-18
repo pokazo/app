@@ -60,7 +60,7 @@ describe("md-guard theme", () => {
     expect(out).toMatch(/^twoslash: false$/m);
     expect(out).toMatch(/^remoteAssets: false$/m);
     expect(out).toMatch(/^record: false$/m);
-    expect(out).toMatch(/^transition: fade$/m);
+    expect(out).toMatch(/^transition: slide-left$/m);
     expect(out).toMatch(/^drawings:\n {2}enabled: false$/m);
     expect(out).not.toMatch(/monaco: true/);
   });
