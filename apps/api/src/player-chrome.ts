@@ -38,12 +38,16 @@ export const PLAYER_NAV_SCRIPT = `
     if (window.__pkAnimBound) return;
     window.__pkAnimBound = true;
     window.__pkAnimReady = true;
-  } catch (e0) {}
+  } catch (e0) { return; }
   try { console.info("[pk-anim] loaded"); } catch (e1) {}
   var DURATION = 650;
   var EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
   var busy = false;
+  var inflightTarget = 0;
   var pending = null;
+  var lastAppliedTarget = 0;
+  var lastAppliedAt = 0;
+  var applyWaitTimer = null;
   function debugOn() {
     try {
       if (localStorage.getItem("pkDebugAnim") === "1") return true;
@@ -100,6 +104,17 @@ export const PLAYER_NAV_SCRIPT = `
     el.style.removeProperty("display");
     el.style.removeProperty("z-index");
     el.style.removeProperty("pointer-events");
+    el.style.removeProperty("transform");
+    el.style.removeProperty("opacity");
+  }
+  function stopElementAnims(el) {
+    if (!el || typeof el.getAnimations !== "function") return;
+    try {
+      var list = el.getAnimations();
+      for (var i = 0; i < list.length; i++) {
+        try { list[i].cancel(); } catch (e) {}
+      }
+    } catch (e2) {}
   }
   function navGo(slidev, target, clickCount) {
     if (slidev && slidev.nav && typeof slidev.nav.go === "function") {
@@ -142,6 +157,8 @@ export const PLAYER_NAV_SCRIPT = `
   }
   function runWaapi(fromEl, toEl, kind, dir, side) {
     var opts = { duration: DURATION, easing: EASING, fill: "forwards" };
+    stopElementAnims(fromEl);
+    stopElementAnims(toEl);
     toEl.style.setProperty("display", "block", "important");
     toEl.style.setProperty("pointer-events", "none", "important");
     var anims = { a1: null, a2: null, side: side };
@@ -163,16 +180,60 @@ export const PLAYER_NAV_SCRIPT = `
     });
   }
   function finishAnims(anims, fromEl, toEl) {
-    try { if (anims.a1) anims.a1.cancel(); } catch (e) {}
-    try { if (anims.a2) anims.a2.cancel(); } catch (e2) {}
+    try {
+      if (anims.a1) {
+        try { anims.a1.commitStyles(); } catch (c1) {}
+        anims.a1.cancel();
+      }
+    } catch (e) {}
+    try {
+      if (anims.a2) {
+        try { anims.a2.commitStyles(); } catch (c2) {}
+        anims.a2.cancel();
+      }
+    } catch (e2) {}
     clearAnimStyles(fromEl);
     clearAnimStyles(toEl);
+  }
+  function drainPending(justFinishedTarget) {
+    busy = false;
+    inflightTarget = 0;
+    if (!pending) return;
+    var next = pending;
+    pending = null;
+    // pageNo often lags nav.go(); never re-animate the slide we just finished.
+    if (next.target === justFinishedTarget) {
+      log("drop-pending-same", next);
+      return;
+    }
+    var slidev = ctx();
+    if (slidev && pageNo(slidev) === next.target) {
+      log("drop-pending-cur", next);
+      return;
+    }
+    go(next.target, next.clickCount);
   }
   function animateThenGo(slidev, target, clickCount) {
     var cur = pageNo(slidev);
     if (!cur || target === cur) {
       log("skip same-page", { cur: cur, target: target, clickCount: clickCount });
+      lastAppliedTarget = target;
+      lastAppliedAt = performance.now();
       return navGo(slidev, target, clickCount);
+    }
+    if (busy) {
+      if (target === inflightTarget) {
+        log("ignore-dup-inflight", { target: target });
+        return true;
+      }
+      pending = { target: target, clickCount: clickCount };
+      log("queued", pending);
+      return true;
+    }
+    // Parent often re-posts the same page while Vue/router catch up after WAAPI.
+    if (target === lastAppliedTarget && performance.now() - lastAppliedAt < DURATION + 200) {
+      log("ignore-dup-recent", { target: target });
+      return true;
     }
     disableVueTransition(slidev);
     var delta = target - cur;
@@ -185,14 +246,14 @@ export const PLAYER_NAV_SCRIPT = `
         target: target,
         reason: clickCount ? "clicks" : Math.abs(delta) !== 1 ? "jump" : !fromEl ? "no-from" : !toEl ? "no-to" : "no-waapi"
       });
+      lastAppliedTarget = target;
+      lastAppliedAt = performance.now();
       return navGo(slidev, target, clickCount);
     }
-    if (busy) {
-      pending = { target: target, clickCount: clickCount };
-      log("queued", pending);
-      return true;
-    }
     busy = true;
+    inflightTarget = target;
+    lastAppliedTarget = target;
+    lastAppliedAt = performance.now();
     var dir = delta > 0 ? 1 : -1;
     var kind = ((Math.max(1, target) - 1) % 2 === 0) ? "slide" : "rise";
     var side = Math.random() < 0.5 ? "from" : "to";
@@ -203,19 +264,14 @@ export const PLAYER_NAV_SCRIPT = `
       navGo(slidev, target, clickCount);
       requestAnimationFrame(function () {
         finishAnims(anims, fromEl, toEl);
-        busy = false;
-        if (pending) {
-          var next = pending;
-          pending = null;
-          if (pageNo(ctx()) !== next.target) go(next.target, next.clickCount);
-        }
+        drainPending(target);
       });
     }).catch(function (err) {
       log("error", { cur: cur, target: target, err: String(err && err.message || err) });
       clearAnimStyles(fromEl);
       clearAnimStyles(toEl);
-      busy = false;
       navGo(slidev, target, clickCount);
+      drainPending(target);
     });
     return true;
   }
@@ -231,11 +287,18 @@ export const PLAYER_NAV_SCRIPT = `
   }
   function apply(no, clicks) {
     log("navigate", { no: no, clicks: clicks });
+    if (applyWaitTimer) {
+      clearInterval(applyWaitTimer);
+      applyWaitTimer = null;
+    }
     if (go(no, clicks)) return;
     var n = 0;
-    var t = setInterval(function () {
+    applyWaitTimer = setInterval(function () {
       n += 1;
-      if (go(no, clicks) || n > 80) clearInterval(t);
+      if (go(no, clicks) || n > 80) {
+        clearInterval(applyWaitTimer);
+        applyWaitTimer = null;
+      }
     }, 50);
   }
   function boot() {

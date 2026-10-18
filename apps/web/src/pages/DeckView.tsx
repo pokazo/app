@@ -82,6 +82,8 @@ export function DeckView() {
   );
   const mobileOverview = useMobileDeckOverview();
   const stageRef = useRef<HTMLIFrameElement>(null);
+  /** Avoid re-posting the same Slidev page when effect deps churn (meta.slides, etc.). */
+  const lastPostedSlidevPageRef = useRef<number | null>(null);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const presentChromeHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
@@ -367,8 +369,14 @@ export function DeckView() {
   const showStage = !mobileOverview || mobilePresent;
 
   useEffect(() => {
-    if (!showStage || !stageReady) return;
+    if (!stageReady) {
+      lastPostedSlidevPageRef.current = null;
+      return;
+    }
+    if (!showStage) return;
     const page = slidevPageForOutlineIndex(meta?.slides ?? [], current);
+    if (lastPostedSlidevPageRef.current === page) return;
+    lastPostedSlidevPageRef.current = page;
     stageRef.current?.contentWindow?.postMessage(slidevNavigateMessage(page), "*");
   }, [current, stageReady, meta?.slides, showStage]);
 
