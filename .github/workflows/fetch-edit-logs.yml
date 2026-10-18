@@ -1,0 +1,30 @@
+name: fetch-edit-logs
+on: workflow_dispatch
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    environment: api
+    steps:
+      - name: docker edit logs
+        env:
+          SSH_KEY: ${{ secrets.API_SSH_KEY }}
+          HOST: ${{ secrets.API_HOST }}
+        run: |
+          printf '%s\n' "$SSH_KEY" > key && chmod 600 key
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i key "deploy@${HOST}" '
+            set -e
+            SLOT=$(cat /etc/pokazo/active-slot)
+            echo SLOT=$SLOT
+            echo ===EDIT_LOGS===
+            sudo docker logs --since 12h "pokazo-api-$SLOT" 2>&1 | grep -E "\[edit\]|stale_rewrite|rewrite_" | tail -200 || true
+            echo ===REWRITE_JSON===
+            sudo find /var/lib/pokazo/decks -name rewrite.json -mmin -720 -printf "%T+ %p\n" 2>/dev/null | sort | tail -25 || true
+            for f in $(sudo find /var/lib/pokazo/decks -name rewrite.json -mmin -720 2>/dev/null | tail -20); do
+              echo "--- $f"
+              sudo cat "$f" || true
+              echo
+              # topic hint
+              d=$(dirname "$f")
+              if sudo test -f "$d/input.json"; then sudo python3 -c "import json;print(json.load(open(\"$d/input.json\")).get(\"topic\",\"\")[:80])" 2>/dev/null || true; fi
+            done
+          '
