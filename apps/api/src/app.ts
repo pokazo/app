@@ -26,7 +26,11 @@ import {
   isExportFormat,
 } from "./deck-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
-import { isRewriteBuilding, readRewriteStatus, writeRewriteStatus } from "./rewrite-status.js";
+import {
+  expireStaleRewriteStatus,
+  isRewriteBuilding,
+  writeRewriteStatus,
+} from "./rewrite-status.js";
 import { parseOutline } from "./outline.js";
 import { maxViewSlideCount } from "./rewrite-lock.js";
 import {
@@ -479,7 +483,7 @@ export function createApp() {
       markdown = undefined;
     }
     const progressive = deckStatus === "preview" || deckStatus === "generating";
-    const rewrite = await readRewriteStatus(dir);
+    const rewrite = await expireStaleRewriteStatus(dir);
     const rewriting = isRewriteBuilding(rewrite);
     const { builtSlideCount } = progressive
       ? await readPreviewBuild(dir)
@@ -534,6 +538,9 @@ export function createApp() {
     const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
     if (deck.status !== "ready") {
+      console.warn(
+        `[edit] rewrite_rejected deck=${id} slide=${n} reason=deck_not_ready status=${deck.status}`,
+      );
       return c.json({ error: "deck not ready", status: deck.status }, 409);
     }
     const dir = join(config.deckDataDir, id);
@@ -585,7 +592,12 @@ export function createApp() {
     }
 
     const busy = await deckBusyForRewrite(id);
-    if (busy) return c.json({ error: "busy", reason: busy }, 409);
+    if (busy) {
+      console.warn(
+        `[edit] rewrite_rejected deck=${id} slide=${n} reason=busy busy=${busy} instruction=${JSON.stringify(instruction.slice(0, 120))}`,
+      );
+      return c.json({ error: "busy", reason: busy }, 409);
+    }
 
     let attachedIds: string[] = [];
     if (files.length > 0) {
@@ -615,6 +627,9 @@ export function createApp() {
       /* non-fatal for UI poll */
     }
     await enqueueRewriteSlide({ id, slide: n, instruction });
+    console.info(
+      `[edit] rewrite_accepted deck=${id} slide=${n} attached=${attachedIds.length} instruction=${JSON.stringify(instruction.slice(0, 120))}`,
+    );
     return c.json({ deckId: id, slide: n, status: "accepted", attached: attachedIds }, 202);
   });
 
@@ -631,6 +646,9 @@ export function createApp() {
     const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
     if (deck.status !== "ready") {
+      console.warn(
+        `[edit] structure_rejected deck=${id} op=${op.op} reason=deck_not_ready status=${deck.status}`,
+      );
       return c.json({ error: "deck not ready", status: deck.status }, 409);
     }
     const dir = join(config.deckDataDir, id);
@@ -654,12 +672,20 @@ export function createApp() {
     } catch (err) {
       const msg = String(err);
       if (/min slides|max slides|bad slide|bad move|no slides/.test(msg)) {
+        console.warn(
+          `[edit] structure_rejected deck=${id} op=${op.op} reason=validation err=${msg.replace(/^Error:\s*/, "")}`,
+        );
         return c.json({ error: msg.replace(/^Error:\s*/, "") }, 400);
       }
       throw err;
     }
     const busy = await deckBusyForRewrite(id);
-    if (busy) return c.json({ error: "busy", reason: busy }, 409);
+    if (busy) {
+      console.warn(
+        `[edit] structure_rejected deck=${id} op=${op.op} reason=busy busy=${busy}`,
+      );
+      return c.json({ error: "busy", reason: busy }, 409);
+    }
     await writeRewriteStatus(dir, {
       slide: focusSlide,
       status: "running",
@@ -672,6 +698,9 @@ export function createApp() {
       /* non-fatal */
     }
     await enqueueStructureSlide({ id, op });
+    console.info(
+      `[edit] structure_accepted deck=${id} op=${op.op} slide=${focusSlide}`,
+    );
     return c.json({ deckId: id, status: "accepted", op: op.op, slide: focusSlide }, 202);
   };
 

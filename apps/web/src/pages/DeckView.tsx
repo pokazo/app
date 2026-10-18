@@ -269,6 +269,11 @@ export function DeckView() {
         setRewritingSlide(serverRewritingSlide);
         if (data.rewriteError && !isBuilding) {
           const failed = data.rewriteError;
+          console.warn("[edit] rewrite_status_failed", {
+            deckId: id,
+            slide: serverRewritingSlide,
+            error: failed,
+          });
           if (/min slides|max slides|bad move|bad slide|structure:/i.test(failed)) {
             setStructureErr(structureErrorMessage(failed));
           } else {
@@ -498,6 +503,11 @@ export function DeckView() {
       setBuilding(false);
       setRewritingSlide(null);
       setActivity("");
+      console.warn("[edit] structure_failed", {
+        deckId: id,
+        slide: focusSlide,
+        err: err instanceof Error ? err.message : String(err),
+      });
       setStructureErr(
         structureErrorMessage(err instanceof Error ? err.message : String(err)),
       );
@@ -525,7 +535,8 @@ export function DeckView() {
   }
 
   async function submitRewrite() {
-    if (!id || !me || building || rewriteBusy) return;
+    // Use ref so a second click cannot start another POST before React re-renders.
+    if (!id || !me || building || rewriteBusyRef.current) return;
     const instruction = rewriteText.trim();
     if (instruction.length < 2 && rewriteFiles.length === 0) {
       setRewriteErr("Напишите, что переделать, или прикрепите картинку.");
@@ -561,27 +572,52 @@ export function DeckView() {
         // Keep instruction text visible while «Пересобираем…» — clear after success.
         return;
       }
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      forcePollRef.current = false;
-      setBuilding(false);
-      markRewriteBusy(false);
-      setRewritingSlide(null);
-      stayOnSlideRef.current = null;
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        reason?: string;
+        status?: string;
+      };
       if (res.status === 401) {
+        forcePollRef.current = false;
+        setBuilding(false);
+        markRewriteBusy(false);
+        setRewritingSlide(null);
+        stayOnSlideRef.current = null;
+        console.warn("[edit] rewrite_rejected", { deckId: id, slide: current, status: 401 });
         setRewriteErr("Войдите, чтобы пересобрать слайд.");
         return;
       }
       if (res.status === 409) {
+        // Server may still be rewriting — keep polling; do not pretend we are idle.
+        forcePollRef.current = true;
+        console.warn("[edit] rewrite_rejected", {
+          deckId: id,
+          slide: current,
+          status: 409,
+          reason: body.reason ?? body.status ?? body.error ?? "busy",
+        });
         setRewriteErr("Сейчас идёт сборка — подождите и попробуйте снова.");
         return;
       }
-      setRewriteErr(body.error || "Не удалось запустить пересборку.");
-    } catch {
       forcePollRef.current = false;
       setBuilding(false);
       markRewriteBusy(false);
       setRewritingSlide(null);
       stayOnSlideRef.current = null;
+      console.warn("[edit] rewrite_rejected", {
+        deckId: id,
+        slide: current,
+        status: res.status,
+        error: body.error,
+      });
+      setRewriteErr(body.error || "Не удалось запустить пересборку.");
+    } catch (err) {
+      forcePollRef.current = false;
+      setBuilding(false);
+      markRewriteBusy(false);
+      setRewritingSlide(null);
+      stayOnSlideRef.current = null;
+      console.warn("[edit] rewrite_network_failed", { deckId: id, slide: current, err });
       setRewriteErr("Не удалось запустить пересборку.");
     }
   }
