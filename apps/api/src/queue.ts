@@ -13,6 +13,7 @@ import {
   writeRewriteStatus,
 } from "./rewrite-status.js";
 import { WORKER_LOCK_DURATION_MS, bullWorkerOpts } from "./queue-worker-opts.js";
+import { deckFromJobId, formatWorkerJobLine } from "./queue-worker-log.js";
 import { applySlideStructure, type StructureOp } from "./slide-structure.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { billingLog, finalizeDeckBilling } from "./billing.js";
@@ -45,23 +46,35 @@ export function startDeckWorker(): Queue | null {
         `[queue] workers generate=${generateConcurrency} edits=${editConcurrency} lockMs=${WORKER_LOCK_DURATION_MS}`,
       );
       const attachWorkerLogs = (queueName: string, worker: Worker) => {
+        worker.on("active", (job) => {
+          console.info(formatWorkerJobLine("active", queueName, job));
+        });
+        worker.on("completed", (job) => {
+          console.info(formatWorkerJobLine("completed", queueName, job));
+        });
         worker.on("failed", (job, err) => {
-          const data = (job?.data ?? {}) as {
-            id?: string;
-            slide?: number;
-            op?: { op?: string };
-          };
           console.error(
-            `[edit] worker_job_failed queue=${queueName} job=${job?.name ?? "?"} jobId=${job?.id ?? "?"} deck=${data.id ?? "?"} slide=${data.slide ?? "-"} op=${data.op?.op ?? "-"} attempts=${job?.attemptsMade ?? 0} err=${formatAiError(err)}`,
+            formatWorkerJobLine("failed", queueName, job ?? {}, formatAiError(err)),
           );
         });
         worker.on("error", (err) => {
           console.error(
-            `[edit] worker_error queue=${queueName} err=${formatAiError(err)}`,
+            `[queue] worker_error queue=${queueName} err=${formatAiError(err)}`,
           );
         });
         worker.on("stalled", (jobId) => {
-          console.warn(`[edit] worker_job_stalled queue=${queueName} jobId=${jobId}`);
+          console.warn(
+            formatWorkerJobLine("stalled", queueName, {
+              id: jobId,
+              name: jobId.startsWith("structure-")
+                ? "structure-slide"
+                : jobId.startsWith("rewrite-")
+                  ? "rewrite-slide"
+                  : deckFromJobId(jobId)
+                    ? "generate"
+                    : "?",
+            }),
+          );
         });
       };
       const generateWorker = new Worker(
@@ -114,7 +127,7 @@ export function startDeckWorker(): Queue | null {
     }
     return generateQueue;
   } catch (err) {
-    console.error(`[edit] redis_worker_start_failed err=${formatAiError(err)}`);
+    console.error(`[queue] redis_worker_start_failed err=${formatAiError(err)}`);
     return null;
   }
 }
@@ -130,6 +143,8 @@ export async function processDeck(
   options: { finalAttempt?: boolean } = {},
 ): Promise<void> {
   const finalAttempt = options.finalAttempt ?? true;
+  const started = Date.now();
+  console.info(`[generate] generate_start deck=${id} finalAttempt=${finalAttempt}`);
   if (!pool) throw new Error("no db");
   const db = pool;
   await db.query(
@@ -198,6 +213,9 @@ export async function processDeck(
     await db.query(`UPDATE deck SET status='ready', updated_at=now() WHERE id=$1`, [id]);
   } catch (err) {
     const detail = formatAiError(err);
+    console.error(
+      `[generate] generate_failed deck=${id} durationMs=${Date.now() - started} err=${detail}`,
+    );
     logAiError("generate", err, { deckId: id, finalAttempt });
     await db.query(
       `UPDATE deck SET status=$2, error=$3, updated_at=now() WHERE id=$1`,
@@ -212,6 +230,7 @@ export async function processDeck(
     }
     throw err;
   }
+  console.info(`[generate] generate_ok deck=${id} durationMs=${Date.now() - started}`);
   try {
     await finalizeDeckBilling(id, "ready");
   } catch (err) {
@@ -225,15 +244,20 @@ export async function processRewriteSlide(
   instruction: string,
 ): Promise<void> {
   const workDir = join(config.deckDataDir, id);
+  const started = Date.now();
   console.info(
     `[edit] rewrite_start deck=${id} slide=${slide} instruction=${JSON.stringify(instruction.slice(0, 120))}`,
   );
   try {
     await rewriteSlide({ id, workDir, slideIndex: slide, instruction });
-    console.info(`[edit] rewrite_ok deck=${id} slide=${slide}`);
+    console.info(
+      `[edit] rewrite_ok deck=${id} slide=${slide} durationMs=${Date.now() - started}`,
+    );
   } catch (err) {
     const detail = formatAiError(err);
-    console.error(`[edit] rewrite_failed deck=${id} slide=${slide} err=${detail}`);
+    console.error(
+      `[edit] rewrite_failed deck=${id} slide=${slide} durationMs=${Date.now() - started} err=${detail}`,
+    );
     logAiError("rewrite", err, { deckId: id, slide });
     await writeRewriteStatus(workDir, {
       slide,
@@ -251,17 +275,17 @@ export async function enqueueDeck(id: string): Promise<void> {
     const q = startDeckWorker();
     if (q) {
       await q.add("generate", { id }, { jobId: id, attempts: 2 });
-      console.info(`[edit] generate_enqueued deck=${id} via=redis`);
+      console.info(`[queue] generate_enqueued deck=${id} via=redis`);
       return;
     }
   } catch (err) {
     console.error(
-      `[edit] generate_enqueue_redis_failed deck=${id} fallback=inline err=${formatAiError(err)}`,
+      `[queue] generate_enqueue_redis_failed deck=${id} fallback=inline err=${formatAiError(err)}`,
     );
   }
-  console.warn(`[edit] generate_inline deck=${id}`);
+  console.warn(`[queue] generate_inline deck=${id}`);
   void processDeck(id).catch((err) => {
-    console.error(`[edit] generate_inline_failed deck=${id} err=${formatAiError(err)}`);
+    console.error(`[queue] generate_inline_failed deck=${id} err=${formatAiError(err)}`);
   });
 }
 
@@ -281,19 +305,19 @@ export async function enqueueRewriteSlide(opts: {
         { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
       );
       console.info(
-        `[edit] rewrite_enqueued deck=${opts.id} slide=${opts.slide} jobId=${jobId} via=redis`,
+        `[queue] rewrite_enqueued deck=${opts.id} slide=${opts.slide} jobId=${jobId} via=redis`,
       );
       return;
     }
   } catch (err) {
     console.error(
-      `[edit] rewrite_enqueue_redis_failed deck=${opts.id} slide=${opts.slide} jobId=${jobId} fallback=inline err=${formatAiError(err)}`,
+      `[queue] rewrite_enqueue_redis_failed deck=${opts.id} slide=${opts.slide} jobId=${jobId} fallback=inline err=${formatAiError(err)}`,
     );
   }
-  console.warn(`[edit] rewrite_inline deck=${opts.id} slide=${opts.slide}`);
+  console.warn(`[queue] rewrite_inline deck=${opts.id} slide=${opts.slide}`);
   void processRewriteSlide(opts.id, opts.slide, opts.instruction).catch((err) => {
     console.error(
-      `[edit] rewrite_inline_failed deck=${opts.id} slide=${opts.slide} err=${formatAiError(err)}`,
+      `[queue] rewrite_inline_failed deck=${opts.id} slide=${opts.slide} err=${formatAiError(err)}`,
     );
   });
 }
@@ -302,6 +326,7 @@ export async function processStructureSlide(id: string, op: StructureOp): Promis
   const workDir = join(config.deckDataDir, id);
   const slideHint =
     op.op === "insert" ? op.after : op.op === "move" ? op.to : op.op === "delete" ? op.viewIndex : 1;
+  const started = Date.now();
   console.info(`[edit] structure_start deck=${id} op=${op.op} slide=${slideHint}`);
   try {
     await applySlideStructure({
@@ -316,11 +341,13 @@ export async function processStructureSlide(id: string, op: StructureOp): Promis
         ]);
       },
     });
-    console.info(`[edit] structure_ok deck=${id} op=${op.op} slide=${slideHint}`);
+    console.info(
+      `[edit] structure_ok deck=${id} op=${op.op} slide=${slideHint} durationMs=${Date.now() - started}`,
+    );
   } catch (err) {
     const detail = formatAiError(err);
     console.error(
-      `[edit] structure_failed deck=${id} op=${op.op} slide=${slideHint} err=${detail}`,
+      `[edit] structure_failed deck=${id} op=${op.op} slide=${slideHint} durationMs=${Date.now() - started} err=${detail}`,
     );
     logAiError("structure", err, { deckId: id, op: op.op });
     await writeRewriteStatus(workDir, {
@@ -349,19 +376,19 @@ export async function enqueueStructureSlide(opts: {
         { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
       );
       console.info(
-        `[edit] structure_enqueued deck=${opts.id} op=${opts.op.op} jobId=${jobId} via=redis`,
+        `[queue] structure_enqueued deck=${opts.id} op=${opts.op.op} jobId=${jobId} via=redis`,
       );
       return;
     }
   } catch (err) {
     console.error(
-      `[edit] structure_enqueue_redis_failed deck=${opts.id} op=${opts.op.op} jobId=${jobId} fallback=inline err=${formatAiError(err)}`,
+      `[queue] structure_enqueue_redis_failed deck=${opts.id} op=${opts.op.op} jobId=${jobId} fallback=inline err=${formatAiError(err)}`,
     );
   }
-  console.warn(`[edit] structure_inline deck=${opts.id} op=${opts.op.op}`);
+  console.warn(`[queue] structure_inline deck=${opts.id} op=${opts.op.op}`);
   void processStructureSlide(opts.id, opts.op).catch((err) => {
     console.error(
-      `[edit] structure_inline_failed deck=${opts.id} op=${opts.op.op} err=${formatAiError(err)}`,
+      `[queue] structure_inline_failed deck=${opts.id} op=${opts.op.op} err=${formatAiError(err)}`,
     );
   });
 }
