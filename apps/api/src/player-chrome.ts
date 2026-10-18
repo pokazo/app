@@ -14,158 +14,31 @@ html, body, #app, #slide-container,
 #slide-container > nav {
   display: none !important;
 }
-/* Clip so slides visibly slide in/out of the stage. */
+/* Clip stage so WAAPI slide/rise never paints outside the player. */
 #slide-container,
 #slideshow {
   overflow: hidden !important;
 }
-/* Strong custom Slidev transitions (injected; works on old decks). */
-:root {
-  --slidev-transition-duration: 0.7s !important;
-  --pk-ease: cubic-bezier(0.22, 1, 0.36, 1);
-}
-.pk-slide-enter-active,
-.pk-slide-leave-active,
-.pk-slide-back-enter-active,
-.pk-slide-back-leave-active,
-.pk-rise-enter-active,
-.pk-rise-leave-active,
-.pk-rise-back-enter-active,
-.pk-rise-back-leave-active,
-.slide-left-enter-active,
-.slide-left-leave-active,
-.slide-right-enter-active,
-.slide-right-leave-active,
-.slide-up-enter-active,
-.slide-up-leave-active,
-.slide-down-enter-active,
-.slide-down-leave-active,
-.fade-enter-active,
-.fade-leave-active {
-  transition-duration: 0.7s !important;
-  transition-timing-function: var(--pk-ease) !important;
-}
-.pk-slide-enter-active,
-.pk-slide-leave-active,
-.pk-slide-back-enter-active,
-.pk-slide-back-leave-active,
-.pk-rise-enter-active,
-.pk-rise-leave-active,
-.pk-rise-back-enter-active,
-.pk-rise-back-leave-active,
-.slide-left-enter-active,
-.slide-left-leave-active,
-.slide-right-enter-active,
-.slide-right-leave-active,
-.slide-up-enter-active,
-.slide-up-leave-active,
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition-property: translate, opacity, scale !important;
-}
-.fade-enter-active,
-.fade-leave-active {
-  transition-property: opacity, scale !important;
-}
-/* Horizontal push */
-.pk-slide-enter-from {
-  translate: 72% 0 !important;
-  opacity: 0 !important;
-  scale: 0.94 !important;
-}
-.pk-slide-leave-to {
-  translate: -42% 0 !important;
-  opacity: 0 !important;
-  scale: 0.96 !important;
-}
-.pk-slide-back-enter-from {
-  translate: -72% 0 !important;
-  opacity: 0 !important;
-  scale: 0.94 !important;
-}
-.pk-slide-back-leave-to {
-  translate: 42% 0 !important;
-  opacity: 0 !important;
-  scale: 0.96 !important;
-}
-/* Vertical rise (alternate pages) */
-.pk-rise-enter-from {
-  translate: 0 56% !important;
-  opacity: 0 !important;
-  scale: 0.94 !important;
-}
-.pk-rise-leave-to {
-  translate: 0 -28% !important;
-  opacity: 0 !important;
-  scale: 0.96 !important;
-}
-.pk-rise-back-enter-from {
-  translate: 0 -56% !important;
-  opacity: 0 !important;
-  scale: 0.94 !important;
-}
-.pk-rise-back-leave-to {
-  translate: 0 28% !important;
-  opacity: 0 !important;
-  scale: 0.96 !important;
-}
-.pk-slide-leave-active,
-.pk-slide-back-leave-active,
-.pk-rise-leave-active,
-.pk-rise-back-leave-active,
-.slide-left-leave-active,
-.slide-right-leave-active,
-.slide-up-leave-active,
-.slide-down-leave-active,
-.fade-leave-active {
-  z-index: 1 !important;
-}
-.pk-slide-enter-active,
-.pk-slide-back-enter-active,
-.pk-rise-enter-active,
-.pk-rise-back-enter-active,
-.slide-left-enter-active,
-.slide-right-enter-active,
-.slide-up-enter-active,
-.slide-down-enter-active,
-.fade-enter-active {
-  z-index: 2 !important;
-}
-@media (prefers-reduced-motion: reduce) {
-  .pk-slide-enter-active,
-  .pk-slide-leave-active,
-  .pk-slide-back-enter-active,
-  .pk-slide-back-leave-active,
-  .pk-rise-enter-active,
-  .pk-rise-leave-active,
-  .pk-rise-back-enter-active,
-  .pk-rise-back-leave-active,
-  .slide-left-enter-active,
-  .slide-left-leave-active,
-  .slide-right-enter-active,
-  .slide-right-leave-active,
-  .slide-up-enter-active,
-  .slide-up-leave-active,
-  .slide-down-enter-active,
-  .slide-down-leave-active,
-  .fade-enter-active,
-  .fade-leave-active {
-    transition-duration: 0.45s !important;
-  }
+.slidev-page {
+  will-change: transform, opacity;
 }
 `.trim();
 
 /**
  * Slidev's own embed postMessage listener is __DEV__-only.
  * Mirror that protocol so the parent SPA can go(n) without reloading the iframe.
- * Pins dramatic custom transitions at runtime (incl. already-built decks).
+ *
+ * Vue TransitionGroup + hmrSkipTransition is unreliable after the first slide,
+ * so adjacent page changes use Web Animations API, then nav.go() with Vue
+ * transitions disabled.
  */
 export const PLAYER_NAV_SCRIPT = `
 (function () {
-  var TRANSITIONS = [
-    "pk-slide | pk-slide-back",
-    "pk-rise | pk-rise-back"
-  ];
+  var DURATION = 650;
+  var EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+  var busy = false;
+  var pending = null;
+
   function ctx() {
     var el = document.getElementById("app");
     var app = el && el.__vue_app__;
@@ -182,42 +55,31 @@ export const PLAYER_NAV_SCRIPT = `
     if (ref && typeof ref === "object" && "value" in ref) return ref.value;
     return ref;
   }
-  function pinTransition(slidev, targetPage) {
-    if (!slidev || !slidev.configs) return;
-    var page = targetPage || pageNo(slidev) || 1;
-    var name = TRANSITIONS[(Math.max(1, page) - 1) % TRANSITIONS.length];
-    try {
-      slidev.configs.transition = name;
-    } catch (e) {}
+  function disableVueTransition(slidev) {
+    if (!slidev) return;
+    try { slidev.configs.transition = null; } catch (e) {}
     var slides = unwrap(slidev.nav && slidev.nav.slides);
-    if (slides && slides.length) {
-      for (var i = 0; i < slides.length; i++) {
-        var meta = slides[i] && slides[i].meta;
-        if (meta) {
-          try { meta.transition = name; } catch (e2) {}
-        }
+    if (!slides) return;
+    for (var i = 0; i < slides.length; i++) {
+      var meta = slides[i] && slides[i].meta;
+      if (meta) {
+        try { meta.transition = null; } catch (e2) {}
       }
     }
   }
-  function go(no, clicks) {
-    var slidev = ctx();
-    var target = +no;
-    var clickCount = clicks == null ? 0 : +clicks;
-    pinTransition(slidev, target);
-    if (slidev && slidev.nav) {
-      var cur = pageNo(slidev);
-      if (clickCount === 0 && cur > 0 && target === cur + 1 && typeof slidev.nav.nextSlide === "function") {
-        slidev.nav.nextSlide();
-        return true;
-      }
-      if (clickCount === 0 && cur > 1 && target === cur - 1 && typeof slidev.nav.prevSlide === "function") {
-        slidev.nav.prevSlide();
-        return true;
-      }
-      if (typeof slidev.nav.go === "function") {
-        slidev.nav.go(target, clickCount);
-        return true;
-      }
+  function slideEl(no) {
+    return document.querySelector('.slidev-page[data-slidev-no="' + no + '"]');
+  }
+  function clearAnimStyles(el) {
+    if (!el) return;
+    el.style.removeProperty("display");
+    el.style.removeProperty("z-index");
+    el.style.removeProperty("pointer-events");
+  }
+  function navGo(slidev, target, clickCount) {
+    if (slidev && slidev.nav && typeof slidev.nav.go === "function") {
+      slidev.nav.go(target, clickCount);
+      return true;
     }
     var el = document.getElementById("app");
     var router = el && el.__vue_app__ && el.__vue_app__.config.globalProperties.$router;
@@ -229,6 +91,94 @@ export const PLAYER_NAV_SCRIPT = `
     }
     return false;
   }
+  function keyframes(kind, dir, role) {
+    if (kind === "rise") {
+      if (role === "from") {
+        return [
+          { transform: "translate(0, 0) scale(1)", opacity: 1 },
+          { transform: "translate(0, " + (dir > 0 ? "-28%" : "28%") + ") scale(0.96)", opacity: 0 }
+        ];
+      }
+      return [
+        { transform: "translate(0, " + (dir > 0 ? "56%" : "-56%") + ") scale(0.94)", opacity: 0 },
+        { transform: "translate(0, 0) scale(1)", opacity: 1 }
+      ];
+    }
+    if (role === "from") {
+      return [
+        { transform: "translate(0, 0) scale(1)", opacity: 1 },
+        { transform: "translate(" + (dir > 0 ? "-42%" : "42%") + ", 0) scale(0.96)", opacity: 0 }
+      ];
+    }
+    return [
+      { transform: "translate(" + (dir > 0 ? "72%" : "-72%") + ", 0) scale(0.94)", opacity: 0 },
+      { transform: "translate(0, 0) scale(1)", opacity: 1 }
+    ];
+  }
+  function runWaapi(fromEl, toEl, kind, dir) {
+    var opts = { duration: DURATION, easing: EASING, fill: "forwards" };
+    toEl.style.setProperty("display", "block", "important");
+    toEl.style.setProperty("z-index", "2", "important");
+    toEl.style.setProperty("pointer-events", "none", "important");
+    fromEl.style.setProperty("z-index", "1", "important");
+    var a1 = fromEl.animate(keyframes(kind, dir, "from"), opts);
+    var a2 = toEl.animate(keyframes(kind, dir, "to"), opts);
+    return Promise.all([a1.finished, a2.finished]).then(function () {
+      return { a1: a1, a2: a2 };
+    });
+  }
+  function finishAnims(anims, fromEl, toEl) {
+    try { anims.a1.cancel(); } catch (e) {}
+    try { anims.a2.cancel(); } catch (e2) {}
+    clearAnimStyles(fromEl);
+    clearAnimStyles(toEl);
+  }
+  function animateThenGo(slidev, target, clickCount) {
+    var cur = pageNo(slidev);
+    if (!cur || target === cur) {
+      return navGo(slidev, target, clickCount);
+    }
+    disableVueTransition(slidev);
+    var delta = target - cur;
+    var fromEl = slideEl(cur);
+    var toEl = slideEl(target);
+    // Only adjacent slides animate; jumps stay instant.
+    if (clickCount || Math.abs(delta) !== 1 || !fromEl || !toEl || typeof fromEl.animate !== "function") {
+      return navGo(slidev, target, clickCount);
+    }
+    if (busy) {
+      pending = { target: target, clickCount: clickCount };
+      return true;
+    }
+    busy = true;
+    var dir = delta > 0 ? 1 : -1;
+    var kind = ((Math.max(1, target) - 1) % 2 === 0) ? "slide" : "rise";
+    runWaapi(fromEl, toEl, kind, dir).then(function (anims) {
+      navGo(slidev, target, clickCount);
+      requestAnimationFrame(function () {
+        finishAnims(anims, fromEl, toEl);
+        busy = false;
+        if (pending) {
+          var next = pending;
+          pending = null;
+          if (pageNo(ctx()) !== next.target) go(next.target, next.clickCount);
+        }
+      });
+    }).catch(function () {
+      clearAnimStyles(fromEl);
+      clearAnimStyles(toEl);
+      busy = false;
+      navGo(slidev, target, clickCount);
+    });
+    return true;
+  }
+  function go(no, clicks) {
+    var slidev = ctx();
+    if (!slidev) return false;
+    var target = +no;
+    var clickCount = clicks == null ? 0 : +clicks;
+    return animateThenGo(slidev, target, clickCount);
+  }
   function apply(no, clicks) {
     if (go(no, clicks)) return;
     var n = 0;
@@ -237,19 +187,17 @@ export const PLAYER_NAV_SCRIPT = `
       if (go(no, clicks) || n > 80) clearInterval(t);
     }, 50);
   }
-  function bootPin() {
+  function boot() {
     var slidev = ctx();
-    if (slidev) {
-      pinTransition(slidev, pageNo(slidev) || 1);
-      return true;
-    }
-    return false;
+    if (!slidev) return false;
+    disableVueTransition(slidev);
+    return true;
   }
-  if (!bootPin()) {
+  if (!boot()) {
     var boots = 0;
     var bootT = setInterval(function () {
       boots += 1;
-      if (bootPin() || boots > 80) clearInterval(bootT);
+      if (boot() || boots > 80) clearInterval(bootT);
     }, 50);
   }
   window.addEventListener("message", function (ev) {

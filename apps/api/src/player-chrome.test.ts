@@ -9,18 +9,15 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toContain("html, body");
     expect(out).toMatch(/background:\s*#fff/);
     expect(out).toContain("slidev-slide-loading");
-    expect(out).toContain("pk-slide-enter-active");
-    expect(out).toContain("pk-rise-enter-from");
-    expect(out).toContain("transition-property: translate, opacity, scale");
+    expect(out).toContain("overflow: hidden");
     expect(out).toMatch(/<\/style>\s*<\/head>/i);
   });
 
   it("refreshes prior inject so CSS upgrades apply", () => {
     const stale = `<html><head><style id="pk-hide-slidev-chrome">.old{}</style></head><body><script id="pk-slidev-nav">/*old*/</script></body></html>`;
     const out = injectPlayerChromeHide(stale);
-    expect(out).toContain("pk-slide-enter-active");
+    expect(out).toContain("fromEl.animate");
     expect(out).not.toContain(".old{}");
-    expect(out).toContain("pk-slide | pk-slide-back");
     expect(out.match(/id="pk-hide-slidev-chrome"/g)).toHaveLength(1);
     expect(out.match(/id="pk-slidev-nav"/g)).toHaveLength(1);
   });
@@ -29,9 +26,9 @@ describe("injectPlayerChromeHide", () => {
     const out = injectPlayerChromeHide("<html><head></head><body></body></html>");
     expect(out).toContain('id="pk-slidev-nav"');
     expect(out).toContain('target !== "slidev"');
-    expect(out).toContain("pk-slide | pk-slide-back");
-    expect(out).toContain("pk-rise | pk-rise-back");
-    expect(out).toContain("nextSlide");
+    expect(out).toContain("animateThenGo");
+    expect(out).toContain("fromEl.animate");
+    expect(out).toContain('configs.transition = null');
     expect(out).toMatch(/<\/script>\s*<\/body>/i);
   });
 });
