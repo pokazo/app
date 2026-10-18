@@ -12,6 +12,7 @@ import {
   isRewriteBuilding,
   writeRewriteStatus,
 } from "./rewrite-status.js";
+import { WORKER_LOCK_DURATION_MS, bullWorkerOpts } from "./queue-worker-opts.js";
 import { applySlideStructure, type StructureOp } from "./slide-structure.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { billingLog, finalizeDeckBilling } from "./billing.js";
@@ -41,7 +42,7 @@ export function startDeckWorker(): Queue | null {
       const generateConcurrency = config.deckGenerateConcurrency;
       const editConcurrency = config.deckEditConcurrency;
       console.info(
-        `[queue] workers generate=${generateConcurrency} edits=${editConcurrency}`,
+        `[queue] workers generate=${generateConcurrency} edits=${editConcurrency} lockMs=${WORKER_LOCK_DURATION_MS}`,
       );
       const attachWorkerLogs = (queueName: string, worker: Worker) => {
         worker.on("failed", (job, err) => {
@@ -84,7 +85,7 @@ export function startDeckWorker(): Queue | null {
         },
         {
           connection: redis(),
-          concurrency: generateConcurrency,
+          ...bullWorkerOpts(generateConcurrency),
         },
       );
       attachWorkerLogs("decks", generateWorker);
@@ -106,7 +107,7 @@ export function startDeckWorker(): Queue | null {
         },
         {
           connection: redis(),
-          concurrency: editConcurrency,
+          ...bullWorkerOpts(editConcurrency),
         },
       );
       attachWorkerLogs("deck-edits", editWorker);
