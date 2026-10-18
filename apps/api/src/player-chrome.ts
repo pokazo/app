@@ -140,21 +140,31 @@ export const PLAYER_NAV_SCRIPT = `
       { transform: "translate(0, 0) scale(1)", opacity: 1 }
     ];
   }
-  function runWaapi(fromEl, toEl, kind, dir) {
+  function runWaapi(fromEl, toEl, kind, dir, side) {
     var opts = { duration: DURATION, easing: EASING, fill: "forwards" };
     toEl.style.setProperty("display", "block", "important");
-    toEl.style.setProperty("z-index", "2", "important");
     toEl.style.setProperty("pointer-events", "none", "important");
-    fromEl.style.setProperty("z-index", "1", "important");
-    var a1 = fromEl.animate(keyframes(kind, dir, "from"), opts);
-    var a2 = toEl.animate(keyframes(kind, dir, "to"), opts);
-    return Promise.all([a1.finished, a2.finished]).then(function () {
-      return { a1: a1, a2: a2 };
+    var anims = { a1: null, a2: null, side: side };
+    var waits = [];
+    // Randomly animate only outgoing (from) or only incoming (to) — not both.
+    if (side === "from") {
+      fromEl.style.setProperty("z-index", "2", "important");
+      toEl.style.setProperty("z-index", "1", "important");
+      anims.a1 = fromEl.animate(keyframes(kind, dir, "from"), opts);
+      waits.push(anims.a1.finished);
+    } else {
+      toEl.style.setProperty("z-index", "2", "important");
+      fromEl.style.setProperty("z-index", "1", "important");
+      anims.a2 = toEl.animate(keyframes(kind, dir, "to"), opts);
+      waits.push(anims.a2.finished);
+    }
+    return Promise.all(waits).then(function () {
+      return anims;
     });
   }
   function finishAnims(anims, fromEl, toEl) {
-    try { anims.a1.cancel(); } catch (e) {}
-    try { anims.a2.cancel(); } catch (e2) {}
+    try { if (anims.a1) anims.a1.cancel(); } catch (e) {}
+    try { if (anims.a2) anims.a2.cancel(); } catch (e2) {}
     clearAnimStyles(fromEl);
     clearAnimStyles(toEl);
   }
@@ -185,10 +195,11 @@ export const PLAYER_NAV_SCRIPT = `
     busy = true;
     var dir = delta > 0 ? 1 : -1;
     var kind = ((Math.max(1, target) - 1) % 2 === 0) ? "slide" : "rise";
-    log("start", { cur: cur, target: target, kind: kind, dir: dir, ms: DURATION });
+    var side = Math.random() < 0.5 ? "from" : "to";
+    log("start", { cur: cur, target: target, kind: kind, dir: dir, side: side, ms: DURATION });
     var t0 = performance.now();
-    runWaapi(fromEl, toEl, kind, dir).then(function (anims) {
-      log("done", { cur: cur, target: target, kind: kind, ms: Math.round(performance.now() - t0) });
+    runWaapi(fromEl, toEl, kind, dir, side).then(function (anims) {
+      log("done", { cur: cur, target: target, kind: kind, side: side, ms: Math.round(performance.now() - t0) });
       navGo(slidev, target, clickCount);
       requestAnimationFrame(function () {
         finishAnims(anims, fromEl, toEl);

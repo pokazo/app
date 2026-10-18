@@ -28,6 +28,8 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toContain("data:text/javascript");
     expect(out).toContain("animateThenGo");
     expect(out).toContain("fromEl.animate");
+    expect(out).toContain("Math.random");
+    expect(out).toContain("side");
     expect(out).toContain("configs.transition%20%3D%20null");
     expect(out).toContain("pkDebugAnim");
     expect(out).toContain("%5Bpk-anim%5D");
