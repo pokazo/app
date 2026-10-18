@@ -14,45 +14,158 @@ html, body, #app, #slide-container,
 #slide-container > nav {
   display: none !important;
 }
-/* Force visible slide transitions in the embed player (incl. reduced-motion). */
+/* Clip so slides visibly slide in/out of the stage. */
+#slide-container,
+#slideshow {
+  overflow: hidden !important;
+}
+/* Strong custom Slidev transitions (injected; works on old decks). */
+:root {
+  --slidev-transition-duration: 0.7s !important;
+  --pk-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pk-slide-enter-active,
+.pk-slide-leave-active,
+.pk-slide-back-enter-active,
+.pk-slide-back-leave-active,
+.pk-rise-enter-active,
+.pk-rise-leave-active,
+.pk-rise-back-enter-active,
+.pk-rise-back-leave-active,
 .slide-left-enter-active,
 .slide-left-leave-active,
 .slide-right-enter-active,
 .slide-right-leave-active,
+.slide-up-enter-active,
+.slide-up-leave-active,
+.slide-down-enter-active,
+.slide-down-leave-active,
 .fade-enter-active,
 .fade-leave-active {
-  transition-duration: 0.45s !important;
-  transition-timing-function: ease !important;
+  transition-duration: 0.7s !important;
+  transition-timing-function: var(--pk-ease) !important;
 }
+.pk-slide-enter-active,
+.pk-slide-leave-active,
+.pk-slide-back-enter-active,
+.pk-slide-back-leave-active,
+.pk-rise-enter-active,
+.pk-rise-leave-active,
+.pk-rise-back-enter-active,
+.pk-rise-back-leave-active,
 .slide-left-enter-active,
 .slide-left-leave-active,
 .slide-right-enter-active,
-.slide-right-leave-active {
-  transition-property: translate !important;
+.slide-right-leave-active,
+.slide-up-enter-active,
+.slide-up-leave-active,
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition-property: translate, opacity, scale !important;
 }
 .fade-enter-active,
 .fade-leave-active {
-  transition-property: opacity !important;
+  transition-property: opacity, scale !important;
 }
+/* Horizontal push */
+.pk-slide-enter-from {
+  translate: 72% 0 !important;
+  opacity: 0 !important;
+  scale: 0.94 !important;
+}
+.pk-slide-leave-to {
+  translate: -42% 0 !important;
+  opacity: 0 !important;
+  scale: 0.96 !important;
+}
+.pk-slide-back-enter-from {
+  translate: -72% 0 !important;
+  opacity: 0 !important;
+  scale: 0.94 !important;
+}
+.pk-slide-back-leave-to {
+  translate: 42% 0 !important;
+  opacity: 0 !important;
+  scale: 0.96 !important;
+}
+/* Vertical rise (alternate pages) */
+.pk-rise-enter-from {
+  translate: 0 56% !important;
+  opacity: 0 !important;
+  scale: 0.94 !important;
+}
+.pk-rise-leave-to {
+  translate: 0 -28% !important;
+  opacity: 0 !important;
+  scale: 0.96 !important;
+}
+.pk-rise-back-enter-from {
+  translate: 0 -56% !important;
+  opacity: 0 !important;
+  scale: 0.94 !important;
+}
+.pk-rise-back-leave-to {
+  translate: 0 28% !important;
+  opacity: 0 !important;
+  scale: 0.96 !important;
+}
+.pk-slide-leave-active,
+.pk-slide-back-leave-active,
+.pk-rise-leave-active,
+.pk-rise-back-leave-active,
 .slide-left-leave-active,
 .slide-right-leave-active,
+.slide-up-leave-active,
+.slide-down-leave-active,
 .fade-leave-active {
-  z-index: 1;
+  z-index: 1 !important;
 }
+.pk-slide-enter-active,
+.pk-slide-back-enter-active,
+.pk-rise-enter-active,
+.pk-rise-back-enter-active,
 .slide-left-enter-active,
 .slide-right-enter-active,
+.slide-up-enter-active,
+.slide-down-enter-active,
 .fade-enter-active {
-  z-index: 2;
+  z-index: 2 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-slide-enter-active,
+  .pk-slide-leave-active,
+  .pk-slide-back-enter-active,
+  .pk-slide-back-leave-active,
+  .pk-rise-enter-active,
+  .pk-rise-leave-active,
+  .pk-rise-back-enter-active,
+  .pk-rise-back-leave-active,
+  .slide-left-enter-active,
+  .slide-left-leave-active,
+  .slide-right-enter-active,
+  .slide-right-leave-active,
+  .slide-up-enter-active,
+  .slide-up-leave-active,
+  .slide-down-enter-active,
+  .slide-down-leave-active,
+  .fade-enter-active,
+  .fade-leave-active {
+    transition-duration: 0.45s !important;
+  }
 }
 `.trim();
 
 /**
  * Slidev's own embed postMessage listener is __DEV__-only.
  * Mirror that protocol so the parent SPA can go(n) without reloading the iframe.
- * Also pins slide-left on configs so already-built decks animate without a rebuild.
+ * Pins dramatic custom transitions at runtime (incl. already-built decks).
  */
 export const PLAYER_NAV_SCRIPT = `
 (function () {
+  var TRANSITIONS = [
+    "pk-slide | pk-slide-back",
+    "pk-rise | pk-rise-back"
+  ];
   function ctx() {
     var el = document.getElementById("app");
     var app = el && el.__vue_app__;
@@ -65,17 +178,32 @@ export const PLAYER_NAV_SCRIPT = `
     if (n && typeof n === "object" && "value" in n) n = n.value;
     return +n || 0;
   }
-  function pinTransition(slidev) {
+  function unwrap(ref) {
+    if (ref && typeof ref === "object" && "value" in ref) return ref.value;
+    return ref;
+  }
+  function pinTransition(slidev, targetPage) {
     if (!slidev || !slidev.configs) return;
+    var page = targetPage || pageNo(slidev) || 1;
+    var name = TRANSITIONS[(Math.max(1, page) - 1) % TRANSITIONS.length];
     try {
-      slidev.configs.transition = "slide-left";
+      slidev.configs.transition = name;
     } catch (e) {}
+    var slides = unwrap(slidev.nav && slidev.nav.slides);
+    if (slides && slides.length) {
+      for (var i = 0; i < slides.length; i++) {
+        var meta = slides[i] && slides[i].meta;
+        if (meta) {
+          try { meta.transition = name; } catch (e2) {}
+        }
+      }
+    }
   }
   function go(no, clicks) {
     var slidev = ctx();
-    pinTransition(slidev);
     var target = +no;
     var clickCount = clicks == null ? 0 : +clicks;
+    pinTransition(slidev, target);
     if (slidev && slidev.nav) {
       var cur = pageNo(slidev);
       if (clickCount === 0 && cur > 0 && target === cur + 1 && typeof slidev.nav.nextSlide === "function") {
@@ -107,6 +235,21 @@ export const PLAYER_NAV_SCRIPT = `
     var t = setInterval(function () {
       n += 1;
       if (go(no, clicks) || n > 80) clearInterval(t);
+    }, 50);
+  }
+  function bootPin() {
+    var slidev = ctx();
+    if (slidev) {
+      pinTransition(slidev, pageNo(slidev) || 1);
+      return true;
+    }
+    return false;
+  }
+  if (!bootPin()) {
+    var boots = 0;
+    var bootT = setInterval(function () {
+      boots += 1;
+      if (bootPin() || boots > 80) clearInterval(bootT);
     }, 50);
   }
   window.addEventListener("message", function (ev) {
@@ -164,13 +307,12 @@ export function deckAssetCacheControl(ext: string, relPath = ""): string {
 
 export function injectPlayerChromeHide(html: string): string {
   let out = html;
-  if (!out.includes('id="pk-hide-slidev-chrome"')) {
-    const tag = `<style id="pk-hide-slidev-chrome">${PLAYER_CHROME_HIDE_CSS}</style>`;
-    out = /<\/head>/i.test(out) ? out.replace(/<\/head>/i, `${tag}</head>`) : `${tag}${out}`;
-  }
-  if (!out.includes('id="pk-slidev-nav"')) {
-    const tag = `<script id="pk-slidev-nav">${PLAYER_NAV_SCRIPT}</script>`;
-    out = /<\/body>/i.test(out) ? out.replace(/<\/body>/i, `${tag}</body>`) : `${out}${tag}`;
-  }
+  // Always refresh injected chrome so CSS/nav upgrades apply without rebuilding decks.
+  out = out.replace(/<style id="pk-hide-slidev-chrome">[\s\S]*?<\/style>/i, "");
+  out = out.replace(/<script id="pk-slidev-nav">[\s\S]*?<\/script>/i, "");
+  const styleTag = `<style id="pk-hide-slidev-chrome">${PLAYER_CHROME_HIDE_CSS}</style>`;
+  out = /<\/head>/i.test(out) ? out.replace(/<\/head>/i, `${styleTag}</head>`) : `${styleTag}${out}`;
+  const scriptTag = `<script id="pk-slidev-nav">${PLAYER_NAV_SCRIPT}</script>`;
+  out = /<\/body>/i.test(out) ? out.replace(/<\/body>/i, `${scriptTag}</body>`) : `${out}${scriptTag}`;
   return out;
 }
