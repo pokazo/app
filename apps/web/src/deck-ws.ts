@@ -20,8 +20,14 @@ export function isBuildPhaseLabel(label: string | null | undefined): boolean {
 export function shouldShowBuildLoader(opts: {
   buildLive: boolean;
   activity?: string | null;
+  /**
+   * When false, ignore stale assemble labels (deck already idle/ready).
+   * Omit / true while generating, previewing, or rewriting.
+   */
+  deckBusy?: boolean;
 }): boolean {
   if (opts.buildLive) return true;
+  if (opts.deckBusy === false) return false;
   return isBuildPhaseLabel(opts.activity);
 }
 

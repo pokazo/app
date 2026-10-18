@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   deckWsUrl,
+  isBuildPhaseLabel,
   parseDeckWsEvent,
   type DeckBuildKind,
   type DeckWsEvent,
@@ -50,7 +51,10 @@ export function useDeckSocket(deckId: string | undefined, enabled = true): DeckS
           if (event.state === "start") {
             return { ...prev, buildLive: true, buildKind: event.kind };
           }
-          return { ...prev, buildLive: false, buildKind: null };
+          // Drop stale «Собираю показ» so the loader does not stick after build end.
+          const activity =
+            prev.activity && isBuildPhaseLabel(prev.activity) ? null : prev.activity;
+          return { ...prev, buildLive: false, buildKind: null, activity };
         }
         return prev;
       });

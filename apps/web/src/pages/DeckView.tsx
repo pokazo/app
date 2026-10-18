@@ -129,9 +129,19 @@ export function DeckView() {
     }
   }, [deckSocket.activity]);
   const liveActivity = (deckSocket.activity ?? activity).trim();
+  // Until meta arrives, keep assemble labels visible; once ready+idle, drop stale ones.
+  const deckBusyForLoader = Boolean(
+    !meta ||
+      building ||
+      rewriteBusy ||
+      meta.status === "preview" ||
+      meta.status === "generating" ||
+      meta.status === "building",
+  );
   const showBuildLoader = shouldShowBuildLoader({
     buildLive: deckSocket.buildLive,
     activity: liveActivity || activity,
+    deckBusy: deckBusyForLoader,
   });
   const buildLoaderLabel = liveActivity || activity || "Собираю показ";
   const showRewriteForm = Boolean(

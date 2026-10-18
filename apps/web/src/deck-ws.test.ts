@@ -12,6 +12,23 @@ describe("shouldShowBuildLoader", () => {
     expect(shouldShowBuildLoader({ buildLive: false, activity: "Собираю показ" })).toBe(true);
     expect(shouldShowBuildLoader({ buildLive: false, activity: "Пишу слайды" })).toBe(false);
   });
+
+  it("hides stale assemble label when deck is idle", () => {
+    expect(
+      shouldShowBuildLoader({
+        buildLive: false,
+        activity: "Собираю показ",
+        deckBusy: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowBuildLoader({
+        buildLive: true,
+        activity: "Собираю показ",
+        deckBusy: false,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("isBuildPhaseLabel", () => {

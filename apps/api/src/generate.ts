@@ -560,6 +560,12 @@ export async function generateDeck(opts: {
 
   // Speech is lazy: generated on first open via POST /api/decks/:id/speech/regenerate
 
+  try {
+    await writeDeckActivity(opts.workDir, "");
+  } catch {
+    /* optional — avoid leaving «Собираю показ» stuck in the player */
+  }
+
   await writeFile(join(opts.workDir, "assets.json"), JSON.stringify({ attributions }, null, 2));
   const visualSlides = outline.object.slides.filter((s) =>
     [
