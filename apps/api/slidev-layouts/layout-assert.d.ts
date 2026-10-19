@@ -99,4 +99,24 @@ export function assertPieLayout(props: {
   pie?: Array<{ label?: string; value?: string | number }> | null;
 }): void;
 
+export const AGENDA_CONTENT_LIMITS: {
+  readonly maxKickerChars: 28;
+  readonly maxH1Chars: 42;
+  readonly maxDescChars: 100;
+  readonly maxTitleChars: 28;
+  readonly minItems: 3;
+  readonly maxItems: 5;
+};
+
+export function isAgendaPalette(palette?: string | null): boolean;
+
+export function assertAgendaLayout(props: {
+  palette?: string | null;
+  kicker?: string | null;
+  items?: Array<{ title?: string }> | null;
+  cards?: Array<{ title?: string }> | null;
+}): void;
+
+export function assertAgendaBodyContent(body: string): void;
+
 export function assertPieBodyContent(body: string): void;

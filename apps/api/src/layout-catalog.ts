@@ -1,6 +1,7 @@
 /** Source-of-truth descriptions for outline/compose layout selection (MCP). */
 
 import {
+  AGENDA_CONTENT_LIMITS,
   layoutCarbonIconHints,
   PIE_CONTENT_LIMITS,
   SPOTLIGHT_CONTENT_LIMITS,
@@ -9,7 +10,7 @@ import {
 const ICON_HINTS = layoutCarbonIconHints();
 const ICON_HINTS_FIELD = `iconHint ONLY from: ${ICON_HINTS.join(", ")}`;
 
-export { SPOTLIGHT_CONTENT_LIMITS, PIE_CONTENT_LIMITS };
+export { AGENDA_CONTENT_LIMITS, SPOTLIGHT_CONTENT_LIMITS, PIE_CONTENT_LIMITS };
 
 /** One frontmatter or body field the layout accepts (mirror hero-catalog). */
 export type LayoutFieldSpec = {
@@ -605,6 +606,58 @@ export const LAYOUT_CATALOG: LayoutCatalogEntry[] = [
       },
     ],
   },
+  {
+    id: "agenda",
+    summary: "Numbered agenda: H1 + description + 3–5 title-only rows with accent badges",
+    whenToUse:
+      "Section outline, table of contents, chapter list, talk agenda — short titles only",
+    antiPatterns:
+      "Per-item body copy (use cards/features); icons (use process/features); photo (use spotlight)",
+    outlineFields:
+      "visual=agenda; palette; points[0]=description; cards[{title}] 3–5 (body unused); kicker?",
+    frontmatter:
+      "layout: agenda; palette: cream|ink|…; items: (from cards, title only); kicker?",
+    body: "H1 + one description paragraph (no bullets)",
+    displays: "Left stack: title, blurb, numbered rows with wavy accent background",
+    example:
+      '{ "visual": "agenda", "heading": "The Power of Java", "points": ["An introduction to the language that powers billions of devices."], "palette": "candy", "cards": [{"title":"Core Principles","body":""},{"title":"Enterprise Ecosystem","body":""},{"title":"Global Reach","body":""}], "kicker": "AGENDA" }',
+    tags: ["list", "outline", "agenda", "toc"],
+    fields: [
+      f.layout("agenda"),
+      {
+        name: "palette",
+        required: true,
+        in: "frontmatter",
+        type: "cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt",
+        expects: "Model picks bg/accent for waves and badges",
+      },
+      f.kicker(`2–5 short words, ALL CAPS (≤${AGENDA_CONTENT_LIMITS.maxKickerChars} chars)`),
+      f.items(
+        `${AGENDA_CONTENT_LIMITS.minItems}–${AGENDA_CONTENT_LIMITS.maxItems} rows`,
+        `YAML items: [{title}] — map outline.cards → items: (never cards:). title ≤${AGENDA_CONTENT_LIMITS.maxTitleChars} chars; body ignored`,
+      ),
+      f.h1(
+        `≤${AGENDA_CONTENT_LIMITS.maxH1Chars} chars`,
+        "Title as H1; description is next paragraph",
+      ),
+      {
+        name: "description",
+        required: true,
+        in: "body",
+        type: "1 short paragraph under H1",
+        expects: "Map outline.points[0] → paragraph under H1; no bullets",
+        limit: `≤${AGENDA_CONTENT_LIMITS.maxDescChars} chars`,
+      },
+      {
+        name: "items[].title",
+        required: true,
+        in: "frontmatter",
+        type: "string",
+        expects: "Row label next to auto number 01…",
+        limit: `≤${AGENDA_CONTENT_LIMITS.maxTitleChars} chars`,
+      },
+    ],
+  },
 ];
 
 export function layoutCatalogById(id: string): LayoutCatalogEntry | undefined {
@@ -722,6 +775,12 @@ export function layoutMatch(input: LayoutMatchInput): LayoutMatchHit[] {
   }
   if (input.hasNumbers && (input.featureCount ?? 0) >= 3 && (input.featureCount ?? 0) <= 5) {
     bump("pie", 4, "numbers + 3–5 parts");
+  }
+  if (/agenda|outline|toc|оглавлен|повестк|глав[ыа]|section list|roadmap of talk/.test(intent)) {
+    bump("agenda", 6, "intent agenda / toc");
+  }
+  if (!input.wantsPhoto && (input.featureCount ?? 0) >= 3 && (input.featureCount ?? 0) <= 5) {
+    bump("agenda", 3, "3–5 short titled rows");
   }
 
   const withLimits = (id: string, score: number, reason: string): LayoutMatchHit => {

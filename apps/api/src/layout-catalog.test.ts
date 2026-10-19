@@ -104,4 +104,19 @@ describe("layout catalog", () => {
     const hits = layoutMatch({ intent: "market share composition", hasNumbers: true, featureCount: 5 });
     expect(hits.some((h) => h.id === "pie")).toBe(true);
   });
+
+  it("layout-get agenda exposes char caps for compose", () => {
+    const agenda = layoutGet("agenda");
+    expect(agenda.summary).toMatch(/Numbered agenda/i);
+    expect(agenda.fields.some((f) => f.name === "palette" && f.required)).toBe(true);
+    expect(agenda.fields.find((f) => f.name === "H1")?.limit).toMatch(/≤42/);
+    expect(agenda.fields.find((f) => f.name === "description")?.limit).toMatch(/≤100/);
+    expect(agenda.fields.find((f) => f.name === "items")?.limit).toMatch(/3–5/);
+    expect(agenda.fields.find((f) => f.name === "items[].title")?.limit).toMatch(/≤28/);
+  });
+
+  it("layout-match prefers agenda for toc intent", () => {
+    const hits = layoutMatch({ intent: "talk agenda outline toc", featureCount: 3 });
+    expect(hits[0]?.id).toBe("agenda");
+  });
 });

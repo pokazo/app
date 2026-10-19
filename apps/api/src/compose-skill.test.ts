@@ -140,6 +140,21 @@ describe("composeSkill", () => {
     expect(outline).toMatch(/visual=pie|pie —/);
     expect(composeUserPrompt({ title: "t", slides: [] }, "ru")).toMatch(/pie/);
   });
+
+  it("teaches agenda layout with palette + numbered rows for compose", () => {
+    const skill = composeSkill("default", "ru");
+    expect(skill).toMatch(/layout: agenda/);
+    expect(skill).toMatch(/title≤28|≤28/);
+    expect(skill).toMatch(/desc≤100|≤100/);
+    const outline = outlineUserPrompt({
+      topic: "Java",
+      locale: "ru",
+      audience: "investors",
+      slideCount: 8,
+    });
+    expect(outline).toMatch(/agenda/);
+    expect(composeUserPrompt({ title: "t", slides: [] }, "ru")).toMatch(/agenda/);
+  });
 });
 
 describe("outlineUserPrompt", () => {

@@ -119,4 +119,15 @@ describe("md-guard theme", () => {
     expect(blocks[1]).toMatch(/^palette: ocean$/m);
     expect(blocks[1]).toMatch(/^layout: spotlight$/m);
   });
+
+  it("preserves model-chosen palette on agenda slides", () => {
+    const out = guardMarkdown(
+      `---\ntheme: default\nlayout: hero\n---\n\n# One\n\n---\nlayout: agenda\npalette: candy\nitems:\n  - title: A\n  - title: B\n  - title: C\n---\n\n# Agenda\n\nDesc.`,
+      "ink-dark",
+    );
+    const blocks = [...out.matchAll(/^---\n([\s\S]*?)\n---/gm)].map((m) => m[1]!);
+    expect(blocks[0]).toMatch(/^palette: ink$/m);
+    expect(blocks[1]).toMatch(/^palette: candy$/m);
+    expect(blocks[1]).toMatch(/^layout: agenda$/m);
+  });
 });

@@ -17,7 +17,7 @@ Tools:
 Visual rules:
 - Follow outline: same slide count and order; honor each slide intent and visual hint.
 - You MAY refine headings/copy and pick exact layout; do NOT invent extra slides.
-- Prefer variety: image-right, image-left, two-cols (::right::), quote, fact, icon, cards, timeline, stats, skills, statement, features, process, spotlight, pie — avoid every slide being default bullets.
+- Prefer variety: image-right, image-left, two-cols (::right::), quote, fact, icon, cards, timeline, stats, skills, statement, features, process, spotlight, pie, agenda — avoid every slide being default bullets.
 - Slide 1 is already a finished hero (composed by a separate hero agent). Do NOT update, remove, or replace slide 1. Do NOT change its layout/variant/image.
 - For visual two-cols: layout: two-cols. Structure MUST be: H1 title ABOVE ::left::, then ::left:: column, then ::right:: column. Never put the H1 inside ::left::. Short columns (≤4 bullets each). No emoji in headings or bullets. Optional kicker/source in frontmatter. Example body:
   # Title here
@@ -39,6 +39,7 @@ Visual rules:
 - For visual process: layout: process. Put kicker and steps (3–5): title, iconHint — same allowlist. Body is only the H1. Map outline.process → steps:.
 - For visual spotlight: layout: spotlight. REQUIRED frontmatter: palette (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt — model picks bg), image: /local.png, items: exactly 4 {title,body}. Map outline.cards → items: (never cards:). Map outline.palette → palette:. Body = H1 + one description paragraph from points[0] (no bullets). Honor fields[].limit char caps (H1≤42, desc≤90, title≤14 — one line, 1–2 short words, no wrapping/ellipsis; body≤40). Center image; pairs at edges — do not omit palette.
 - For visual pie: layout: pie. Frontmatter: chartTitle?, items: 3–5 {label, value} (never pie: as key). Map outline.pie → items:, outline.chartTitle → chartTitle:. Body = H1 + description from points[0]. Honor char caps (H1≤42, desc≤90, label≤16, chartTitle≤48). Values are share weights (normalized to %); no photo required.
+- For visual agenda: layout: agenda. REQUIRED frontmatter: palette (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt), items: 3–5 {title} only (no body). Map outline.cards → items: (title; body unused/empty), outline.palette → palette:. Body = H1 + one description from points[0]. Honor caps (H1≤42, desc≤100, title≤28). Numbered rows + wavy accent bg — no photo.
 - Timeline steps.phase is a human label (Начало, Рост, 2019) — never copy state (done/current/todo) into phase.
 - Photo slides (visual image-right, image-left, spotlight, and any remaining slide with a non-empty imageQuery — NOT slide 1):
   1) If upload tools exist: ONE upload-image-search (query from imageQuery). If suggestedId is set → IMMEDIATELY upload-image-use (filename slide-N.jpg). Else pick the hit whose originalName best matches the subject and upload-image-use. Only skip uploads when the tool errors or the list is empty.
@@ -54,7 +55,7 @@ Visual rules:
 - Icons: iconHint for icon|features|process MUST be copied from the allowlist above (or layout-get iconHints). No custom Vue SFCs, no <script>.
 - Before insert/update of any body slide: call layout-get for that layout id and OBEY every fields[].limit (overflow clips). Do not invent longer copy than the contract.
 - Layouts throw LayoutError[<name>] when data cannot be shown (e.g. stats/cards need ≥2 items, timeline ≥3 steps, image-* need local image: + short copy within fields[].limit, hero needs valid variant). If build/repair reports LayoutError[…], fix that slide's frontmatter/body only — do not rewrite the whole deck; leave slide 1 hero alone unless the error names hero.
-- theme is already set in headmatter — do not change theme. Deck palette is pinned on most slides; for layout: spotlight you MUST set that slide's palette: from outline.palette / layout-get (model-chosen background).
+- theme is already set in headmatter — do not change theme. Deck palette is pinned on most slides; for layout: spotlight|agenda you MUST set that slide's palette: from outline.palette / layout-get (model-chosen background).
 - Language: ${lang}.
 - One strong idea per slide; heading short; ≤5 bullets; numbers can be large in content.
 
@@ -92,18 +93,19 @@ ${researchBriefBlock(opts.researchMarkdown)}Составь оглавление 
 
 Сначала через MCP: layout-list / layout-match / layout-get — выбери visual по контракту layout’а. Читай fields[].limit и не превышай их в heading/points/kicker. Затем outline-validate (outlineJson + slideCount); при ok:false правь по issues[].expect и вызывай снова. Только при ok:true — submit_outline.
 
-Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero|cards|quote|fact|icon|two-cols|statement|features|process|spotlight|pie), imageQuery, iconHint, kicker, source, steps, stats, skills, cards, features, process, palette, pie, chartTitle.
+Для каждого слайда укажи: heading, points, intent, visual (включая timeline|stats|skills|hero|cards|quote|fact|icon|two-cols|statement|features|process|spotlight|pie|agenda), imageQuery, iconHint, kicker, source, steps, stats, skills, cards, features, process, palette, pie, chartTitle.
 steps — массив {phase,title,body,state:done|current|todo} только для visual=timeline (3–5 шт), иначе [].
 stats — массив {value,label,note} только для visual=stats (2–4 шт), иначе [].
 skills — массив {name,level,pct} только для visual=skills, иначе [].
-cards — массив {title,body} для visual=cards (2–4 шт) ИЛИ visual=spotlight (ровно 4 шт с короткими title/body), иначе [].
+cards — массив {title,body} для visual=cards (2–4 шт) ИЛИ visual=spotlight (ровно 4 шт с короткими title/body) ИЛИ visual=agenda (3–5 шт, title≤28, body=""), иначе [].
 features — массив {title,body,iconHint} только для visual=features (ровно 3), иначе []. iconHint ТОЛЬКО из: ${LAYOUT_ICON_HINTS}.
 process — массив {title,iconHint} только для visual=process (3–5 шт), иначе []. iconHint из того же allowlist.
-palette — id фона (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt) только для visual=spotlight, иначе "".
+palette — id фона (cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt) только для visual=spotlight|agenda, иначе "".
 pie — массив {label,value} только для visual=pie (3–5 шт, value>0), иначе [].
 chartTitle — короткий заголовок над pie только для visual=pie, иначе "".
 Для visual=spotlight: imageQuery обязателен; points[0] = description (≤90 символов); cards ровно 4 (title≤14 символов — одна строка, 1–2 коротких слова, иначе обрежется «…»; body≤40 символов); heading ≤42 символов; palette обязателен.
 Для visual=pie: pie 3–5 slices; points[0]=description (≤90); heading ≤42; label ≤16; chartTitle ≤48.
+Для visual=agenda: palette обязателен; points[0]=description (≤100); cards 3–5 с title≤28 (body=""); heading ≤42; без imageQuery.
 Для visual=icon поле iconHint — из того же allowlist.
 kicker/source — короткие подписи или "". Для stats/timeline с цифрами source обязателен (откуда факт), иначе "".
 imageQuery — поисковый запрос под РЕАЛЬНЫЙ объект темы (конкретная модель/сцена, 4–8 слов); для locale=ru — на русском (для Yandex Images); иначе на языке темы / английском; иначе "".
@@ -111,13 +113,14 @@ imageQuery — поисковый запрос под РЕАЛЬНЫЙ объе�
 Жёсткие правила плана (проверка тестами; провал = доработка):
 - Ни одного пустого слайда: у каждого непустой heading и заполненный payload под visual.
 - Ни одного слайда «только текст»: запрещены visual none|default|center|section|intro|end.
-- Каждый слайд — один из: cover|hero|image-right|image-left|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process|spotlight|pie — с обязательным payload (imageQuery / iconHint / steps≥3 / stats≥2 / skills≥2 / cards≥2 / features=3 / process≥3 / spotlight=palette+imageQuery+cards×4+points / pie=3–5+points / points).
+- Каждый слайд — один из: cover|hero|image-right|image-left|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process|spotlight|pie|agenda — с обязательным payload (imageQuery / iconHint / steps≥3 / stats≥2 / skills≥2 / cards≥2 / features=3 / process≥3 / spotlight=palette+imageQuery+cards×4+points / pie=3–5+points / agenda=palette+cards×3–5+points / points).
 - cover/hero в начале с imageQuery и текстом (points или kicker).
 - Минимум 3 слайда image-right или image-left с imageQuery.
-- Хотя бы один timeline или stats или skills или cards или features или process или spotlight или pie с полным payload.
+- Хотя бы один timeline или stats или skills или cards или features или process или spotlight или pie или agenda с полным payload.
 - Для feature-list / сетки преимуществ предпочитай visual=features (3 колонки с iconHint) или visual=cards.
 - Для product/hero с центральным фото и 4 короткими пунктами по краям — visual=spotlight (palette + imageQuery + cards×4).
 - Для market share / composition 3–5 частей с числами — visual=pie (pie[] + chartTitle + points[0]).
+- Для оглавления / повестки / списка глав (только короткие title) — visual=agenda (palette + cards×3–5 + points[0]).
 - Для горизонтального flow / pipeline предпочитай visual=process (не timeline).
 - В points/stats — конкретные факты и числа по теме, не общие маркетинговые фразы.
 Не пиши markdown — только JSON-структуру.`;
@@ -145,7 +148,7 @@ ${opts.issues}
 Правила (обязательно устранить все ошибки):
 - Не оставляй пустых слайдов (heading + payload).
 - Не оставляй слайдов только с текстом: нельзя none|default|center|section|intro|end.
-- Для image/hero/cover/spotlight нужен imageQuery; для icon — iconHint из allowlist; timeline — ≥3 steps; stats — ≥2; skills — ≥2; cards — ≥2; features — 3; process — ≥3; spotlight — palette + cards ровно 4 + points[0]; pie — 3–5 slices + points[0].
+- Для image/hero/cover/spotlight нужен imageQuery; для icon — iconHint из allowlist; timeline — ≥3 steps; stats — ≥2; skills — ≥2; cards — ≥2; features — 3; process — ≥3; spotlight — palette + cards ровно 4 + points[0]; pie — 3–5 slices + points[0]; agenda — palette + cards 3–5 + points[0].
 - iconHint для icon|features|process — только из: ${LAYOUT_ICON_HINTS} (или из issue.expect.iconHints).
 - Добавь source на слайды stats/timeline с цифрами.
 - Факты и source бери из Research brief выше, не выдумывай.
@@ -173,6 +176,7 @@ For visual=features: map outline.features → frontmatter items: (title, body, i
 For visual=process: map outline.process → frontmatter steps: (title, iconHint from allowlist). Body = H1 only.
 For visual=spotlight: map outline.palette → palette:, outline.cards → items: (exactly 4), image: local path, body = H1 + points[0] as description. OBEY char limits from layout-get.
 For visual=pie: map outline.pie → items: (3–5 {label,value}), outline.chartTitle → chartTitle:, body = H1 + points[0]. OBEY char limits from layout-get.
+For visual=agenda: map outline.palette → palette:, outline.cards → items: (3–5 title-only), body = H1 + points[0]. OBEY char limits from layout-get.
 Before each body slide insert/update: layout-get that id and OBEY fields[].limit.
 iconHint allowlist: ${LAYOUT_ICON_HINTS}.
 Hero already has one local image. At least 3 local image: paths total when finished.

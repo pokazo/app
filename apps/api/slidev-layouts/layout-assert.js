@@ -445,3 +445,83 @@ export function assertSpotlightBodyContent(body) {
     );
   }
 }
+
+/** Char caps — keep in sync with layout-catalog agenda fields[].limit. */
+export const AGENDA_CONTENT_LIMITS = Object.freeze({
+  maxKickerChars: 28,
+  maxH1Chars: 42,
+  maxDescChars: 100,
+  maxTitleChars: 28,
+  minItems: 3,
+  maxItems: 5,
+});
+
+export function isAgendaPalette(palette) {
+  return isSpotlightPalette(palette);
+}
+
+/**
+ * Agenda: palette + 3–5 title-only items within char caps.
+ * Body H1/description checked via assertAgendaBodyContent when body is available.
+ */
+export function assertAgendaLayout(props) {
+  if (!isAgendaPalette(props.palette)) {
+    throw layoutError(
+      "agenda",
+      `palette must be one of cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt (got ${JSON.stringify(props.palette)})`,
+    );
+  }
+  const raw = preferList(props.items, props.cards);
+  const ok = raw.filter((it) => it?.title?.trim());
+  if (ok.length < AGENDA_CONTENT_LIMITS.minItems || ok.length > AGENDA_CONTENT_LIMITS.maxItems) {
+    throw layoutError(
+      "agenda",
+      `need ${AGENDA_CONTENT_LIMITS.minItems}–${AGENDA_CONTENT_LIMITS.maxItems} items with title (got ${ok.length})`,
+    );
+  }
+  for (let i = 0; i < ok.length; i++) {
+    const title = String(ok[i].title ?? "").trim();
+    if (title.length > AGENDA_CONTENT_LIMITS.maxTitleChars) {
+      throw layoutError(
+        "agenda",
+        `items[${i}].title too long (${title.length}>${AGENDA_CONTENT_LIMITS.maxTitleChars} chars); see layout-get fields[].limit`,
+      );
+    }
+  }
+  const kicker = props.kicker != null ? String(props.kicker).trim() : "";
+  if (kicker && kicker.length > AGENDA_CONTENT_LIMITS.maxKickerChars) {
+    throw layoutError(
+      "agenda",
+      `kicker too long (${kicker.length}>${AGENDA_CONTENT_LIMITS.maxKickerChars} chars); see layout-get fields[].limit`,
+    );
+  }
+}
+
+export function assertAgendaBodyContent(body) {
+  const text = String(body ?? "");
+  if (!/(?:^|\n)#\s+\S/.test(text)) {
+    throw layoutError("agenda", "body needs H1 title");
+  }
+  const h1 = (text.match(/(?:^|\n)#\s+(.+)/) || [])[1]?.trim() ?? "";
+  if (!h1) {
+    throw layoutError("agenda", "body needs H1 title");
+  }
+  if (h1.length > AGENDA_CONTENT_LIMITS.maxH1Chars) {
+    throw layoutError(
+      "agenda",
+      `H1 too long (${h1.length}>${AGENDA_CONTENT_LIMITS.maxH1Chars} chars); see layout-get fields[].limit`,
+    );
+  }
+  const afterH1 = text.replace(/(?:^|\n)#\s+.+\n?/, "");
+  const desc =
+    (afterH1.match(/^\s*(?![-*+#])(\S[^\n]*)/m) || [])[1]?.trim() ?? "";
+  if (!desc) {
+    throw layoutError("agenda", "body needs a description line under H1");
+  }
+  if (desc.length > AGENDA_CONTENT_LIMITS.maxDescChars) {
+    throw layoutError(
+      "agenda",
+      `description too long (${desc.length}>${AGENDA_CONTENT_LIMITS.maxDescChars} chars); see layout-get fields[].limit`,
+    );
+  }
+}

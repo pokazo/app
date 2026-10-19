@@ -156,7 +156,7 @@ On ok:false each issue has message plus expect { outlineFields, antiPatterns, ex
 Hard payload rules:
 - features: exactly 3 items {title, body, iconHint}; iconHint ONLY from layout-get(features).iconHints (carbon-* allowlist)
 - process: 3–5 steps {title, iconHint} from the same allowlist
-- timeline: ≥3 steps {phase,title,body,state}; stats ≥2; skills ≥2; cards ≥2 (spotlight: exactly 4 cards + palette + imageQuery + points[0]); pie: 3–5 slices + points[0]
+- timeline: ≥3 steps {phase,title,body,state}; stats ≥2; skills ≥2; cards ≥2 (spotlight: exactly 4 cards + palette + imageQuery + points[0]); pie: 3–5 slices + points[0]; agenda: 3–5 cards title-only + palette + points[0]
 - photo layouts (cover|hero|image-right|image-left|spotlight): non-empty imageQuery
 - icon: iconHint from allowlist + points
 - Forbidden text-only visuals: none|default|center|section|intro|end

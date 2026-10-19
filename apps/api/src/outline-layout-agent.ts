@@ -34,7 +34,7 @@ Rules:
 2. Prefer variety; honor quotas in the user prompt (photos, structured payload, no text-only visuals).
 3. For visual=icon|features|process: every iconHint MUST be copied from that layout's iconHints allowlist (layout-get). Never invent Carbon names.
 4. Choose a visual only when heading/points fit that layout's limits.H1 (and other limits). If the idea needs a long thesis title, pick another layout (two-cols, cards, …) or shorten the heading — never assign statement/fact/quote with an overlong H1 (overflow clips).
-5. Honor limits from layout-list/match and fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; statement: H1 ≈3–10 words; spotlight: char caps + palette; pie: 3–5 slices + char caps).
+5. Honor limits from layout-list/match and fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; statement: H1 ≈3–10 words; spotlight: char caps + palette; pie: 3–5 slices + char caps; agenda: 3–5 titles + palette).
 6. After drafting the full outline, call outline-validate (outlineJson + slideCount). If ok:false, fix each slide using issues[].expect (outlineFields, antiPatterns, example, limits, iconHints) and call outline-validate again.
 7. Only when outline-validate returns ok:true, call submit_outline with the full outline object (title + slides).
 8. If submit_outline returns ok:false with issues, fix using expect and re-validate then submit again.
@@ -162,7 +162,7 @@ export function outlineRetryFeedback(trace: OutlineAgentTrace, lastDraft: string
     "ПОВТОР: прошлая попытка закончилась без принятого submit_outline.",
     issues !== "-" ? `Последние ошибки: ${issues}` : "",
     lastDraft ? `Последний черновик outline (JSON, исправь его, не начинай с нуля):\n${lastDraft}` : "",
-    "Для каждого слайда с visual=features|process|timeline|stats|cards|spotlight|pie заполни payload полностью (features — ровно 3 items, process — 3–5 steps, iconHint только из allowlist). Если контента на такую раскладку нет — смени visual на image-right|image-left с points.",
+    "Для каждого слайда с visual=features|process|timeline|stats|cards|spotlight|pie|agenda заполни payload полностью (features — ровно 3 items, process — 3–5 steps, iconHint только из allowlist; agenda — palette + 3–5 cards title-only). Если контента на такую раскладку нет — смени visual на image-right|image-left с points.",
     "Сначала outline-validate, затем submit_outline. Не пиши JSON в обычном ответе — только вызовом инструмента.",
   ]
     .filter(Boolean)

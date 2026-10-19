@@ -85,7 +85,7 @@ ${opts.instruction.trim()}
 Правила:
 ${lock}
 - Непустой heading и полный payload под выбранный visual.
-- Для image-right|image-left|hero|cover|spotlight — обнови imageQuery если просили сменить картинку${fullRedo ? " или это FULL REDO" : ""}; иначе сохрани; для icon — iconHint из allowlist; timeline ≥3 steps; stats ≥2; skills ≥2; cards ≥2; features ровно 3; process ≥3; spotlight — palette + cards ровно 4 + points[0]; pie — 3–5 slices + points[0].
+- Для image-right|image-left|hero|cover|spotlight — обнови imageQuery если просили сменить картинку${fullRedo ? " или это FULL REDO" : ""}; иначе сохрани; для icon — iconHint из allowlist; timeline ≥3 steps; stats ≥2; skills ≥2; cards ≥2; features ровно 3; process ≥3; spotlight — palette + cards ровно 4 + points[0]; pie — 3–5 slices + points[0]; agenda — palette + cards 3–5 + points[0].
 - iconHint для icon|features|process — только из: ${LAYOUT_ICON_HINTS}.
 - Сохрани полезный контекст предыдущего плана, но выполни инструкцию.
 - Не пиши markdown — только JSON одного OutlineSlide.
@@ -111,7 +111,7 @@ Tools:
 Layout (soft lock, unless FULL REDO — see user prompt):
 - Call slidev-get-slide first.
 - Always layout-get the target layout id (even when keeping it) and OBEY every fields[].limit before slidev-update-slide — overflow clips.
-- DEFAULT: keep the SAME layout; only edit fields (H1, bullets, kicker, brand, source, iconHint, items/steps/stats/cards/features/process/pie, optional image:, and for spotlight: palette + description; for pie: chartTitle + slices).
+- DEFAULT: keep the SAME layout; only edit fields (H1, bullets, kicker, brand, source, iconHint, items/steps/stats/cards/features/process/pie, optional image:, and for spotlight|agenda: palette + description; for pie: chartTitle + slices).
 - CHANGE layout if the user asked for a different layout/visual, content cannot fit, OR the user prompt says FULL REDO MODE:
   1) layout-match and/or layout-get on the chosen id (FULL REDO: pick a DIFFERENT body layout than current)
   2) ONE slidev-update-slide with the new layout + required fields from that contract (honor fields[].limit)
@@ -125,7 +125,7 @@ Photo pipeline (if user asked to change/replace the image, attached a photo, cur
 If the user only asked for text/field changes (not FULL REDO), did not attach a photo, and image already exists — do NOT call any image search/download/generate tools.
 
 Do NOT insert, remove, or move slides. Do NOT touch any slide except the target number.
-Do NOT change theme in headmatter. For layout: spotlight you MAY set that slide's palette: (model-chosen bg from layout-get).
+Do NOT change theme in headmatter. For layout: spotlight|agenda you MAY set that slide's palette: (model-chosen bg from layout-get).
 
 Field rules (match chosen layout contract from layout-get fields[]):
 - two-cols: H1 ABOVE ::left::, then ::left:: / ::right::; no emoji
@@ -136,6 +136,7 @@ Field rules (match chosen layout contract from layout-get fields[]):
 - skills | features | process: frontmatter items/steps; body = H1
 - spotlight: palette + local image: + items exactly 4 {title,body}; body = H1 + description paragraph; honor char limits (H1≤42, desc≤90, title≤14 (single line, else clipped with …), body≤40)
 - pie: chartTitle? + items 3–5 {label,value}; body = H1 + description; honor char limits (H1≤42, desc≤90, label≤16, chartTitle≤48)
+- agenda: palette + items 3–5 {title}; body = H1 + description; honor char limits (H1≤42, desc≤100, title≤28)
 - image-right | image-left: local image: path when updating photo; honor fields[].limit (short kicker/H1, ≤3 short bullets)
 iconHint allowlist: ${LAYOUT_ICON_HINTS}.
 Local image paths only. At most ONE upload-image-search, ONE yandex-image-search and ONE stock-search when photo pipeline runs.

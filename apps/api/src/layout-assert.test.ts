@@ -6,6 +6,8 @@ import {
   assertHeroLayout,
   assertIconLayout,
   assertImageLayout,
+  assertAgendaBodyContent,
+  assertAgendaLayout,
   assertPieBodyContent,
   assertPieLayout,
   assertProcessLayout,
@@ -571,6 +573,53 @@ describe("assertPieBodyContent", () => {
   it("passes with short H1 + description", () => {
     expect(() =>
       assertPieBodyContent("# Comparing the Top Languages\n\nPython leads market share."),
+    ).not.toThrow();
+  });
+});
+
+const threeAgenda = [
+  { title: "Core Principles" },
+  { title: "Enterprise Ecosystem" },
+  { title: "Global Reach" },
+];
+
+describe("assertAgendaLayout", () => {
+  it("throws without palette or 3–5 titles", () => {
+    expect(() => assertAgendaLayout({ items: threeAgenda })).toThrow(/LayoutError\[agenda\].*palette/);
+    expect(() =>
+      assertAgendaLayout({ palette: "ocean", items: [{ title: "Only" }] }),
+    ).toThrow(/LayoutError\[agenda\]/);
+  });
+
+  it("throws when title exceeds char cap", () => {
+    expect(() =>
+      assertAgendaLayout({
+        palette: "candy",
+        items: [
+          { title: "This Title Is Way Too Long For Cap" },
+          { title: "B" },
+          { title: "C" },
+        ],
+      }),
+    ).toThrow(/LayoutError\[agenda\].*title too long/);
+  });
+
+  it("passes with palette + 3–5 titles", () => {
+    expect(() =>
+      assertAgendaLayout({ palette: "candy", items: threeAgenda }),
+    ).not.toThrow();
+  });
+});
+
+describe("assertAgendaBodyContent", () => {
+  it("throws without H1/description", () => {
+    expect(() => assertAgendaBodyContent("no heading")).toThrow(/LayoutError\[agenda\].*H1/);
+    expect(() => assertAgendaBodyContent("# Only\n")).toThrow(/LayoutError\[agenda\].*description/);
+  });
+
+  it("passes with short H1 + description", () => {
+    expect(() =>
+      assertAgendaBodyContent("# The Power of Java\n\nAn introduction to the language."),
     ).not.toThrow();
   });
 });

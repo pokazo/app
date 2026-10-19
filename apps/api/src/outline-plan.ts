@@ -185,6 +185,33 @@ export function emptySlideIssues(index: number, slide: OutlineSlide): OutlinePla
     return issues;
   }
 
+  if (visual === "agenda") {
+    const cards = (slide.cards ?? []).filter((c) => c.title?.trim());
+    const issues: OutlinePlanIssue[] = [];
+    if (!isSpotlightPalette(slide.palette)) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: agenda — palette должна быть cream|ink|auto|ocean|forest|slate|amber|wine|neon|sunset|candy|volt`,
+      });
+    }
+    if (cards.length < 3 || cards.length > 5) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: agenda — нужно 3–5 cards с title (сейчас ${cards.length})`,
+      });
+    }
+    if (points.length < 1) {
+      issues.push({
+        slide: index,
+        code: "empty_slide",
+        message: `${label}: agenda без description (points[0])`,
+      });
+    }
+    return issues;
+  }
+
   if (visual === "icon") {
     if (!isLayoutCarbonIcon(slide.iconHint)) {
       return [
@@ -272,7 +299,7 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
       {
         slide: index,
         code: "text_only",
-        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process|spotlight|pie с заполненным payload`,
+        message: `${label}: только текст (visual=${visual}). Нужен image-left|image-right|hero|cover|icon|timeline|stats|skills|two-cols|quote|fact|cards|statement|features|process|spotlight|pie|agenda с заполненным payload`,
       },
     ];
   }
@@ -398,6 +425,24 @@ export function textOnlySlideIssues(index: number, slide: OutlineSlide): Outline
     }
   }
 
+  if (visual === "agenda") {
+    const cards = (slide.cards ?? []).filter((c) => c.title?.trim());
+    if (
+      !isSpotlightPalette(slide.palette) ||
+      cards.length < 3 ||
+      cards.length > 5 ||
+      nonEmptyStrings(slide.points ?? []).length < 1
+    ) {
+      return [
+        {
+          slide: index,
+          code: "text_only",
+          message: `${label}: agenda без palette + 3–5 cards + description — останется пустым`,
+        },
+      ];
+    }
+  }
+
   return [];
 }
 
@@ -439,6 +484,7 @@ const DEMOTABLE_VISUALS = new Set([
   "cards",
   "pie",
   "spotlight",
+  "agenda",
   "icon",
 ]);
 

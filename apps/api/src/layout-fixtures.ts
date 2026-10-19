@@ -27,6 +27,7 @@ export const LAYOUT_SHOT_ORDER = [
   "process",
   "spotlight",
   "pie",
+  "agenda",
 ] as const;
 
 export type LayoutShotName = (typeof LAYOUT_SHOT_ORDER)[number];
@@ -376,7 +377,63 @@ items:
 # Comparing the Top Languages
 
 Python leads professional market share.
+
+---
+layout: agenda
+palette: candy
+kicker: AGENDA
+items:
+  - title: Core Principles
+  - title: Enterprise Ecosystem
+  - title: Global Reach
+---
+
+# The Power of Java
+
+An introduction to the language that powers billions of devices.
 `;
+}
+
+/** Multi-palette agenda deck for visual theme screenshots. */
+export const AGENDA_PALETTE_SHOT_ORDER = [
+  "cream",
+  "ink",
+  "ocean",
+  "forest",
+  "amber",
+  "candy",
+  "neon",
+  "volt",
+] as const;
+
+function agendaSlideMarkdown(palette: string, includeHead = false): string {
+  const head = includeHead
+    ? `theme: default
+title: "Agenda palettes"
+`
+    : "";
+  return `---
+${head}layout: agenda
+palette: ${palette}
+kicker: AGENDA
+items:
+  - title: Core Principles
+  - title: Enterprise Ecosystem
+  - title: Global Reach
+---
+
+# The Power of Java
+
+An introduction to the language that powers billions of devices.
+`;
+}
+
+export function agendaPalettesMarkdown(): string {
+  const [first, ...rest] = AGENDA_PALETTE_SHOT_ORDER;
+  return [
+    agendaSlideMarkdown(first!, true),
+    ...rest.map((p) => agendaSlideMarkdown(p)),
+  ].join("\n");
 }
 
 function deckWithSlide(title: string, slideBody: string): string {
@@ -572,6 +629,20 @@ items:
 # Broken pie
 
 Need more slices.
+`,
+  ),
+  agenda: deckWithSlide(
+    "Bad agenda",
+    `---
+layout: agenda
+palette: ocean
+items:
+  - title: Only
+---
+
+# Broken agenda
+
+Need more rows.
 `,
   ),
 };

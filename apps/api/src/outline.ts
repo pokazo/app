@@ -24,6 +24,7 @@ export const OutlineVisual = z.enum([
   "process",
   "spotlight",
   "pie",
+  "agenda",
 ]);
 
 export const TimelineStep = z.object({
@@ -85,14 +86,14 @@ export const OutlineSlide = z.object({
   steps: z.array(TimelineStep).max(5),
   stats: z.array(StatItem).max(4),
   skills: z.array(SkillItem).max(8),
-  /** Feature cards when visual is cards; mapped to frontmatter items. */
-  cards: z.array(CardItem).max(4),
+  /** Feature cards when visual is cards|spotlight|agenda; mapped to frontmatter items. */
+  cards: z.array(CardItem).max(5),
   /** Icon columns when visual is features; mapped to frontmatter items. */
   features: z.array(FeatureItem).max(3),
   /** Horizontal flow when visual is process. */
   process: z.array(ProcessStep).max(5),
   /**
-   * Layout palette id when visual is spotlight (cream|ink|ocean|…).
+   * Layout palette id when visual is spotlight|agenda (cream|ink|ocean|…).
    * Empty string for other visuals.
    */
   palette: z.string(),

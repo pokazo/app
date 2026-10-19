@@ -1,4 +1,6 @@
 import {
+  assertAgendaBodyContent,
+  assertAgendaLayout,
   assertCardsLayout,
   assertFactLayout,
   assertFeaturesLayout,
@@ -225,6 +227,15 @@ export function assertLayoutsInMarkdown(md: string): void {
           pie: asList(fm.pie),
         });
         assertPieBodyContent(body);
+        break;
+      case "agenda":
+        assertAgendaLayout({
+          palette: String(fm.palette || ""),
+          kicker: fm.kicker != null ? String(fm.kicker) : "",
+          items: asList(fm.items),
+          cards: asList(fm.cards),
+        });
+        assertAgendaBodyContent(body);
         break;
       case "two-cols":
         assertTwoColsLayout({
