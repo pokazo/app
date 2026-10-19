@@ -1,17 +1,26 @@
-import { DECK_THEMES } from "../decks";
+import { DECK_THEMES, type DeckTheme } from "../decks";
 import { ThemeThumb } from "./ThemeThumb";
 
-export function ThemePicker(props: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
+export function ThemePicker(props: {
+  value: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+  /** Defaults to full create-time catalog (includes auto). */
+  themes?: DeckTheme[];
+  name?: string;
+}) {
+  const themes = props.themes ?? DECK_THEMES;
+  const name = props.name ?? "deck-theme";
   return (
     <fieldset className="theme-picker" disabled={props.disabled}>
       <div className="theme-grid" role="radiogroup" aria-label="Тема презентации">
-        {DECK_THEMES.map((t) => {
+        {themes.map((t) => {
           const on = t.id === props.value;
           return (
             <label key={t.id} className={`theme-card${on ? " is-on" : ""}`}>
               <input
                 type="radio"
-                name="deck-theme"
+                name={name}
                 value={t.id}
                 checked={on}
                 onChange={() => props.onChange(t.id)}

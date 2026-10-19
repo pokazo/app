@@ -174,6 +174,25 @@ export function sanitizeDeckTheme(raw: string | null | undefined) {
   return THEME_IDS.has(id) ? id : "auto";
 }
 
+/** Themes available after build (no auto — would need LLM). */
+export const EDITABLE_DECK_THEMES = DECK_THEMES.filter((t) => t.id !== "auto");
+
+const EDITABLE_THEME_IDS = new Set(EDITABLE_DECK_THEMES.map((t) => t.id));
+
+export function sanitizeEditableDeckTheme(raw: string | null | undefined) {
+  const id = (raw ?? "").trim();
+  return EDITABLE_THEME_IDS.has(id) ? id : "default";
+}
+
+/** Owner-only post-build theme picker visibility. */
+export function canRethemeDeck(opts: {
+  isOwner: boolean;
+  status: string | null | undefined;
+  building: boolean;
+}): boolean {
+  return Boolean(opts.isOwner && opts.status === "ready" && !opts.building);
+}
+
 /** Matches API clamp in POST /api/decks. */
 export const SLIDE_COUNT_MIN = 3;
 export const SLIDE_COUNT_MAX = 16;

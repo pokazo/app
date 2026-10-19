@@ -53,6 +53,36 @@ describe("health", () => {
     const res = await app.request("/api/decks/not-an-id/export/speech-pdf");
     expect(res.status).toBe(503);
   });
+
+  it("facts export without database is unavailable", async () => {
+    const app = createApp();
+    const res = await app.request("/api/decks/not-an-id/export/facts");
+    expect(res.status).toBe(503);
+  });
+
+  it("theme change without database is unavailable", async () => {
+    const app = createApp();
+    const res = await app.request(
+      "/api/decks/11111111-1111-1111-1111-111111111111/theme",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ theme: "forest" }),
+      },
+    );
+    expect([401, 503]).toContain(res.status);
+  });
+
+  it("theme change rejects non-uuid before success", async () => {
+    const app = createApp();
+    const res = await app.request("/api/decks/not-an-id/theme", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ theme: "forest" }),
+    });
+    expect([401, 404, 503]).toContain(res.status);
+    expect(res.status).not.toBe(202);
+  });
 });
 
 describe("md-guard", () => {

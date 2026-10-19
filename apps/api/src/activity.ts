@@ -19,6 +19,8 @@ const PHASE_LABELS: Record<string, string> = {
   "rewrite-build": "Собираю показ",
   structure: "Правлю слайды",
   "structure-build": "Собираю показ",
+  theme: "Меняю тему",
+  "theme-build": "Собираю показ",
 };
 
 /** Higher priority wins when a step calls several tools at once. */

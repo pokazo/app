@@ -1,6 +1,12 @@
 import { apiUrl } from "./api";
 
-export type DeckBuildKind = "preview" | "progressive" | "final" | "rewrite" | "structure";
+export type DeckBuildKind =
+  | "preview"
+  | "progressive"
+  | "final"
+  | "rewrite"
+  | "structure"
+  | "theme";
 
 export type DeckWsEvent =
   | { type: "hello"; deckId: string }

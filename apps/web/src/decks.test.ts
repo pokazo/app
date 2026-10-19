@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   APP_HISTORY_PATH,
   DECK_THEMES,
+  EDITABLE_DECK_THEMES,
   SLIDE_COUNT_DEFAULT,
   SLIDE_COUNT_MAX,
   SLIDE_COUNT_MIN,
   SLIDE_COUNT_OPTIONS,
+  canRethemeDeck,
   deckBusy,
   deckBusyLabel,
   deckStatusLabel,
@@ -16,6 +18,7 @@ import {
   homeStartAction,
   rememberInFlightBuild,
   sanitizeDeckTheme,
+  sanitizeEditableDeckTheme,
   sanitizeSlideCount,
 } from "./decks";
 
@@ -92,6 +95,29 @@ describe("deck theme picker", () => {
     expect(sanitizeDeckTheme("seriph")).toBe("seriph");
     expect(sanitizeDeckTheme("hack-theme")).toBe("auto");
     expect(sanitizeDeckTheme(null)).toBe("auto");
+  });
+
+  it("post-build picker excludes auto (mapper, no LLM)", () => {
+    expect(EDITABLE_DECK_THEMES.map((t) => t.id)).not.toContain("auto");
+    expect(EDITABLE_DECK_THEMES[0]?.id).toBe("default");
+    expect(sanitizeEditableDeckTheme("auto")).toBe("default");
+    expect(sanitizeEditableDeckTheme("forest")).toBe("forest");
+    expect(sanitizeEditableDeckTheme("hack")).toBe("default");
+  });
+
+  it("shows retheme UI only for owner of a ready idle deck", () => {
+    expect(
+      canRethemeDeck({ isOwner: true, status: "ready", building: false }),
+    ).toBe(true);
+    expect(
+      canRethemeDeck({ isOwner: false, status: "ready", building: false }),
+    ).toBe(false);
+    expect(
+      canRethemeDeck({ isOwner: true, status: "preview", building: false }),
+    ).toBe(false);
+    expect(
+      canRethemeDeck({ isOwner: true, status: "ready", building: true }),
+    ).toBe(false);
   });
 });
 

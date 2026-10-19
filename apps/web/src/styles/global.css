@@ -1202,6 +1202,19 @@ footer.foot a:hover { text-decoration: underline; }
   box-shadow: var(--pk-shadow);
   overflow: hidden;
 }
+.deck-theme-panel {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-md);
+  background: var(--pk-paper);
+  max-height: min(40vh, 320px);
+  overflow: auto;
+}
+.deck-theme-panel .theme-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
 .deck-rewrite {
   flex-shrink: 0;
   width: min(100%, calc((100cqh - var(--deck-rewrite-h)) * 16 / 9));

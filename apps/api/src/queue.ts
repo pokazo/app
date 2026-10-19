@@ -15,6 +15,7 @@ import {
 import { WORKER_LOCK_DURATION_MS, bullWorkerOpts } from "./queue-worker-opts.js";
 import { deckFromJobId, formatWorkerJobLine } from "./queue-worker-log.js";
 import { applySlideStructure, type StructureOp } from "./slide-structure.js";
+import { applyDeckTheme } from "./deck-retheme.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { billingLog, finalizeDeckBilling } from "./billing.js";
 
@@ -70,9 +71,11 @@ export function startDeckWorker(): Queue | null {
                 ? "structure-slide"
                 : jobId.startsWith("rewrite-")
                   ? "rewrite-slide"
-                  : deckFromJobId(jobId)
-                    ? "generate"
-                    : "?",
+                  : jobId.startsWith("theme-")
+                    ? "deck-theme"
+                    : deckFromJobId(jobId)
+                      ? "generate"
+                      : "?",
             }),
           );
         });
@@ -89,6 +92,10 @@ export function startDeckWorker(): Queue | null {
           }
           if (job.name === "structure-slide") {
             await processStructureSlide(String(job.data.id), job.data.op as StructureOp);
+            return;
+          }
+          if (job.name === "deck-theme") {
+            await processDeckRetheme(String(job.data.id), String(job.data.theme ?? ""));
             return;
           }
           const maxAttempts = job.opts.attempts ?? 1;
@@ -114,6 +121,10 @@ export function startDeckWorker(): Queue | null {
           }
           if (job.name === "structure-slide") {
             await processStructureSlide(String(job.data.id), job.data.op as StructureOp);
+            return;
+          }
+          if (job.name === "deck-theme") {
+            await processDeckRetheme(String(job.data.id), String(job.data.theme ?? ""));
             return;
           }
           throw new Error(`unknown deck-edits job: ${job.name}`);
@@ -389,6 +400,75 @@ export async function enqueueStructureSlide(opts: {
   void processStructureSlide(opts.id, opts.op).catch((err) => {
     console.error(
       `[queue] structure_inline_failed deck=${opts.id} op=${opts.op.op} err=${formatAiError(err)}`,
+    );
+  });
+}
+
+export async function processDeckRetheme(id: string, theme: string): Promise<void> {
+  const workDir = join(config.deckDataDir, id);
+  const started = Date.now();
+  console.info(`[edit] theme_start deck=${id} theme=${theme}`);
+  try {
+    await applyDeckTheme({
+      id,
+      workDir,
+      theme,
+      onThemePersisted: async (resolved) => {
+        if (!pool) return;
+        await pool.query(`UPDATE deck SET theme=$2, updated_at=now() WHERE id=$1`, [
+          id,
+          resolved,
+        ]);
+      },
+    });
+    console.info(
+      `[edit] theme_ok deck=${id} theme=${theme} durationMs=${Date.now() - started}`,
+    );
+  } catch (err) {
+    const detail = formatAiError(err);
+    console.error(
+      `[edit] theme_failed deck=${id} theme=${theme} durationMs=${Date.now() - started} err=${detail}`,
+    );
+    logAiError("theme", err, { deckId: id, theme });
+    await writeRewriteStatus(workDir, {
+      slide: 1,
+      status: "failed",
+      error: `theme: ${detail}`,
+      instruction: `theme:${theme}`,
+      updatedAt: new Date().toISOString(),
+    });
+    throw err;
+  }
+}
+
+/** Enqueue post-build retheme. Caller must have written rewrite.json status=running. */
+export async function enqueueDeckRetheme(opts: {
+  id: string;
+  theme: string;
+}): Promise<void> {
+  const jobId = `theme-${opts.id}`;
+  try {
+    const q = startEditQueue();
+    if (q) {
+      await q.add(
+        "deck-theme",
+        { id: opts.id, theme: opts.theme },
+        { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
+      );
+      console.info(
+        `[queue] theme_enqueued deck=${opts.id} theme=${opts.theme} jobId=${jobId} via=redis`,
+      );
+      return;
+    }
+  } catch (err) {
+    console.error(
+      `[queue] theme_enqueue_redis_failed deck=${opts.id} theme=${opts.theme} jobId=${jobId} fallback=inline err=${formatAiError(err)}`,
+    );
+  }
+  console.warn(`[queue] theme_inline deck=${opts.id} theme=${opts.theme}`);
+  void processDeckRetheme(opts.id, opts.theme).catch((err) => {
+    console.error(
+      `[queue] theme_inline_failed deck=${opts.id} theme=${opts.theme} err=${formatAiError(err)}`,
     );
   });
 }

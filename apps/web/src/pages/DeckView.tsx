@@ -20,18 +20,28 @@ import {
 } from "../deck-view-poll";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
+  changeDeckTheme,
   deleteDeckSlide,
   focusAfterStructure,
   insertDeckSlide,
   moveDeckSlide,
   structureErrorMessage,
+  themeErrorMessage,
   thumbMoveTarget,
 } from "../deck-structure";
-import { APP_HISTORY_PATH, SLIDE_COUNT_MAX, SLIDE_COUNT_MIN } from "../decks";
+import {
+  APP_HISTORY_PATH,
+  EDITABLE_DECK_THEMES,
+  SLIDE_COUNT_MAX,
+  SLIDE_COUNT_MIN,
+  canRethemeDeck,
+  sanitizeEditableDeckTheme,
+} from "../decks";
 import { thumbCoverPath, thumbReactKey } from "../deck-thumb-preview";
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
 import { BuildLoader } from "../components/BuildLoader";
+import { ThemePicker } from "../components/ThemePicker";
 import { shouldShowBuildLoader } from "../deck-ws";
 import { useDeckSocket } from "../useDeckSocket";
 
@@ -91,6 +101,11 @@ export function DeckView() {
   const [presentChromeVisible, setPresentChromeVisible] = useState(false);
   /** True only when signed-in user owns this deck (GET /api/decks/:id). */
   const [isOwner, setIsOwner] = useState(false);
+  const [deckTheme, setDeckTheme] = useState("default");
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [themeBusy, setThemeBusy] = useState(false);
+  const [themeErr, setThemeErr] = useState("");
+
   const [meta, setMeta] = useState<ViewMeta | null>(null);
   const [err, setErr] = useState("");
   const [waiting, setWaiting] = useState(true);
@@ -99,7 +114,7 @@ export function DeckView() {
   const [mobilePresent, setMobilePresent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [stageReady, setStageReady] = useState(false);
-  const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | "pptx" | "facts" | null>(null);
   const [exportErr, setExportErr] = useState("");
   const [speechOpen, setSpeechOpen] = useState(false);
   const [embedKey, setEmbedKey] = useState(0);
@@ -176,8 +191,16 @@ export function DeckView() {
     }
     let cancelled = false;
     void fetch(apiUrl(`/api/decks/${id}`), { credentials: "include" })
-      .then((r) => {
-        if (!cancelled) setIsOwner(r.ok);
+      .then(async (r) => {
+        if (cancelled) return;
+        setIsOwner(r.ok);
+        if (!r.ok) return;
+        try {
+          const body = (await r.json()) as { theme?: string };
+          setDeckTheme(sanitizeEditableDeckTheme(body.theme));
+        } catch {
+          /* keep default */
+        }
       })
       .catch(() => {
         if (!cancelled) setIsOwner(false);
@@ -313,6 +336,9 @@ export function DeckView() {
           });
           if (/min slides|max slides|bad move|bad slide|structure:/i.test(failed)) {
             setStructureErr(structureErrorMessage(failed));
+          } else if (/^theme:/i.test(failed) || /theme/i.test(failed)) {
+            setThemeErr(themeErrorMessage(failed));
+            setThemeBusy(false);
           } else {
             setRewriteErr(failed);
           }
@@ -339,6 +365,7 @@ export function DeckView() {
           setStageReady(false);
           setEmbedKey((k) => k + 1);
           markRewriteBusy(false);
+          setThemeBusy(false);
           seenServerBuildingRef.current = false;
           forcePollRef.current = false;
           setBuilding(false);
@@ -509,7 +536,7 @@ export function DeckView() {
     setTimeout(() => setCopied(false), 1600);
   }
 
-  async function downloadExport(format: "pdf" | "pptx") {
+  async function downloadExport(format: "pdf" | "pptx" | "facts") {
     if (!id || !isOwner || exporting || building) return;
     setExporting(format);
     setExportErr("");
@@ -522,9 +549,10 @@ export function DeckView() {
       const cd = res.headers.get("content-disposition") ?? "";
       const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
       const plain = /filename="([^"]+)"/i.exec(cd);
+      const fallbackExt = format === "facts" ? "zip" : format;
       const name = star
         ? decodeURIComponent(star[1])
-        : plain?.[1] || `${meta?.topic || "presentation"}.${format}`;
+        : plain?.[1] || `${meta?.topic || "presentation"}.${fallbackExt}`;
       const href = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = href;
@@ -541,6 +569,36 @@ export function DeckView() {
   const structureReady = Boolean(
     me && isOwner && meta && meta.status === "ready" && !building && !rewriteBusy,
   );
+  const rethemeReady = canRethemeDeck({
+    isOwner: Boolean(me && isOwner),
+    status: meta?.status,
+    building: building || rewriteBusy || themeBusy,
+  });
+
+  const onChangeTheme = async (next: string) => {
+    if (!id || !rethemeReady || themeBusy) return;
+    const theme = sanitizeEditableDeckTheme(next);
+    if (theme === deckTheme) {
+      setThemeOpen(false);
+      return;
+    }
+    setThemeErr("");
+    setThemeBusy(true);
+    markRewriteBusy(true);
+    forcePollRef.current = true;
+    seenServerBuildingRef.current = false;
+    try {
+      await changeDeckTheme(id, theme);
+      setDeckTheme(theme);
+      setThemeOpen(false);
+      setBuilding(true);
+    } catch (e) {
+      markRewriteBusy(false);
+      forcePollRef.current = false;
+      setThemeBusy(false);
+      setThemeErr(themeErrorMessage(String(e instanceof Error ? e.message : e)));
+    }
+  };
 
   async function runStructure(
     focusSlide: number,
@@ -782,6 +840,17 @@ export function DeckView() {
               ) : null}
               {meta && isOwner ? (
                 <>
+                  {meta.status === "ready" ? (
+                    <button
+                      type="button"
+                      className="pk ghost"
+                      disabled={building && !themeOpen}
+                      title="Сменить тему (пересборка)"
+                      onClick={() => setThemeOpen((o) => !o)}
+                    >
+                      Тема
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="pk ghost"
@@ -790,6 +859,14 @@ export function DeckView() {
                     onClick={() => setSpeechOpen(true)}
                   >
                     Спич
+                  </button>
+                  <button
+                    type="button"
+                    className="pk ghost"
+                    disabled={!!exporting || building}
+                    onClick={() => void downloadExport("facts")}
+                  >
+                    {exporting === "facts" ? "Собираем архив…" : "Факты"}
                   </button>
                   <button
                     type="button"
@@ -820,6 +897,18 @@ export function DeckView() {
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
       {exportErr ? <p className="err app-note">{exportErr}</p> : null}
+      {themeErr ? <p className="err app-note">{themeErr}</p> : null}
+      {themeOpen && isOwner && meta?.status === "ready" ? (
+        <div className="deck-theme-panel" role="dialog" aria-label="Сменить тему">
+          <ThemePicker
+            value={deckTheme}
+            onChange={(id) => void onChangeTheme(id)}
+            disabled={!rethemeReady}
+            themes={EDITABLE_DECK_THEMES}
+            name="deck-retheme"
+          />
+        </div>
+      ) : null}
       {waiting && !err && !showStage && (activity || awaitingPreview || showBuildLoader) ? (
         <div className="deck-waiting-build">
           {showBuildLoader ? <BuildLoader label={buildLoaderLabel} /> : null}

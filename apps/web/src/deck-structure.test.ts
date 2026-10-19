@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   focusAfterStructure,
   structureErrorMessage,
+  themeErrorMessage,
   thumbMoveTarget,
 } from "./deck-structure";
 
@@ -31,5 +32,13 @@ describe("structureErrorMessage", () => {
     expect(structureErrorMessage("max slides")).toMatch(/максимум 16/);
     expect(structureErrorMessage("bad slide")).toMatch(/удалить/);
     expect(structureErrorMessage("bad move")).toMatch(/сдвинуть/);
+  });
+});
+
+describe("themeErrorMessage", () => {
+  it("maps retheme API errors", () => {
+    expect(themeErrorMessage("bad theme")).toMatch(/конкретную тему/);
+    expect(themeErrorMessage("busy")).toMatch(/сборка/);
+    expect(themeErrorMessage("deck not ready")).toMatch(/не готова/);
   });
 });

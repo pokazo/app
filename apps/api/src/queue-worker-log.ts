@@ -5,7 +5,7 @@ const DECK_UUID =
 export function deckFromJobId(jobId: string | undefined | null): string | null {
   if (!jobId) return null;
   if (DECK_UUID.test(jobId)) return jobId;
-  for (const prefix of ["rewrite-", "structure-"] as const) {
+  for (const prefix of ["rewrite-", "structure-", "theme-"] as const) {
     if (jobId.startsWith(prefix)) {
       const rest = jobId.slice(prefix.length);
       if (DECK_UUID.test(rest)) return rest;

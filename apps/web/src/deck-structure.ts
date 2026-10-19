@@ -71,3 +71,35 @@ export function structureErrorMessage(raw: string): string {
   if (/unauthorized|401/i.test(raw)) return "Войдите, чтобы править слайды";
   return "Не удалось изменить слайды";
 }
+
+export type ThemeAccept = {
+  deckId: string;
+  status: "accepted";
+  theme: string;
+};
+
+export async function changeDeckTheme(deckId: string, theme: string): Promise<ThemeAccept> {
+  const res = await fetch(apiUrl(`/api/decks/${deckId}/theme`), {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+    body: JSON.stringify({ theme }),
+  });
+  const body = (await res.json().catch(() => null)) as
+    | ThemeAccept
+    | { error?: string }
+    | null;
+  if (!res.ok) {
+    const err = body && "error" in body ? body.error : null;
+    throw new Error(err || `theme ${res.status}`);
+  }
+  return body as ThemeAccept;
+}
+
+export function themeErrorMessage(raw: string): string {
+  if (/bad theme/i.test(raw)) return "Выберите конкретную тему";
+  if (/busy/i.test(raw)) return "Подождите, идёт сборка";
+  if (/not ready/i.test(raw)) return "Презентация ещё не готова";
+  if (/unauthorized|401/i.test(raw)) return "Войдите, чтобы менять тему";
+  return "Не удалось сменить тему";
+}

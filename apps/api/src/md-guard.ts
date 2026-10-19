@@ -60,15 +60,23 @@ function pinTheme(md: string, theme: string): string {
   return out;
 }
 
+export type GuardMarkdownOptions = {
+  /** Retheme: overwrite spotlight/agenda palettes too (default keeps model-chosen). */
+  forceAllPalettes?: boolean;
+};
+
 /** Pin palette on every slide frontmatter — Slidev passes layout props per-slide only.
- * Exception: spotlight/agenda keep model-chosen palette when already set (layout picks bg). */
-function pinPalette(md: string, palette: string): string {
+ * Exception: spotlight/agenda keep model-chosen palette when already set (layout picks bg),
+ * unless forceAllPalettes is set (post-build retheme). */
+function pinPalette(md: string, palette: string, forceAllPalettes = false): string {
   if (!md.trim().startsWith("---")) {
     return `---\npalette: ${palette}\n---\n\n${md}`;
   }
   return md.replace(/^---\n([\s\S]*?)\n---/gm, (_full, body: string) => {
     const keepsOwnPalette =
-      /^layout:\s*(spotlight|agenda)\s*$/m.test(body) && /^palette:\s*\S+/m.test(body);
+      !forceAllPalettes &&
+      /^layout:\s*(spotlight|agenda)\s*$/m.test(body) &&
+      /^palette:\s*\S+/m.test(body);
     if (keepsOwnPalette) {
       return `---\n${body}\n---`;
     }
@@ -146,7 +154,11 @@ export function pinLeanSlidevHeadmatter(md: string): string {
   return md.replace(block[0], `---\n${body}\n---`);
 }
 
-export function guardMarkdown(md: string, theme = "default"): string {
+export function guardMarkdown(
+  md: string,
+  theme = "default",
+  opts: GuardMarkdownOptions = {},
+): string {
   const pinned = slidevThemeId(theme);
   const palette = layoutPalette(theme);
   let out = md.replace(/<script[\s\S]*?<\/script>/gi, "");
@@ -169,7 +181,9 @@ export function guardMarkdown(md: string, theme = "default"): string {
   out = sanitizeHeroVariantFrontmatter(out);
   out = normalizeStatsFrontmatter(out);
   out = pinLeanSlidevHeadmatter(out);
-  return quoteFrontmatterTitle(pinPalette(pinTheme(out, pinned), palette));
+  return quoteFrontmatterTitle(
+    pinPalette(pinTheme(out, pinned), palette, Boolean(opts.forceAllPalettes)),
+  );
 }
 
 export function isSafePath(next: string | null): string {

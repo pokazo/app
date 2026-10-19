@@ -12,6 +12,7 @@ import {
   enqueueDeck,
   enqueueRewriteSlide,
   enqueueStructureSlide,
+  enqueueDeckRetheme,
 } from "./queue.js";
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
@@ -25,6 +26,11 @@ import {
   ensureDeckExport,
   isExportFormat,
 } from "./deck-export.js";
+import {
+  buildResearchArchive,
+  factsDownloadBasename,
+  ResearchArchiveEmptyError,
+} from "./research-export.js";
 import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./speech-http.js";
 import {
   expireStaleRewriteStatus,
@@ -38,6 +44,7 @@ import {
   mutateSlideStructure,
   type StructureOp,
 } from "./slide-structure.js";
+import { gateDeckRetheme } from "./deck-retheme.js";
 import { activityLabelForPhase, readDeckActivity, writeDeckActivity } from "./activity.js";
 import { readPreviewBuild } from "./progressive-preview.js";
 import { appendDeckUploads, persistDeckUploads } from "./upload-store.js";
@@ -416,7 +423,7 @@ export function createApp() {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const { rows } = await pool.query<DeckRow>(
-      `SELECT id, topic, status, error, slide_count, created_at, updated_at
+      `SELECT id, topic, status, error, slide_count, theme, created_at, updated_at
        FROM deck WHERE user_id=$1
        ORDER BY created_at DESC
        LIMIT 100`,
@@ -748,6 +755,54 @@ export function createApp() {
     return acceptStructureOp(c, { op: "insert", after }, after + 1);
   });
 
+  app.post("/api/decks/:id/theme", async (c) => {
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id, deck } = owner;
+    let themeRaw = "";
+    try {
+      const body = await c.req.json<{ theme?: string }>();
+      themeRaw = typeof body.theme === "string" ? body.theme : "";
+    } catch {
+      return c.json({ error: "bad body" }, 400);
+    }
+    const dir = join(config.deckDataDir, id);
+    const hasSlides = existsSync(join(dir, "slides.md"));
+    const busy = await deckBusyForRewrite(id);
+    const gate = gateDeckRetheme({
+      deckStatus: deck.status,
+      hasSlides,
+      busy,
+      theme: themeRaw,
+    });
+    if (!gate.ok) {
+      console.warn(
+        `[edit] theme_rejected deck=${id} reason=${gate.error} status=${deck.status} theme=${JSON.stringify(themeRaw)}`,
+      );
+      if (gate.error === "deck not ready") {
+        return c.json({ error: gate.error, status: gate.deckStatus }, gate.status);
+      }
+      if (gate.error === "busy") {
+        return c.json({ error: gate.error, reason: gate.reason }, gate.status);
+      }
+      return c.json({ error: gate.error }, gate.status);
+    }
+    await writeRewriteStatus(dir, {
+      slide: 1,
+      status: "running",
+      instruction: `theme:${gate.theme}`,
+      updatedAt: new Date().toISOString(),
+    });
+    try {
+      await writeDeckActivity(dir, activityLabelForPhase("theme"));
+    } catch {
+      /* non-fatal */
+    }
+    await enqueueDeckRetheme({ id, theme: gate.theme });
+    console.info(`[edit] theme_accepted deck=${id} theme=${gate.theme}`);
+    return c.json({ deckId: id, status: "accepted", theme: gate.theme }, 202);
+  });
+
   app.get("/api/decks/:id/speech", async (c) => {
     const owner = await requireDeckOwner(c, auth);
     if (!owner.ok) return owner.res;
@@ -831,6 +886,36 @@ export function createApp() {
       });
     } catch (err) {
       console.error(`[export] ${id} speech-pdf`, err);
+      return c.json({ error: "export failed" }, 500);
+    }
+  });
+
+  app.get("/api/decks/:id/export/facts", async (c) => {
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id } = owner;
+    const dir = join(config.deckDataDir, id);
+    if (!existsSync(join(dir, "slides.md"))) return c.json({ error: "not found" }, 404);
+    let topic = "presentation";
+    try {
+      const outline = JSON.parse(await readFile(join(dir, "outline.json"), "utf8"));
+      const input = JSON.parse(await readFile(join(dir, "input.json"), "utf8")) as { topic?: string };
+      topic = outlineTitle(outline, input.topic ?? topic) || topic;
+    } catch {
+      /* keep default */
+    }
+    try {
+      const bytes = await buildResearchArchive(dir);
+      return c.body(new Uint8Array(bytes), 200, {
+        "content-type": "application/zip",
+        "content-disposition": contentDisposition(factsDownloadBasename(topic)),
+        "cache-control": "private, max-age=3600",
+      });
+    } catch (err) {
+      if (err instanceof ResearchArchiveEmptyError) {
+        return c.json({ error: "not found" }, 404);
+      }
+      console.error(`[export] ${id} facts`, err);
       return c.json({ error: "export failed" }, 500);
     }
   });

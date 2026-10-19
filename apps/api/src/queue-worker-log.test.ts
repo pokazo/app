@@ -7,10 +7,11 @@ import {
 } from "./queue-worker-log.js";
 
 describe("queue-worker-log", () => {
-  it("parses deck id from rewrite/structure job ids", () => {
+  it("parses deck id from rewrite/structure/theme job ids", () => {
     const id = "b86dd26f-c00d-4437-991c-ce096d7ea525";
     expect(deckFromJobId(`rewrite-${id}`)).toBe(id);
     expect(deckFromJobId(`structure-${id}`)).toBe(id);
+    expect(deckFromJobId(`theme-${id}`)).toBe(id);
     expect(deckFromJobId(id)).toBe(id);
     expect(deckFromJobId("other-job")).toBeNull();
   });

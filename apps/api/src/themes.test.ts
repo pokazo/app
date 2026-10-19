@@ -130,4 +130,21 @@ describe("md-guard theme", () => {
     expect(blocks[1]).toMatch(/^palette: candy$/m);
     expect(blocks[1]).toMatch(/^layout: agenda$/m);
   });
+
+  it("forceAllPalettes overwrites spotlight and agenda palette on retheme", () => {
+    const out = guardMarkdown(
+      `---\ntheme: default\nlayout: hero\npalette: ocean\n---\n\n# One\n\n---\nlayout: spotlight\npalette: candy\nimage: /slide-2.png\n---\n\n# Spot\n\n---\nlayout: agenda\npalette: neon\nitems:\n  - title: A\n---\n\n# Agenda`,
+      "forest",
+      { forceAllPalettes: true },
+    );
+    const blocks = [...out.matchAll(/^---\n([\s\S]*?)\n---/gm)].map((m) => m[1]!);
+    expect(blocks).toHaveLength(3);
+    for (const fm of blocks) {
+      expect(fm).toMatch(/^palette: forest$/m);
+    }
+    expect(out).toMatch(/^theme: default$/m);
+    expect(out).not.toMatch(/palette: candy/);
+    expect(out).not.toMatch(/palette: neon/);
+    expect(out).not.toMatch(/palette: ocean/);
+  });
 });
