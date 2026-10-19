@@ -14,13 +14,10 @@ html, body, #app, #slide-container,
 #slide-container > nav {
   display: none !important;
 }
-/* Clip stage so WAAPI slide/rise never paints outside the player. */
+/* Clip stage; content-reveal never paints outside the player. */
 #slide-container,
 #slideshow {
   overflow: hidden !important;
-}
-.slidev-page {
-  will-change: transform, opacity;
 }
 /*
  * Kill Slidev/Vue route transitions in the embed. meta.transition is a getter
@@ -46,9 +43,9 @@ html, body, #app, #slide-container,
  * Slidev's own embed postMessage listener is __DEV__-only.
  * Mirror that protocol so the parent SPA can go(n) without reloading the iframe.
  *
- * Vue TransitionGroup + hmrSkipTransition is unreliable after the first slide,
- * so adjacent page changes use Web Animations API, then nav.go() with Vue
- * transitions disabled.
+ * Adjacent page changes: cover with the new slide background immediately, then
+ * reveal text/content with WAAPI. Never animate the outgoing page (that caused
+ * old-slide flashes after commitStyles/clear). Then nav.go() with Vue transitions off.
  */
 export const PLAYER_NAV_SCRIPT = `
 (function () {
@@ -58,8 +55,10 @@ export const PLAYER_NAV_SCRIPT = `
     window.__pkAnimReady = true;
   } catch (e0) { return; }
   try { console.info("[pk-anim] loaded"); } catch (e1) {}
-  var DURATION = 650;
+  var DURATION = 520;
+  var STAGGER = 55;
   var EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+  var BG_SKIP = /(?:^|\\s)(?:pk-brick__grid|pk-brick__frame|pk-hero__photo|pk-split__photo)(?:\\s|$)/;
   var busy = false;
   var inflightTarget = 0;
   var pending = null;
@@ -78,7 +77,6 @@ export const PLAYER_NAV_SCRIPT = `
   function log() {
     if (!debugOn()) return;
     var payload = [].slice.call(arguments);
-    // Prefer parent forward when embedded so DevTools on /view does not show each line twice.
     try {
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ target: "pokazo", type: "anim-log", args: payload }, "*");
@@ -100,15 +98,9 @@ export const PLAYER_NAV_SCRIPT = `
     if (n && typeof n === "object" && "value" in n) n = n.value;
     return +n || 0;
   }
-  function unwrap(ref) {
-    if (ref && typeof ref === "object" && "value" in ref) return ref.value;
-    return ref;
-  }
   function disableVueTransition(slidev) {
     if (!slidev) return;
     try { slidev.configs.transition = false; } catch (e) {}
-    // meta.transition is often a read-only frontmatter getter — nulling is a no-op.
-    // nav.currentTransition is what Vue Transition actually uses on go().
     try {
       var ct = slidev.nav && slidev.nav.currentTransition;
       if (ct && typeof ct === "object" && "value" in ct) ct.value = false;
@@ -118,13 +110,26 @@ export const PLAYER_NAV_SCRIPT = `
   function slideEl(no) {
     return document.querySelector('.slidev-page[data-slidev-no="' + no + '"]');
   }
-  function clearAnimStyles(el) {
+  function classNameOf(el) {
+    if (!el) return "";
+    var c = el.className;
+    if (typeof c === "string") return c;
+    if (c && typeof c.baseVal === "string") return c.baseVal;
+    return "";
+  }
+  function clearPageStyles(el) {
     if (!el) return;
     el.style.removeProperty("display");
     el.style.removeProperty("z-index");
     el.style.removeProperty("pointer-events");
     el.style.removeProperty("transform");
     el.style.removeProperty("opacity");
+  }
+  function clearContentStyles(el) {
+    if (!el) return;
+    el.style.removeProperty("opacity");
+    el.style.removeProperty("transform");
+    el.style.removeProperty("will-change");
   }
   function stopElementAnims(el) {
     if (!el || typeof el.getAnimations !== "function") return;
@@ -151,69 +156,81 @@ export const PLAYER_NAV_SCRIPT = `
     }
     return false;
   }
-  function keyframes(kind, dir, role) {
-    if (kind === "rise") {
-      if (role === "from") {
-        return [
-          { transform: "translate(0, 0) scale(1)", opacity: 1 },
-          { transform: "translate(0, " + (dir > 0 ? "-28%" : "28%") + ") scale(0.96)", opacity: 0 }
-        ];
-      }
-      return [
-        { transform: "translate(0, " + (dir > 0 ? "56%" : "-56%") + ") scale(0.94)", opacity: 0 },
-        { transform: "translate(0, 0) scale(1)", opacity: 1 }
-      ];
+  /** Content layers to reveal; decorative bg (grid/frame/photo) stays visible immediately. */
+  function contentNodes(slideRoot) {
+    var brick = slideRoot.querySelector(".pk-brick, .pk-split");
+    var root = brick || slideRoot;
+    var nodes = [];
+    var kids = root.children;
+    for (var i = 0; i < kids.length; i++) {
+      var el = kids[i];
+      if (BG_SKIP.test(classNameOf(el))) continue;
+      nodes.push(el);
     }
-    if (role === "from") {
-      return [
-        { transform: "translate(0, 0) scale(1)", opacity: 1 },
-        { transform: "translate(" + (dir > 0 ? "-42%" : "42%") + ", 0) scale(0.96)", opacity: 0 }
-      ];
-    }
-    return [
-      { transform: "translate(" + (dir > 0 ? "72%" : "-72%") + ", 0) scale(0.94)", opacity: 0 },
-      { transform: "translate(0, 0) scale(1)", opacity: 1 }
-    ];
+    if (nodes.length) return nodes;
+    var fb = slideRoot.querySelectorAll(
+      ".pk-brick__inner, .pk-brick__pane, .pk-split__pane, .pk-hero__plate, .pk-title"
+    );
+    for (var j = 0; j < fb.length; j++) nodes.push(fb[j]);
+    return nodes;
   }
-  function runWaapi(fromEl, toEl, kind, dir, side) {
-    var opts = { duration: DURATION, easing: EASING, fill: "forwards" };
+  function runContentReveal(fromEl, toEl) {
+    var contents = contentNodes(toEl);
     stopElementAnims(fromEl);
     stopElementAnims(toEl);
+    for (var s = 0; s < contents.length; s++) stopElementAnims(contents[s]);
+
+    // New slide covers old immediately — bg + photo visible, text hidden.
     toEl.style.setProperty("display", "block", "important");
     toEl.style.setProperty("pointer-events", "none", "important");
-    var anims = { a1: null, a2: null, side: side };
+    toEl.style.setProperty("z-index", "2", "important");
+    toEl.style.setProperty("opacity", "1", "important");
+    toEl.style.setProperty("transform", "none", "important");
+    fromEl.style.setProperty("z-index", "1", "important");
+
+    for (var h = 0; h < contents.length; h++) {
+      contents[h].style.setProperty("opacity", "0", "important");
+      contents[h].style.setProperty("transform", "translateY(20px)", "important");
+      contents[h].style.setProperty("will-change", "opacity, transform");
+    }
+
+    var opts = { duration: DURATION, easing: EASING, fill: "forwards" };
+    var anims = [];
     var waits = [];
-    // Randomly animate only outgoing (from) or only incoming (to) — not both.
-    if (side === "from") {
-      fromEl.style.setProperty("z-index", "2", "important");
-      toEl.style.setProperty("z-index", "1", "important");
-      anims.a1 = fromEl.animate(keyframes(kind, dir, "from"), opts);
-      waits.push(anims.a1.finished);
-    } else {
-      toEl.style.setProperty("z-index", "2", "important");
-      fromEl.style.setProperty("z-index", "1", "important");
-      anims.a2 = toEl.animate(keyframes(kind, dir, "to"), opts);
-      waits.push(anims.a2.finished);
+    for (var c = 0; c < contents.length; c++) {
+      var el = contents[c];
+      var a = el.animate(
+        [
+          { opacity: 0, transform: "translateY(20px)" },
+          { opacity: 1, transform: "translateY(0)" }
+        ],
+        Object.assign({}, opts, { delay: Math.min(c * STAGGER, 220) })
+      );
+      anims.push(a);
+      waits.push(a.finished);
+    }
+    if (!waits.length) {
+      return Promise.resolve({ anims: anims, contents: contents });
     }
     return Promise.all(waits).then(function () {
-      return anims;
+      return { anims: anims, contents: contents };
     });
   }
-  function finishAnims(anims, fromEl, toEl) {
-    try {
-      if (anims.a1) {
-        try { anims.a1.commitStyles(); } catch (c1) {}
-        anims.a1.cancel();
-      }
-    } catch (e) {}
-    try {
-      if (anims.a2) {
-        try { anims.a2.commitStyles(); } catch (c2) {}
-        anims.a2.cancel();
-      }
-    } catch (e2) {}
-    clearAnimStyles(fromEl);
-    clearAnimStyles(toEl);
+  function finishReveal(bundle, fromEl, toEl) {
+    var anims = (bundle && bundle.anims) || [];
+    var contents = (bundle && bundle.contents) || [];
+    for (var i = 0; i < anims.length; i++) {
+      try { anims[i].commitStyles(); } catch (c1) {}
+      try { anims[i].cancel(); } catch (c2) {}
+    }
+    for (var j = 0; j < contents.length; j++) clearContentStyles(contents[j]);
+    clearPageStyles(fromEl);
+    clearPageStyles(toEl);
+  }
+  function afterPaint(fn) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(fn);
+    });
   }
   function drainPending(justFinishedTarget) {
     busy = false;
@@ -221,7 +238,6 @@ export const PLAYER_NAV_SCRIPT = `
     if (!pending) return;
     var next = pending;
     pending = null;
-    // pageNo often lags nav.go(); never re-animate the slide we just finished.
     if (next.target === justFinishedTarget) {
       log("drop-pending-same", next);
       return;
@@ -250,8 +266,7 @@ export const PLAYER_NAV_SCRIPT = `
       log("queued", pending);
       return true;
     }
-    // Parent often re-posts the same page while Vue/router catch up after WAAPI.
-    if (target === lastAppliedTarget && performance.now() - lastAppliedAt < DURATION + 200) {
+    if (target === lastAppliedTarget && performance.now() - lastAppliedAt < DURATION + 280) {
       log("ignore-dup-recent", { target: target });
       return true;
     }
@@ -260,7 +275,7 @@ export const PLAYER_NAV_SCRIPT = `
     var fromEl = slideEl(cur);
     var toEl = slideEl(target);
     // Only adjacent slides animate; jumps stay instant.
-    if (clickCount || Math.abs(delta) !== 1 || !fromEl || !toEl || typeof fromEl.animate !== "function") {
+    if (clickCount || Math.abs(delta) !== 1 || !fromEl || !toEl || typeof toEl.animate !== "function") {
       log("instant", {
         cur: cur,
         target: target,
@@ -274,22 +289,29 @@ export const PLAYER_NAV_SCRIPT = `
     inflightTarget = target;
     lastAppliedTarget = target;
     lastAppliedAt = performance.now();
-    var dir = delta > 0 ? 1 : -1;
-    var kind = ((Math.max(1, target) - 1) % 2 === 0) ? "slide" : "rise";
-    var side = Math.random() < 0.5 ? "from" : "to";
-    log("start", { cur: cur, target: target, kind: kind, dir: dir, side: side, ms: DURATION });
+    log("start", { cur: cur, target: target, kind: "content-reveal", ms: DURATION });
     var t0 = performance.now();
-    runWaapi(fromEl, toEl, kind, dir, side).then(function (anims) {
-      log("done", { cur: cur, target: target, kind: kind, side: side, ms: Math.round(performance.now() - t0) });
+    runContentReveal(fromEl, toEl).then(function (bundle) {
+      log("done", {
+        cur: cur,
+        target: target,
+        nodes: (bundle.contents || []).length,
+        ms: Math.round(performance.now() - t0)
+      });
       navGo(slidev, target, clickCount);
-      requestAnimationFrame(function () {
-        finishAnims(anims, fromEl, toEl);
+      // Wait for Vue to adopt the new page before stripping overlay styles.
+      afterPaint(function () {
+        finishReveal(bundle, fromEl, toEl);
         drainPending(target);
       });
     }).catch(function (err) {
       log("error", { cur: cur, target: target, err: String(err && err.message || err) });
-      clearAnimStyles(fromEl);
-      clearAnimStyles(toEl);
+      try {
+        var contents = contentNodes(toEl);
+        for (var i = 0; i < contents.length; i++) clearContentStyles(contents[i]);
+      } catch (e3) {}
+      clearPageStyles(fromEl);
+      clearPageStyles(toEl);
       navGo(slidev, target, clickCount);
       drainPending(target);
     });

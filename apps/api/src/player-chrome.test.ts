@@ -18,7 +18,7 @@ describe("injectPlayerChromeHide", () => {
   it("refreshes prior inject so CSS upgrades apply", () => {
     const stale = `<html><head><style id="pk-hide-slidev-chrome">.old{}</style></head><body><script id="pk-slidev-nav">/*old*/</script></body></html>`;
     const out = injectPlayerChromeHide(stale);
-    expect(out).toContain("fromEl.animate");
+    expect(out).toContain("runContentReveal");
     expect(out).not.toContain(".old{}");
     expect(out.match(/id="pk-hide-slidev-chrome"/g)).toHaveLength(1);
     expect(out.match(/id="pk-slidev-nav"/g)).toHaveLength(1);
@@ -29,15 +29,17 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toContain('id="pk-slidev-nav"');
     expect(out).toContain("data:text/javascript");
     expect(out).toContain("animateThenGo");
-    expect(out).toContain("fromEl.animate");
-    expect(out).toContain("Math.random");
-    expect(out).toContain("side");
+    expect(out).toContain("runContentReveal");
+    expect(out).toContain("content-reveal");
+    expect(out).toContain("contentNodes");
+    expect(out).toContain("pk-brick__grid");
     expect(out).toContain("ignore-dup-inflight");
     expect(out).toContain("drop-pending-same");
     expect(out).toContain("currentTransition");
     expect(out).toContain("configs.transition%20%3D%20false");
     expect(out).toContain("pkDebugAnim");
     expect(out).toContain("%5Bpk-anim%5D");
+    expect(out).not.toContain("Math.random");
     expect(out).toMatch(/<\/script>\s*<\/body>/i);
   });
 });
