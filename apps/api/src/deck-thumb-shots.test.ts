@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   assertPngGolden,
@@ -6,6 +9,11 @@ import {
   screenshotHtml,
   vividPhotoPng,
 } from "./thumb-shot-helpers.js";
+
+const webCss = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../../web/src/styles/global.css"),
+  "utf8",
+);
 
 const update = process.env.UPDATE_THUMB_SHOTS === "1";
 const e2e = process.env.RUN_THUMB_E2E === "1";
@@ -18,26 +26,37 @@ function coverDataUri(hue: number): string {
 }
 
 describe("filmstrip markup contract (unit)", () => {
-  it("slide-shot has image and no heading label (v2 path)", () => {
+  it("slide-shot has image and never embeds heading text", () => {
     const html = filmstripCellHtml({
       index: 1,
       src: "/thumbs/v2/1.webp",
+      heading: "Инженерная IT-школа",
       mode: "slide-shot",
     });
-    expect(html).toContain('class="deck-thumb-ph"');
+    expect(html).toContain('class="deck-thumb-img"');
     expect(html).toContain("/thumbs/v2/1.webp");
-    expect(html).not.toContain("deck-thumb-ph-label");
+    expect(html).not.toContain("Инженерная IT-школа");
+    expect(html).not.toContain("deck-thumb-fallback");
   });
 
-  it("heading-only has fallback text, no img", () => {
+  it("empty placeholder has no heading text and no img", () => {
     const html = filmstripCellHtml({
       index: 3,
       src: "",
-      heading: "Этапы",
-      mode: "heading-only",
+      heading: "Практика в реальном окружении",
+      mode: "empty",
     });
-    expect(html).toContain("deck-thumb-fallback");
+    expect(html).toContain("deck-thumb-blank");
     expect(html).not.toContain("<img");
+    expect(html).not.toContain("Практика");
+    expect(html).not.toContain("deck-thumb-fallback");
+  });
+
+  it("web filmstrip CSS has image/blank cells and no heading fallback", () => {
+    expect(webCss).toContain(".deck-thumb-img");
+    expect(webCss).toContain(".deck-thumb-blank");
+    expect(webCss).not.toContain("deck-thumb-fallback");
+    expect(webCss).not.toContain("deck-thumb-ph-wrap");
   });
 });
 
@@ -62,31 +81,32 @@ describe.skipIf(!e2e)("filmstrip UI screenshot goldens (RUN_THUMB_E2E=1)", () =>
   );
 
   it(
-    "heading-only strip before backend shots exist",
+    "empty strip before backend shots exist — no heading text",
     async () => {
       const html = filmstripPageHtml([
         filmstripCellHtml({
           index: 1,
           src: "",
           heading: "Что такое фотосинтез",
-          mode: "heading-only",
+          mode: "empty",
           current: true,
         }),
         filmstripCellHtml({
           index: 2,
           src: "",
           heading: "Где происходит фотосинтез",
-          mode: "heading-only",
+          mode: "empty",
         }),
         filmstripCellHtml({
           index: 3,
           src: "",
           heading: "Этапы фотосинтеза",
-          mode: "heading-only",
+          mode: "empty",
         }),
       ]);
+      expect(html).not.toContain("фотосинтез");
       const buf = await screenshotHtml({ html, viewport: { width: 240, height: 420 } });
-      await assertPngGolden(buf, "ui-heading-only-strip", { update });
+      await assertPngGolden(buf, "ui-blank-strip", { update });
     },
     60_000,
   );

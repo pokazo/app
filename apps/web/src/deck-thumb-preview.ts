@@ -1,19 +1,15 @@
 /**
  * Filmstrip shows a static slide screenshot (`/thumbs/…` or `/thumbs/v2/…`) when available.
- * No cover-photo fallback — heading placeholder until the backend shot exists.
+ * No heading text in the cell — blank frame until the backend shot exists.
  */
 export function thumbPlaceholderLayers(opts: {
   heading: string;
   imageUrl?: string | null;
 }): { showHeading: boolean; showImage: boolean; label: string } {
   const label = opts.heading.trim() || "Слайд";
-  const isSlideShot = thumbIsSlideShot(opts.imageUrl);
-  if (isSlideShot) {
-    return { showHeading: false, showImage: true, label };
-  }
   return {
-    showHeading: true,
-    showImage: false,
+    showHeading: false,
+    showImage: thumbIsSlideShot(opts.imageUrl),
     label,
   };
 }

@@ -159,26 +159,28 @@ describe.skipIf(!e2e)("filmstrip thumbs screenshot goldens (RUN_THUMB_E2E=1)", (
       });
       await assertPngGolden(compare, "thumb-size-compare", { update });
 
-      // Before shots exist: heading-only placeholder (no cover photo overlay).
+      // Before shots exist: blank frames (no heading text).
       const placeholderHtml = filmstripPageHtml([
         filmstripCellHtml({
           index: 1,
           src: "",
           heading: "Neon cities",
-          mode: "heading-only",
+          mode: "empty",
         }),
         filmstripCellHtml({
           index: 2,
           src: "",
           heading: "Checklist",
-          mode: "heading-only",
+          mode: "empty",
         }),
       ]);
+      expect(placeholderHtml).not.toContain("Neon");
+      expect(placeholderHtml).not.toContain("Checklist");
       const placeholderStrip = await screenshotHtml({
         html: placeholderHtml,
         viewport: { width: 240, height: 320 },
       });
-      await assertPngGolden(placeholderStrip, "filmstrip-heading-only", { update });
+      await assertPngGolden(placeholderStrip, "filmstrip-blank", { update });
 
       // On-disk v2 files match returned buffers.
       expect(readFileSync(join(dir, "dist", "thumbs", "v2", "1.webp"))).toEqual(s1.webp);

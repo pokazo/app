@@ -10,7 +10,7 @@ export type ViewSlide = {
   image: string | null;
   /**
    * Filmstrip preview: prefer `/thumbs/v2/N.webp`, else legacy `/thumbs/N.webp`.
-   * No cover-photo fallback — null means heading placeholder until shot exists.
+   * No cover-photo fallback — null means a blank 16:9 frame until the shot exists.
    */
   imageThumb: string | null;
   /** Slidev page number for iframe navigate / thumb embed (may differ from index). */

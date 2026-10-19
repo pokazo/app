@@ -33,19 +33,23 @@ describe("thumbPlaceholderLayers", () => {
     });
   });
 
-  it("non-thumb URL is ignored — heading placeholder only", () => {
+  it("non-thumb URL is ignored — blank, never heading text", () => {
     const layers = thumbPlaceholderLayers({
       heading: "Что такое фотосинтез",
       imageUrl: "https://api.pokazo.ru/p/x/slide-1.jpg",
     });
     expect(layers.showImage).toBe(false);
-    expect(layers.showHeading).toBe(true);
+    expect(layers.showHeading).toBe(false);
   });
 
-  it("heading-only when no cover image yet", () => {
+  it("refresh/build without shot: blank frame, no heading leak", () => {
     expect(
-      thumbPlaceholderLayers({ heading: "Этапы", imageUrl: null }),
-    ).toEqual({ showHeading: true, showImage: false, label: "Этапы" });
+      thumbPlaceholderLayers({ heading: "Практика в реальном окружении", imageUrl: null }),
+    ).toEqual({
+      showHeading: false,
+      showImage: false,
+      label: "Практика в реальном окружении",
+    });
   });
 });
 

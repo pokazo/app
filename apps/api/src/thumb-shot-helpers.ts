@@ -20,20 +20,15 @@ export const FILMSTRIP_THUMB_CSS = `
   }
   .deck-thumb-frame {
     position: relative; width: 176px; aspect-ratio: 16 / 9;
-    border-radius: 10px; overflow: hidden; background: #fff;
-    box-shadow: inset 0 0 0 1px #ddd;
+    border-radius: 10px; overflow: hidden; isolation: isolate; contain: paint;
+    background: #eee; box-shadow: inset 0 0 0 1px #ddd;
   }
   .deck-thumb-frame.is-current { box-shadow: inset 0 0 0 2px #6c5ce7; }
-  .deck-thumb-ph-wrap { position: absolute; inset: 0; }
-  .deck-thumb-ph {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: contain; display: block; background: #fff;
+  .deck-thumb-img, .deck-thumb-blank {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
   }
-  .deck-thumb-fallback {
-    position: absolute; inset: 0; display: flex; align-items: center;
-    justify-content: center; padding: 8px; text-align: center;
-    font-size: 12px; font-weight: 600; color: #666; background: #eee;
-  }
+  .deck-thumb-img { object-fit: cover; object-position: center; }
+  .deck-thumb-blank { background: #eee; }
   .deck-thumb-n {
     position: absolute; top: 6px; left: 6px; z-index: 2; min-width: 20px;
     height: 20px; padding: 0 6px; border-radius: 6px; display: inline-flex;
@@ -105,16 +100,16 @@ export function filmstripCellHtml(opts: {
   index: number;
   src: string;
   heading?: string;
-  /** slide shot = backend raster only; heading-only = placeholder before shot */
-  mode: "slide-shot" | "heading-only";
+  /** slide shot = backend raster only; empty = blank frame until shot exists */
+  mode: "slide-shot" | "empty";
   current?: boolean;
 }): string {
   const n = `<span class="deck-thumb-n">${opts.index}</span>`;
   const frameClass = opts.current ? "deck-thumb-frame is-current" : "deck-thumb-frame";
-  if (opts.mode === "heading-only") {
-    return `<span class="${frameClass}"><span class="deck-thumb-fallback">${opts.heading ?? ""}</span>${n}</span>`;
+  if (opts.mode === "empty") {
+    return `<span class="${frameClass}"><span class="deck-thumb-blank"></span>${n}</span>`;
   }
-  return `<span class="${frameClass}"><span class="deck-thumb-ph-wrap"><img class="deck-thumb-ph" src="${opts.src}" alt=""></span>${n}</span>`;
+  return `<span class="${frameClass}"><img class="deck-thumb-img" src="${opts.src}" alt="">${n}</span>`;
 }
 
 export function filmstripPageHtml(cells: string[]): string {

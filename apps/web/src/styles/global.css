@@ -1069,29 +1069,29 @@ footer.foot a:hover { text-decoration: underline; }
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
+  isolation: isolate;
+  contain: paint;
   /* inset stroke — real border eats equal px from W/H and breaks 16:9 content box */
   box-shadow: inset 0 0 0 1px var(--pk-line);
-  background: #fff;
+  background: var(--pk-paper-2);
   pointer-events: none;
   position: relative;
-  container-type: size;
-  container-name: deck-thumb;
 }
 .deck-thumb.is-current .deck-thumb-frame { box-shadow: none; }
-.deck-thumb-ph-wrap {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-/* Backend shot is already the full 16:9 slide — contain avoids crop bugs. */
-.deck-thumb-ph {
+.deck-thumb-img,
+.deck-thumb-blank {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
   display: block;
-  background: #fff;
+}
+.deck-thumb-img {
+  object-fit: cover;
+  object-position: center;
+}
+.deck-thumb-blank {
+  background: var(--pk-paper-2);
 }
 .deck-thumb-n {
   position: absolute;
@@ -1110,21 +1110,6 @@ footer.foot a:hover { text-decoration: underline; }
   line-height: 1;
   color: #fff;
   background: rgba(22, 22, 22, 0.55);
-}
-.deck-thumb-fallback {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--pk-ink-muted);
-  background: var(--pk-paper-2);
 }
 .deck-stage {
   --deck-rewrite-h: 0px;

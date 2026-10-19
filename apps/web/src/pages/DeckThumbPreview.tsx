@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { thumbIsSlideShot, thumbPlaceholderLayers } from "../deck-thumb-preview";
 
-/** Static filmstrip cell — backend slide screenshot WebP only. No Slidev iframe. */
+/** Static filmstrip cell — backend slide screenshot WebP only. No heading text. */
 export function DeckThumbPreview(props: {
   index: number;
   heading: string;
@@ -27,20 +27,17 @@ export function DeckThumbPreview(props: {
 
   return (
     <span className="deck-thumb-frame" aria-hidden data-thumb-shot={shot ? "1" : "0"}>
-      <span className="deck-thumb-ph-wrap">
-        {layers.showImage && props.imageUrl ? (
-          <img
-            className="deck-thumb-ph"
-            src={props.imageUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-          />
-        ) : null}
-        {layers.showHeading ? (
-          <span className="deck-thumb-fallback">{layers.label}</span>
-        ) : null}
-      </span>
+      {layers.showImage && props.imageUrl ? (
+        <img
+          className="deck-thumb-img"
+          src={props.imageUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
+      ) : (
+        <span className="deck-thumb-blank" />
+      )}
       <span className="deck-thumb-n">{props.index}</span>
     </span>
   );
