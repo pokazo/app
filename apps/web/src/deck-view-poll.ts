@@ -26,14 +26,24 @@ export function shouldPollDeckView(opts: {
   );
 }
 
-/** True when POST rewrite is still showing busy but /api/view no longer reports a rewrite. */
+/**
+ * True when POST rewrite/structure is still showing busy but /api/view no longer
+ * reports a rewrite.
+ *
+ * `seenServerBuilding` must be true: after POST the client sets rewriteBusy before
+ * the server writes rewrite.json; an early poll with building=false must not clear
+ * busy (that re-enabled the form and caused 409 busy on a second click).
+ */
 export function shouldClearRewriteBusy(opts: {
   rewriteBusy: boolean;
   serverBuilding: boolean;
   rewritingSlide?: number | null;
+  /** At least one /api/view poll saw building=true since this edit started. */
+  seenServerBuilding: boolean;
 }): boolean {
   return (
     opts.rewriteBusy &&
+    opts.seenServerBuilding &&
     !opts.serverBuilding &&
     (opts.rewritingSlide == null || opts.rewritingSlide === undefined)
   );

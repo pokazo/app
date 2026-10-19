@@ -116,11 +116,18 @@ export function DeckView() {
   const [dragOver, setDragOver] = useState<number | null>(null);
   const forcePollRef = useRef(false);
   const rewriteBusyRef = useRef(false);
+  /** Set once /api/view reports building after we start an edit — gates busy clear. */
+  const seenServerBuildingRef = useRef(false);
+  const busyHoldLoggedRef = useRef(false);
   const stayOnSlideRef = useRef<number | null>(null);
   const rewriteFileRef = useRef<HTMLInputElement>(null);
 
   const markRewriteBusy = (busy: boolean) => {
     rewriteBusyRef.current = busy;
+    if (busy) {
+      seenServerBuildingRef.current = false;
+      busyHoldLoggedRef.current = false;
+    }
     setRewriteBusy(busy);
   };
 
@@ -205,6 +212,8 @@ export function DeckView() {
     setDragFrom(null);
     setDragOver(null);
     forcePollRef.current = false;
+    seenServerBuildingRef.current = false;
+    busyHoldLoggedRef.current = false;
     stayOnSlideRef.current = null;
 
     if (!idOk) {
@@ -256,12 +265,38 @@ export function DeckView() {
         hasMeta = true;
         isBuilding = serverBuilding;
         slideCount = nextCount;
-        if (isBuilding) forcePollRef.current = true;
+        if (isBuilding) {
+          forcePollRef.current = true;
+          if (!seenServerBuildingRef.current) {
+            const awaitingEdit = rewriteBusyRef.current;
+            seenServerBuildingRef.current = true;
+            if (awaitingEdit) {
+              console.info("[edit] rewrite_server_building", {
+                deckId: id,
+                slide: serverRewritingSlide,
+              });
+            }
+          }
+        }
         const rewriteDone = shouldClearRewriteBusy({
           rewriteBusy: rewriteBusyRef.current,
           serverBuilding,
           rewritingSlide: serverRewritingSlide,
+          seenServerBuilding: seenServerBuildingRef.current,
         });
+        if (
+          rewriteBusyRef.current &&
+          !serverBuilding &&
+          !seenServerBuildingRef.current &&
+          !busyHoldLoggedRef.current &&
+          (serverRewritingSlide == null || serverRewritingSlide === undefined)
+        ) {
+          busyHoldLoggedRef.current = true;
+          console.info("[edit] rewrite_busy_hold", {
+            deckId: id,
+            reason: "await_server_building",
+          });
+        }
         if (!isBuilding && !rewriteBusyRef.current) forcePollRef.current = false;
         setMeta(data);
         setWaiting(false);
@@ -294,9 +329,17 @@ export function DeckView() {
           if (reveal.focusSlide != null) setCurrent(reveal.focusSlide);
         }
         if ((wasBuilding && !isBuilding) || rewriteDone) {
+          if (rewriteDone) {
+            console.info("[edit] rewrite_busy_clear", {
+              deckId: id,
+              via: wasBuilding && !isBuilding ? "building_edge" : "poll_idle_after_seen",
+              slide: serverRewritingSlide,
+            });
+          }
           setStageReady(false);
           setEmbedKey((k) => k + 1);
           markRewriteBusy(false);
+          seenServerBuildingRef.current = false;
           forcePollRef.current = false;
           setBuilding(false);
           setActivity("");
@@ -554,7 +597,14 @@ export function DeckView() {
 
   async function submitRewrite() {
     // Use ref so a second click cannot start another POST before React re-renders.
-    if (!id || !me || building || rewriteBusyRef.current) return;
+    if (!id || !me || building || rewriteBusyRef.current) {
+      console.warn("[edit] rewrite_submit_skipped", {
+        deckId: id,
+        slide: current,
+        reason: !id ? "no_id" : !me ? "no_me" : building ? "building" : "rewrite_busy",
+      });
+      return;
+    }
     const instruction = rewriteText.trim();
     if (instruction.length < 2 && rewriteFiles.length === 0) {
       setRewriteErr("Напишите, что переделать, или прикрепите картинку.");
@@ -567,6 +617,12 @@ export function DeckView() {
     forcePollRef.current = true;
     setBuilding(true);
     setRewritingSlide(current);
+    console.info("[edit] rewrite_submit", {
+      deckId: id,
+      slide: current,
+      instruction: instruction.slice(0, 120),
+      files: rewriteFiles.length,
+    });
     try {
       let res: Response;
       if (rewriteFiles.length > 0) {
@@ -587,6 +643,7 @@ export function DeckView() {
         });
       }
       if (res.status === 202) {
+        console.info("[edit] rewrite_accepted", { deckId: id, slide: current });
         // Keep instruction text visible while «Пересобираем…» — clear after success.
         return;
       }

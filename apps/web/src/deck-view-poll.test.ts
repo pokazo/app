@@ -40,12 +40,13 @@ describe("shouldPollDeckView", () => {
 });
 
 describe("shouldClearRewriteBusy", () => {
-  it("clears when local busy but server finished rewrite", () => {
+  it("clears when local busy but server finished rewrite after we saw building", () => {
     expect(
       shouldClearRewriteBusy({
         rewriteBusy: true,
         serverBuilding: false,
         rewritingSlide: null,
+        seenServerBuilding: true,
       }),
     ).toBe(true);
   });
@@ -56,6 +57,21 @@ describe("shouldClearRewriteBusy", () => {
         rewriteBusy: true,
         serverBuilding: true,
         rewritingSlide: 2,
+        seenServerBuilding: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps busy after POST until /api/view reports building (race guard)", () => {
+    // Client sets rewriteBusy before the server writes rewrite.json; an early
+    // poll must not treat idle meta as "rewrite done" or the form re-enables
+    // and a second click gets 409 busy.
+    expect(
+      shouldClearRewriteBusy({
+        rewriteBusy: true,
+        serverBuilding: false,
+        rewritingSlide: null,
+        seenServerBuilding: false,
       }),
     ).toBe(false);
   });

@@ -29,6 +29,7 @@ import { isSpeechMissingResult, readSpeechResponse, writeSpeechDoc } from "./spe
 import {
   expireStaleRewriteStatus,
   isRewriteBuilding,
+  readRewriteStatus,
   writeRewriteStatus,
 } from "./rewrite-status.js";
 import { parseOutline } from "./outline.js";
@@ -593,8 +594,11 @@ export function createApp() {
 
     const busy = await deckBusyForRewrite(id);
     if (busy) {
+      const running = await readRewriteStatus(dir);
+      const runningAt = running?.updatedAt ? Date.parse(running.updatedAt) : NaN;
+      const runningAgeMs = Number.isFinite(runningAt) ? Date.now() - runningAt : null;
       console.warn(
-        `[edit] rewrite_rejected deck=${id} slide=${n} reason=busy busy=${busy} instruction=${JSON.stringify(instruction.slice(0, 120))}`,
+        `[edit] rewrite_rejected deck=${id} slide=${n} reason=busy busy=${busy} runningSlide=${running?.slide ?? "-"} runningStatus=${running?.status ?? "-"} runningAgeMs=${runningAgeMs ?? "unknown"} runningInstruction=${JSON.stringify((running?.instruction ?? "").slice(0, 120))} instruction=${JSON.stringify(instruction.slice(0, 120))}`,
       );
       return c.json({ error: "busy", reason: busy }, 409);
     }
