@@ -32,13 +32,21 @@ const items = computed(() =>
 
 const paletteClass = resolvePaletteClass(props.palette)
 
+/** Density class so 4–5 rows fit under H1+desc without clipping. */
+const densityClass = computed(() => {
+  const n = items.value.length
+  if (n >= 5) return 'pk-agenda--n5'
+  if (n >= 4) return 'pk-agenda--n4'
+  return 'pk-agenda--n3'
+})
+
 function padIndex(i: number): string {
   return String(i + 1).padStart(2, '0')
 }
 </script>
 
 <template>
-  <div class="pk-brick pk-agenda" :class="paletteClass">
+  <div class="pk-brick pk-agenda" :class="[paletteClass, densityClass]">
     <svg
       class="pk-agenda__waves"
       viewBox="0 0 1920 1080"
@@ -115,12 +123,14 @@ function padIndex(i: number): string {
       />
     </svg>
     <div class="pk-brick__inner">
-      <div class="pk-kicker" v-if="kicker">
-        <span class="pk-kicker__line" />
-        <span class="pk-kicker__text">{{ kicker }}</span>
-      </div>
-      <div class="pk-title">
-        <slot />
+      <div class="pk-agenda__head">
+        <div class="pk-kicker" v-if="kicker">
+          <span class="pk-kicker__line" />
+          <span class="pk-kicker__text">{{ kicker }}</span>
+        </div>
+        <div class="pk-title">
+          <slot />
+        </div>
       </div>
       <ol class="pk-agenda__list">
         <li v-for="(title, i) in items" :key="i" class="pk-agenda__row">
@@ -161,17 +171,21 @@ function padIndex(i: number): string {
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 72px 80px 64px;
+  padding: 56px 80px 48px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   max-width: 1100px;
+  gap: 28px;
+}
+.pk-agenda__head {
+  flex: none;
 }
 .pk-kicker {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   flex: none;
 }
 .pk-kicker__line {
@@ -188,60 +202,109 @@ function padIndex(i: number): string {
   text-transform: uppercase;
   color: var(--pk-accent);
 }
+.pk-title {
+  flex: none;
+}
 .pk-title :deep(h1) {
-  margin: 0 0 16px;
-  font-size: 56px;
+  margin: 0 0 12px;
+  font-size: 48px;
   line-height: 1.08;
   font-weight: 800;
   letter-spacing: -0.035em;
   max-width: 18ch;
 }
 .pk-title :deep(p) {
-  margin: 0 0 8px;
-  font-size: 20px;
-  line-height: 1.45;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
   color: var(--pk-sub);
   font-weight: 500;
   max-width: 42ch;
 }
 .pk-agenda__list {
   list-style: none;
-  margin: auto 0 0;
+  margin: 0;
   padding: 0;
   width: 100%;
   max-width: 640px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 .pk-agenda__row {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 22px 0;
+  gap: 18px;
+  padding: 18px 0;
   border-bottom: 1px solid var(--pk-rule);
+  flex: none;
 }
 .pk-agenda__row:first-child {
   border-top: 1px solid var(--pk-rule);
 }
 .pk-agenda__badge {
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--pk-accent);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
 }
 .pk-agenda__label {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--pk-ink);
+}
+
+/* Tighter rows when more items — keeps 5 inside 1080. */
+.pk-agenda--n4 .pk-brick__inner {
+  gap: 22px;
+  padding-top: 48px;
+  padding-bottom: 40px;
+}
+.pk-agenda--n4 .pk-title :deep(h1) {
+  font-size: 44px;
+}
+.pk-agenda--n4 .pk-agenda__row {
+  padding: 14px 0;
+}
+.pk-agenda--n4 .pk-agenda__label {
+  font-size: 22px;
+}
+
+.pk-agenda--n5 .pk-brick__inner {
+  gap: 18px;
+  padding-top: 44px;
+  padding-bottom: 36px;
+}
+.pk-agenda--n5 .pk-title :deep(h1) {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+.pk-agenda--n5 .pk-title :deep(p) {
+  font-size: 17px;
+}
+.pk-agenda--n5 .pk-agenda__row {
+  padding: 11px 0;
+}
+.pk-agenda--n5 .pk-agenda__badge {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+.pk-agenda--n5 .pk-agenda__label {
+  font-size: 20px;
 }
 
 .pk-palette-cream {
