@@ -90,6 +90,7 @@ const paletteClass = resolvePaletteClass(props.palette)
   padding: 48px 64px 44px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   box-sizing: border-box;
 }
 .pk-kicker {
@@ -113,6 +114,9 @@ const paletteClass = resolvePaletteClass(props.palette)
   text-transform: uppercase;
   color: var(--pk-accent);
 }
+.pk-title {
+  flex: none;
+}
 .pk-title :deep(h1) {
   margin: 0 0 12px;
   font-size: 40px;
@@ -135,12 +139,10 @@ const paletteClass = resolvePaletteClass(props.palette)
   flex: none;
 }
 .pk-features__grid {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: none;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 36px;
-  align-content: start;
 }
 .pk-features__icon {
   width: 48px;
