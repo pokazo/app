@@ -58,4 +58,17 @@ export const config = {
   tochkaApiBaseUrl: env("TOCHKA_API_BASE_URL", "https://enter.tochka.com"),
   priceCreditKopecks: Number(env("PRICE_CREDIT_KOPECKS", "19900")),
   priceMonthKopecks: Number(env("PRICE_MONTH_KOPECKS", "39900")),
+  /**
+   * Long-lived Slidev (dev) pool for owner HMR edits. Off unless SLIDEV_DEV_POOL=true.
+   * Cap low on shared 8GB VPS (~600MB RSS each).
+   */
+  slidevDevPoolMax:
+    env("SLIDEV_DEV_POOL", "false") === "true"
+      ? envInt("SLIDEV_DEV_POOL_MAX", 2, { min: 0, max: 4 })
+      : 0,
+  /** Evict idle live sessions after this many ms (default 10 min). */
+  slidevDevPoolIdleMs: envInt("SLIDEV_DEV_POOL_IDLE_MS", 600_000, {
+    min: 60_000,
+    max: 3_600_000,
+  }),
 };

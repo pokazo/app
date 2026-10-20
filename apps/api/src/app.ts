@@ -528,7 +528,30 @@ export function createApp() {
       rewritingSlide: rewriting ? rewrite?.slide : undefined,
       rewriteError: rewrite?.status === "failed" ? rewrite.error ?? "rewrite failed" : undefined,
       embedBase: `${config.apiOrigin}/p/${id}/`,
+      livePreview: (await import("./slidev-dev-pool.js")).isSlidevDevLive(id),
     });
+  });
+
+  /** Start / touch long-lived Slidev (dev) for owner HMR edits. */
+  app.post("/api/decks/:id/live", async (c) => {
+    const { slidevDevPoolEnabled, ensureSlidevDev } = await import("./slidev-dev-pool.js");
+    if (!slidevDevPoolEnabled()) return c.json({ error: "live preview disabled" }, 404);
+    const owner = await requireDeckOwner(c, auth);
+    if (!owner.ok) return owner.res;
+    const { id } = owner;
+    if (owner.deck.status !== "ready") {
+      return c.json({ error: "deck not ready" }, 409);
+    }
+    const dir = join(config.deckDataDir, id);
+    try {
+      const t0 = Date.now();
+      const session = await ensureSlidevDev(id, dir);
+      console.info(`[slidev-dev] ensure ok deck=${id} port=${session.port} ms=${Date.now() - t0}`);
+      return c.json({ ok: true, livePreview: true, port: session.port });
+    } catch (err) {
+      console.warn(`[slidev-dev] ensure fail deck=${id}: ${String(err).slice(0, 300)}`);
+      return c.json({ error: "live preview failed", detail: String(err).slice(0, 200) }, 500);
+    }
   });
 
   app.post("/api/decks/:id/slides/:n/rewrite", async (c) => {
@@ -958,6 +981,34 @@ export function createApp() {
 
   app.get("/p/:id/*", async (c) => {
     const id = c.req.param("id");
+    // Owner + live Slidev: proxy Vite (HMR). Guests / no session → static dist.
+    if (auth && pool && DECK_UUID.test(id)) {
+      const { isSlidevDevLive } = await import("./slidev-dev-pool.js");
+      if (isSlidevDevLive(id)) {
+        const session = await auth.api.getSession({ headers: c.req.raw.headers });
+        if (session?.user) {
+          const { rows } = await pool.query(`SELECT 1 FROM deck WHERE id=$1 AND user_id=$2`, [
+            id,
+            session.user.id,
+          ]);
+          if (rows[0]) {
+            const { proxyHttpToSlidevDev } = await import("./slidev-dev-proxy.js");
+            const proxied = await proxyHttpToSlidevDev(c.req.raw, id);
+            if (proxied) {
+              const ct = proxied.headers.get("content-type") || "";
+              if (ct.includes("text/html")) {
+                const html = injectPlayerChromeHide(await proxied.text());
+                return new Response(html, {
+                  status: proxied.status,
+                  headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+                });
+              }
+              return proxied;
+            }
+          }
+        }
+      }
+    }
     const rest = c.req.path.replace(`/p/${id}`, "") || "/";
     const base = join(config.deckDataDir, id, "dist");
     const rel = rest === "/" ? "index.html" : rest.replace(/^\//, "");

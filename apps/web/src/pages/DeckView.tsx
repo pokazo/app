@@ -76,6 +76,8 @@ type ViewMeta = {
   activity?: string | null;
   rewritingSlide?: number;
   rewriteError?: string;
+  /** Owner iframe is proxied to a long-lived Slidev (dev) — HMR, skip remount thrash. */
+  livePreview?: boolean;
 };
 
 const WAIT_TIMEOUT_MS = 20 * 60 * 1000;
@@ -284,6 +286,24 @@ export function DeckView() {
     };
   }, [id, idOk, me]);
 
+  // Warm long-lived Slidev (dev) for owner so structure ops can skip full build.
+  useEffect(() => {
+    if (!idOk || !me || !isOwner || !meta || meta.status !== "ready") return;
+    if (meta.livePreview) return;
+    let cancelled = false;
+    void fetch(apiUrl(`/api/decks/${id}/live`), { method: "POST", credentials: "include" })
+      .then(async (r) => {
+        if (cancelled || !r.ok) return;
+        console.info("[edit] live_preview_ready", { deckId: id });
+        setMeta((m) => (m ? { ...m, livePreview: true } : m));
+        setEmbedKey((k) => k + 1); // switch iframe onto Vite proxy
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [id, idOk, me, isOwner, meta?.status, meta?.livePreview]);
+
   const loadView = useCallback(async () => {
     const r = await fetch(apiUrl(`/api/view/${id}`), { credentials: "include" });
     if (!r.ok) throw new Error("not ready");
@@ -436,8 +456,11 @@ export function DeckView() {
               slide: serverRewritingSlide,
             });
           }
-          setStageReady(false);
-          setEmbedKey((k) => k + 1);
+          // Live HMR already updated the iframe — remount only for static dist.
+          if (!data.livePreview) {
+            setStageReady(false);
+            setEmbedKey((k) => k + 1);
+          }
           markRewriteBusy(false);
           setThemeBusy(false);
           seenServerBuildingRef.current = false;
