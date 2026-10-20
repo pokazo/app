@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { api } from "../api";
 import { APP_HISTORY_PATH } from "../decks";
 import { BillingMe, formatBillingLabel } from "../billing";
@@ -48,6 +48,7 @@ export function PkHeader(props: {
   }, [props.me]);
 
   const label = props.me?.name || props.me?.email || "Профиль";
+  const onHome = useLocation().pathname === "/";
 
   return (
     <div className="page-head">
@@ -57,9 +58,11 @@ export function PkHeader(props: {
         </Link>
         {props.me ? (
           <span className="head-actions">
-            <Link className="pk-btn ghost" to="/app">
-              Создать
-            </Link>
+            {onHome ? null : (
+              <Link className="pk-btn ghost" to="/app">
+                Создать
+              </Link>
+            )}
             <Link className="pk-btn ghost" to={APP_HISTORY_PATH}>
               История
             </Link>

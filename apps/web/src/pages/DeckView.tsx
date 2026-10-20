@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex } from "../deck-view";
@@ -30,7 +38,6 @@ import {
   thumbMoveTarget,
 } from "../deck-structure";
 import {
-  APP_HISTORY_PATH,
   EDITABLE_DECK_THEMES,
   SLIDE_COUNT_MAX,
   SLIDE_COUNT_MIN,
@@ -38,6 +45,13 @@ import {
   sanitizeEditableDeckTheme,
 } from "../decks";
 import { thumbCoverPath, thumbReactKey } from "../deck-thumb-preview";
+import {
+  DECK_THUMBS_WIDTH_MAX,
+  DECK_THUMBS_WIDTH_MIN,
+  clampDeckThumbsWidth,
+  readDeckThumbsWidth,
+  writeDeckThumbsWidth,
+} from "../deck-thumbs-width";
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
 import { BuildLoader } from "../components/BuildLoader";
@@ -91,6 +105,12 @@ export function DeckView() {
     (location.state as { awaitingPreview?: boolean } | null)?.awaitingPreview,
   );
   const mobileOverview = useMobileDeckOverview();
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const [thumbsWidth, setThumbsWidth] = useState(() =>
+    readDeckThumbsWidth(typeof localStorage !== "undefined" ? localStorage : null),
+  );
+  const thumbsWidthRef = useRef(thumbsWidth);
+  const [thumbsResizing, setThumbsResizing] = useState(false);
   const stageRef = useRef<HTMLIFrameElement>(null);
   /** Avoid re-posting the same Slidev page when effect deps churn (meta.slides, etc.). */
   const lastPostedSlidevPageRef = useRef<number | null>(null);
@@ -147,6 +167,24 @@ export function DeckView() {
   };
 
   const deckSocket = useDeckSocket(isDeckId(id) ? id : undefined, Boolean(id));
+  useEffect(() => {
+    if (mobileOverview) return;
+    const onResize = () => {
+      if (document.body.classList.contains("is-deck-thumbs-resizing")) return;
+      const layoutW = layoutRef.current?.getBoundingClientRect().width;
+      setThumbsWidth((w) => {
+        const next = clampDeckThumbsWidth(w, layoutW);
+        thumbsWidthRef.current = next;
+        return next;
+      });
+    };
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [mobileOverview]);
+  useEffect(() => () => {
+    document.body.classList.remove("is-deck-thumbs-resizing");
+  }, []);
   useEffect(() => {
     if (deckSocket.activity != null && deckSocket.activity.trim()) {
       setActivity(deckSocket.activity.trim());
@@ -775,6 +813,46 @@ export function DeckView() {
     }
   }
 
+  function onThumbsResizePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (mobileOverview || e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    const startX = e.clientX;
+    const startW = thumbsWidthRef.current;
+    handle.setPointerCapture(e.pointerId);
+    setThumbsResizing(true);
+    document.body.classList.add("is-deck-thumbs-resizing");
+
+    const widthAt = (clientX: number) => {
+      const layoutW = layoutRef.current?.getBoundingClientRect().width;
+      return clampDeckThumbsWidth(startW + clientX - startX, layoutW);
+    };
+    const apply = (clientX: number) => {
+      const next = widthAt(clientX);
+      thumbsWidthRef.current = next;
+      layoutRef.current?.style.setProperty("--deck-thumbs-w", `${next}px`);
+      handle.setAttribute("aria-valuenow", String(next));
+      return next;
+    };
+    const end = (ev: PointerEvent) => {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", end);
+      handle.removeEventListener("pointercancel", end);
+      if (handle.hasPointerCapture(ev.pointerId)) handle.releasePointerCapture(ev.pointerId);
+      const next = ev.type === "pointercancel" ? thumbsWidthRef.current : apply(ev.clientX);
+      document.body.classList.remove("is-deck-thumbs-resizing");
+      setThumbsWidth(next);
+      setThumbsResizing(false);
+      writeDeckThumbsWidth(next, localStorage);
+    };
+    const onMove = (ev: PointerEvent) => {
+      apply(ev.clientX);
+    };
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+  }
+
   async function enterPresent() {
     const el = stageHostRef.current;
     if (!el || typeof el.requestFullscreen !== "function") return;
@@ -886,11 +964,6 @@ export function DeckView() {
                   </button>
                 </>
               ) : null}
-              {me ? (
-                <Link className="pk-btn ghost" to={APP_HISTORY_PATH}>
-                  К списку
-                </Link>
-              ) : null}
             </div>
           </>
         )}
@@ -939,7 +1012,15 @@ export function DeckView() {
           onConfirm={() => void onDeleteSlide(deleteConfirm)}
         />
       ) : null}
-      <div className="deck-layout">
+      <div
+        className="deck-layout"
+        ref={layoutRef}
+        style={
+          mobileOverview
+            ? undefined
+            : ({ "--deck-thumbs-w": `${thumbsResizing ? thumbsWidthRef.current : thumbsWidth}px` } as CSSProperties)
+        }
+      >
         <nav className="deck-thumbs" aria-label="Страницы">
           {slides.map((s) => {
             const cover = thumbCoverPath(s);
@@ -1067,6 +1148,17 @@ export function DeckView() {
           ) : null}
           {structureErr ? <p className="err deck-thumb-err">{structureErr}</p> : null}
         </nav>
+        <div
+          className={`deck-thumbs-resizer${thumbsResizing ? " is-dragging" : ""}`}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ширина списка слайдов"
+          aria-valuemin={DECK_THUMBS_WIDTH_MIN}
+          aria-valuemax={DECK_THUMBS_WIDTH_MAX}
+          aria-valuenow={thumbsWidth}
+          onPointerDown={onThumbsResizePointerDown}
+        />
+        {thumbsResizing ? <div className="deck-thumbs-resize-shield" /> : null}
         {showStage ? (
           <div
             className={`deck-stage${isOwner && meta?.status === "ready" && !mobilePresent && !presenting ? " has-rewrite" : ""}`}

@@ -4,11 +4,36 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { PkHeader } from "./PkHeader";
 
-function renderHeader(props: Parameters<typeof PkHeader>[0]) {
+function renderHeader(props: Parameters<typeof PkHeader>[0], path = "/") {
   return renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(PkHeader, props)),
+    createElement(
+      MemoryRouter,
+      { initialEntries: [path] },
+      createElement(PkHeader, props),
+    ),
   );
 }
+
+const signedIn = {
+  me: { name: "Антон", email: "a@example.com" },
+  onOut: () => undefined,
+};
+
+describe("PkHeader create link", () => {
+  it("hides Создать on the home page", () => {
+    const html = renderHeader(signedIn, "/");
+    expect(html).not.toContain(">Создать<");
+    expect(html).toContain("История");
+  });
+
+  it("keeps Создать on other screens", () => {
+    for (const path of ["/app", "/app/history", "/view/deck-1"]) {
+      const html = renderHeader(signedIn, path);
+      expect(html).toContain('href="/app"');
+      expect(html).toContain(">Создать<");
+    }
+  });
+});
 
 describe("PkHeader profile menu", () => {
   it("puts billing balance and logout inside the profile submenu", () => {
