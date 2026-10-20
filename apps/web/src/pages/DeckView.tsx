@@ -97,6 +97,42 @@ function useMobileDeckOverview() {
   return mobile;
 }
 
+function DeckSideIcon({ name }: { name: "link" | "full" | "theme" | "speech" | "facts" }) {
+  const paths: Record<typeof name, string[]> = {
+    link: [
+      "M10 13a5 5 0 0 0 7.54.54l1.92-1.92a5 5 0 0 0-7.07-7.07L10.7 6.24",
+      "M14 11a5 5 0 0 0-7.54-.54L4.54 12.38a5 5 0 0 0 7.07 7.07l1.69-1.69",
+    ],
+    full: [
+      "M8 3H5a2 2 0 0 0-2 2v3",
+      "M16 3h3a2 2 0 0 1 2 2v3",
+      "M21 16v3a2 2 0 0 1-2 2h-3",
+      "M3 16v3a2 2 0 0 0 2 2h3",
+    ],
+    theme: [
+      "M12 3a9 9 0 1 0 0 18h1.2a1.6 1.6 0 0 0 1.1-2.75 1.6 1.6 0 0 1 1.15-2.75H17a5 5 0 0 0 5-5A9 9 0 0 0 12 3z",
+    ],
+    speech: ["M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 1 1 18 0z"],
+    facts: ["M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z", "M14 3v5h5", "M8 13h8", "M8 17h5"],
+  };
+  return (
+    <svg
+      className="deck-side-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths[name].map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
+
 export function DeckView() {
   const { id = "" } = useParams();
   const location = useLocation();
@@ -885,7 +921,7 @@ export function DeckView() {
   return (
     <div className={shellClass}>
       <PkHeader me={me} onOut={me ? onOut : undefined} />
-      <div className="deck-toolbar wrap">
+      <div className="deck-toolbar">
         {mobileOverview && mobilePresent ? (
           <>
             <button
@@ -900,72 +936,7 @@ export function DeckView() {
             </span>
           </>
         ) : (
-          <>
-            <p className="deck-title">{meta?.topic || "Презентация"}</p>
-            <div className="deck-toolbar-actions">
-              {meta ? (
-                <span className="deck-pos">
-                  {current} / {last}
-                </span>
-              ) : null}
-              <button type="button" className="pk ghost" onClick={() => void copyLink()}>
-                {copied ? "Скопировано" : "Скопировать ссылку"}
-              </button>
-              {meta && meta.status === "ready" && !presenting ? (
-                <button type="button" className="pk ghost" onClick={() => void enterPresent()}>
-                  На весь экран
-                </button>
-              ) : null}
-              {meta && isOwner ? (
-                <>
-                  {meta.status === "ready" ? (
-                    <button
-                      type="button"
-                      className="pk ghost"
-                      disabled={building && !themeOpen}
-                      title="Сменить тему (пересборка)"
-                      onClick={() => setThemeOpen((o) => !o)}
-                    >
-                      Тема
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="pk ghost"
-                    disabled={building}
-                    title={building ? "Дождитесь окончания сборки" : undefined}
-                    onClick={() => setSpeechOpen(true)}
-                  >
-                    Спич
-                  </button>
-                  <button
-                    type="button"
-                    className="pk ghost"
-                    disabled={!!exporting || building}
-                    onClick={() => void downloadExport("facts")}
-                  >
-                    {exporting === "facts" ? "Собираем архив…" : "Факты"}
-                  </button>
-                  <button
-                    type="button"
-                    className="pk ghost"
-                    disabled={!!exporting || building}
-                    onClick={() => void downloadExport("pdf")}
-                  >
-                    {exporting === "pdf" ? "Сохраняем PDF…" : "Скачать PDF"}
-                  </button>
-                  <button
-                    type="button"
-                    className="pk ghost"
-                    disabled={!!exporting || building}
-                    onClick={() => void downloadExport("pptx")}
-                  >
-                    {exporting === "pptx" ? "Сохраняем PPTX…" : "Скачать PPTX"}
-                  </button>
-                </>
-              ) : null}
-            </div>
-          </>
+          <p className="deck-title">{meta?.topic || "Презентация"}</p>
         )}
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
@@ -1303,6 +1274,77 @@ export function DeckView() {
             ) : null}
           </div>
         ) : null}
+        <aside className="deck-side" aria-label="Действия с презентацией">
+          {meta ? (
+            <p className="deck-side-pos">
+              {current} / {last}
+            </p>
+          ) : null}
+          <h3>Показ</h3>
+          <button type="button" className="deck-side-item" onClick={() => void copyLink()}>
+            <DeckSideIcon name="link" />
+            {copied ? "Скопировано" : "Скопировать ссылку"}
+          </button>
+          {meta && meta.status === "ready" && !presenting ? (
+            <button type="button" className="deck-side-item" onClick={() => void enterPresent()}>
+              <DeckSideIcon name="full" />
+              На весь экран
+            </button>
+          ) : null}
+          {meta && isOwner ? (
+            <>
+              <h3>Колода</h3>
+              {meta.status === "ready" ? (
+                <button
+                  type="button"
+                  className={`deck-side-item${themeOpen ? " is-open" : ""}`}
+                  disabled={building && !themeOpen}
+                  title="Сменить тему (пересборка)"
+                  onClick={() => setThemeOpen((o) => !o)}
+                >
+                  <DeckSideIcon name="theme" />
+                  Тема
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="deck-side-item"
+                disabled={building}
+                title={building ? "Дождитесь окончания сборки" : undefined}
+                onClick={() => setSpeechOpen(true)}
+              >
+                <DeckSideIcon name="speech" />
+                Спич
+              </button>
+              <button
+                type="button"
+                className="deck-side-item"
+                disabled={!!exporting || building}
+                onClick={() => void downloadExport("facts")}
+              >
+                <DeckSideIcon name="facts" />
+                {exporting === "facts" ? "Собираем архив…" : "Факты"}
+              </button>
+              <h3>Скачать</h3>
+              <button
+                type="button"
+                className="deck-side-item"
+                disabled={!!exporting || building}
+                onClick={() => void downloadExport("pdf")}
+              >
+                {exporting === "pdf" ? "Сохраняем PDF…" : "Скачать PDF"}
+              </button>
+              <button
+                type="button"
+                className="deck-side-item"
+                disabled={!!exporting || building}
+                onClick={() => void downloadExport("pptx")}
+              >
+                {exporting === "pptx" ? "Сохраняем PPTX…" : "Скачать PPTX"}
+              </button>
+            </>
+          ) : null}
+        </aside>
       </div>
     </div>
   );
