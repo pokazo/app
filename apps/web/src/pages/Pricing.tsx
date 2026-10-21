@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { SiteFooter } from "../components/SiteFooter";
 import { BillingCatalog, DEFAULT_BILLING_CATALOG } from "../billing";
+import { reachPkGoal } from "../metrika";
 import { apiUrl } from "../safe";
 
 const TITLE = "Тарифы и цены — Показо";
@@ -21,6 +22,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
     document.title = TITLE;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", DESC);
+    reachPkGoal("pricing-view");
   }, []);
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 <p className="pricing-price">
                   0 <span className="pricing-currency">₽</span>
                 </p>
-                <Link className="pk ghost pricing-cta" to={startHref}>
+                <Link className="pk ghost pricing-cta" to={startHref} data-pk="cta-pricing-free">
                   {me ? "Создать" : "Начать бесплатно"}
                 </Link>
                 <ul className="pricing-features">
@@ -90,7 +92,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                   {creditRub} <span className="pricing-currency">₽</span>
                 </p>
                 <p className="pricing-period">за одну генерацию</p>
-                <Link className="pk ghost pricing-cta" to={startHref}>
+                <Link className="pk ghost pricing-cta" to={startHref} data-pk="cta-pricing-credit">
                   {me ? "В приложение" : "Войти и создать"}
                 </Link>
                 <ul className="pricing-features">
@@ -108,7 +110,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                   {monthRub} <span className="pricing-currency">₽</span>
                 </p>
                 <p className="pricing-period">30 календарных дней</p>
-                <Link className="pk pricing-cta" to={startHref}>
+                <Link className="pk pricing-cta" to={startHref} data-pk="cta-pricing-month">
                   {me ? "Создавать без лимита" : "Подключить после входа"}
                 </Link>
                 <ul className="pricing-features">

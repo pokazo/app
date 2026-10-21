@@ -61,7 +61,7 @@ export function PkHeader(props: {
         {props.me ? (
           <span className="head-actions">
             {onPricing ? null : (
-              <Link className="pk-btn ghost" to="/pricing">
+              <Link className="pk-btn ghost" to="/pricing" data-pk="cta-pricing-nav">
                 Тарифы
               </Link>
             )}
@@ -94,7 +94,7 @@ export function PkHeader(props: {
         ) : (
           <span className="head-actions">
             {onPricing ? null : (
-              <Link className="pk-btn ghost" to="/pricing">
+              <Link className="pk-btn ghost" to="/pricing" data-pk="cta-pricing-nav">
                 Тарифы
               </Link>
             )}
