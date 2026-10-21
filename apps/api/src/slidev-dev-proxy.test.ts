@@ -1,3 +1,5 @@
+import { Socket } from "node:net";
+import type { IncomingMessage } from "node:http";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("./slidev-dev-pool.js", () => ({
@@ -5,7 +7,11 @@ vi.mock("./slidev-dev-pool.js", () => ({
 }));
 
 import { getSlidevDevSession } from "./slidev-dev-pool.js";
-import { liveDeckIdFromPath, viteHtmlIsSlideDocument } from "./slidev-dev-proxy.js";
+import {
+  liveDeckIdFromPath,
+  tryHandleSlidevDevUpgrade,
+  viteHtmlIsSlideDocument,
+} from "./slidev-dev-proxy.js";
 
 describe("liveDeckIdFromPath", () => {
   beforeEach(() => {
@@ -63,5 +69,43 @@ describe("viteHtmlIsSlideDocument", () => {
   it("keeps a real image response off the document path", () => {
     expect(viteHtmlIsSlideDocument("/thumbs/v2/1.webp", "image/webp")).toBe(false);
     expect(viteHtmlIsSlideDocument("/slide-1.jpg", "image/jpeg")).toBe(false);
+  });
+});
+
+describe("tryHandleSlidevDevUpgrade", () => {
+  const id = "bed0ddd0-7520-4a71-b0e7-21d899a7143a";
+
+  beforeEach(() => {
+    vi.mocked(getSlidevDevSession).mockReset();
+  });
+
+  it("swallows ECONNRESET on the client socket instead of killing the process", () => {
+    vi.mocked(getSlidevDevSession).mockReturnValue({
+      deckId: id,
+      workDir: "/tmp",
+      port: 1,
+      child: { exitCode: null } as never,
+      lastUsedAt: Date.now(),
+      ready: true,
+    });
+    const socket = new Socket();
+    const req = {
+      url: `/p/${id}/`,
+      headers: { host: "api.pokazo.ru" },
+    } as IncomingMessage;
+    const unhandled: Error[] = [];
+    const onUnhandled = (err: Error) => {
+      unhandled.push(err);
+    };
+    process.on("uncaughtException", onUnhandled);
+    try {
+      expect(tryHandleSlidevDevUpgrade(req, socket, Buffer.alloc(0))).toBe(true);
+      const reset = Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" });
+      expect(() => socket.emit("error", reset)).not.toThrow();
+    } finally {
+      process.off("uncaughtException", onUnhandled);
+      socket.destroy();
+    }
+    expect(unhandled).toEqual([]);
   });
 });

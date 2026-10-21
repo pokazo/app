@@ -63,12 +63,29 @@ export async function proxyHttpToSlidevDev(
   }
 }
 
+/**
+ * A TCP RST (iframe reload, nginx, Vite exit) emits `error` on the raw socket.
+ * With no listener Node treats that as fatal and the whole API exits — nginx then
+ * answers every in-flight `/p/` request with 502.
+ */
+function guardSocket(socket: Duplex, onError?: () => void): void {
+  socket.on("error", () => {
+    try {
+      onError?.();
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
 function proxyWebSocketUpgrade(
   req: IncomingMessage,
   socket: Duplex,
   head: Buffer,
   port: number,
 ): void {
+  let upstream: Duplex | undefined;
+  guardSocket(socket, () => upstream?.destroy());
   const headers = { ...req.headers, host: `[::1]:${port}` };
   const proxyReq = http.request({
     hostname: "::1",
@@ -78,6 +95,8 @@ function proxyWebSocketUpgrade(
     headers,
   });
   proxyReq.on("upgrade", (res, proxySocket, proxyHead) => {
+    upstream = proxySocket;
+    guardSocket(proxySocket, () => socket.destroy());
     let msg = "HTTP/1.1 101 Switching Protocols\r\n";
     for (const [k, v] of Object.entries(res.headers)) {
       if (v === undefined) continue;
@@ -91,12 +110,12 @@ function proxyWebSocketUpgrade(
     proxySocket.pipe(socket);
     socket.pipe(proxySocket);
   });
+  proxyReq.on("response", (res) => {
+    res.resume();
+    socket.destroy();
+  });
   proxyReq.on("error", () => {
-    try {
-      socket.destroy();
-    } catch {
-      /* ignore */
-    }
+    socket.destroy();
   });
   proxyReq.end();
 }
@@ -107,6 +126,7 @@ export function tryHandleSlidevDevUpgrade(
   socket: Duplex,
   head: Buffer,
 ): boolean {
+  guardSocket(socket);
   try {
     const host = req.headers.host ?? "localhost";
     const url = new URL(req.url ?? "/", `http://${host}`);

@@ -19,6 +19,9 @@ async function main() {
   }) as Server;
   attachDeckWebSocket(server);
   server.on("upgrade", (req, socket, head) => {
+    // Hijacked upgrade sockets are no longer covered by the HTTP server.
+    // An unhandled ECONNRESET here exits the process and nginx returns 502.
+    socket.on("error", () => {});
     if (tryHandleSlidevDevUpgrade(req, socket, head)) return;
     if (tryHandleDeckWsUpgrade(req, socket, head)) return;
     socket.destroy();

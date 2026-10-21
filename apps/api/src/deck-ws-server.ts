@@ -19,6 +19,7 @@ export function tryHandleDeckWsUpgrade(
   head: Buffer,
 ): boolean {
   if (!wss) return false;
+  socket.on("error", () => {});
   try {
     const host = req.headers.host ?? "localhost";
     const url = new URL(req.url ?? "/", `http://${host}`);
