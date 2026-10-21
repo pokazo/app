@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
@@ -17,7 +17,14 @@ import {
 import { isSafePath } from "./md-guard.js";
 import { toDeckDto, type DeckRow } from "./deck-dto.js";
 import { outlineTitle, slidesForView, slidesFromOutline, withImageThumbs } from "./view-meta.js";
-import { injectPlayerChromeHide, deckAssetCacheControl, deckAssetContentType } from "./player-chrome.js";
+import {
+  injectPlayerChromeHide,
+  deckAssetCacheControl,
+  deckAssetContentType,
+  deckAssetNotModified,
+  deckAssetValidators,
+} from "./player-chrome.js";
+import { requestWantsStaticPlayer } from "./slidev-dev-proxy.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { sanitizeAudience } from "./audience.js";
 import {
@@ -987,61 +994,76 @@ export function createApp() {
 
   app.get("/p/:id/*", async (c) => {
     const id = c.req.param("id");
-    // Owner + live Slidev: proxy Vite (HMR). Guests / no session → static dist.
-    // After a live move, thumbs in dist match slides.md but index.html is still
-    // the previous build. Never hand that player to the owner.
+    const reqUrl = new URL(c.req.url);
+    const pkStatic = requestWantsStaticPlayer(reqUrl.search);
+    // `?pkStatic=1` is the viewer iframe: built dist, never the Vite dev graph.
+    // A live session left dist behind slides.md — rebuild that player instead of
+    // compiling hundreds of dev modules on refresh.
     if (auth && pool && DECK_UUID.test(id)) {
-      const {
-        isSlidevDevLive,
-        slidevDevPoolEnabled,
-        ensureSlidevDev,
-        deckDistBehindMarkdown,
-      } = await import("./slidev-dev-pool.js");
+      const { isSlidevDevLive, deckDistBehindMarkdown, stopSlidevDev } = await import(
+        "./slidev-dev-pool.js"
+      );
       const dir = join(config.deckDataDir, id);
-      const db = pool;
-      const owner = async () => {
-        const session = await auth.api.getSession({ headers: c.req.raw.headers });
-        if (!session?.user) return false;
-        const { rows } = await db.query(`SELECT 1 FROM deck WHERE id=$1 AND user_id=$2`, [
-          id,
-          session.user.id,
-        ]);
-        return Boolean(rows[0]);
-      };
-      const proxyLive = async () => {
-        const { proxyHttpToSlidevDev, viteHtmlIsSlideDocument } = await import(
-          "./slidev-dev-proxy.js"
-        );
-        const proxied = await proxyHttpToSlidevDev(c.req.raw, id);
-        if (!proxied) return null;
-        const ct = proxied.headers.get("content-type") || "";
-        const pathname = new URL(c.req.url).pathname;
-        if (viteHtmlIsSlideDocument(pathname, ct)) {
-          const html = injectPlayerChromeHide(await proxied.text());
-          return new Response(html, {
-            status: proxied.status,
-            headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-          });
+      if (pkStatic) {
+        if (isSlidevDevLive(id)) {
+          await stopSlidevDev(id);
+          console.info(`[slidev-dev] stop for static player deck=${id}`);
         }
-        // File request that Vite answered with index.html — serve dist instead.
-        if (!ct.toLowerCase().includes("text/html")) return proxied;
-        return null;
-      };
-      if (!isSlidevDevLive(id) && slidevDevPoolEnabled() && deckDistBehindMarkdown(dir)) {
-        if (await owner()) {
+        if (deckDistBehindMarkdown(dir)) {
           try {
-            await ensureSlidevDev(id, dir);
-            console.info(`[slidev-dev] owner dist stale, live deck=${id}`);
+            const { rebuildStaleDeckDist } = await import("./deck-dist-rebuild.js");
+            await rebuildStaleDeckDist(id, dir);
           } catch (err) {
             console.warn(
-              `[slidev-dev] live over stale dist failed deck=${id}: ${String(err).slice(0, 200)}`,
+              `[dist] static rebuild failed deck=${id}: ${String(err).slice(0, 200)}`,
             );
           }
         }
-      }
-      if (isSlidevDevLive(id) && (await owner())) {
-        const live = await proxyLive();
-        if (live) return live;
+      } else {
+        const db = pool;
+        const owner = async () => {
+          const session = await auth.api.getSession({ headers: c.req.raw.headers });
+          if (!session?.user) return false;
+          const { rows } = await db.query(`SELECT 1 FROM deck WHERE id=$1 AND user_id=$2`, [
+            id,
+            session.user.id,
+          ]);
+          return Boolean(rows[0]);
+        };
+        const proxyLive = async () => {
+          const { proxyHttpToSlidevDev, viteHtmlIsSlideDocument, shouldProxyDeckToLive } =
+            await import("./slidev-dev-proxy.js");
+          if (!(await owner())) return null;
+          if (
+            !shouldProxyDeckToLive({
+              pkStatic: false,
+              owner: true,
+              live: isSlidevDevLive(id),
+            })
+          ) {
+            return null;
+          }
+          const proxied = await proxyHttpToSlidevDev(c.req.raw, id);
+          if (!proxied) return null;
+          const ct = proxied.headers.get("content-type") || "";
+          const pathname = new URL(c.req.url).pathname;
+          if (viteHtmlIsSlideDocument(pathname, ct)) {
+            const html = injectPlayerChromeHide(await proxied.text());
+            return new Response(html, {
+              status: proxied.status,
+              headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+            });
+          }
+          // File request that Vite answered with index.html — serve dist instead.
+          if (!ct.toLowerCase().includes("text/html")) return proxied;
+          return null;
+        };
+        // Do not boot Vite from a GET. A refresh used to block here and then
+        // download the dev module graph (~300 requests) before the slide painted.
+        if (isSlidevDevLive(id)) {
+          const live = await proxyLive();
+          if (live) return live;
+        }
       }
     }
     const rest = c.req.path.replace(`/p/${id}`, "") || "/";
@@ -1049,14 +1071,45 @@ export function createApp() {
     const rel = rest === "/" ? "index.html" : rest.replace(/^\//, "");
     const file = normalize(join(base, rel));
     if (!file.startsWith(normalize(base))) return c.text("no", 403);
-    const target = existsSync(file) ? file : join(base, "index.html");
+    let target = existsSync(file) ? file : "";
+    if (!target) {
+      const thumb = /^thumbs\/v2\/(\d+)\.webp$/.exec(rel);
+      if (thumb) {
+        const backup = join(config.deckDataDir, id, ".filmstrip-thumbs", `${thumb[1]}.webp`);
+        if (existsSync(backup) && normalize(backup).startsWith(normalize(join(config.deckDataDir, id)))) {
+          target = backup;
+        }
+      }
+    }
+    if (!target) target = join(base, "index.html");
     if (!existsSync(target)) return c.text("not ready", 404);
     const ext = extname(target);
+    const cacheControl = deckAssetCacheControl(ext, rel);
+    if (ext !== ".html") {
+      const st = await stat(target);
+      const validators = deckAssetValidators(st.size, st.mtimeMs);
+      const headers = {
+        "content-type": deckAssetContentType(ext),
+        "cache-control": cacheControl,
+        etag: validators.etag,
+        "last-modified": validators.lastModified,
+      };
+      if (
+        deckAssetNotModified(
+          c.req.header("if-none-match"),
+          c.req.header("if-modified-since"),
+          validators,
+        )
+      ) {
+        return new Response(null, { status: 304, headers });
+      }
+      const raw = await readFile(target);
+      return c.body(new Uint8Array(raw), 200, headers);
+    }
     const raw = await readFile(target);
-    const body = ext === ".html" ? injectPlayerChromeHide(raw.toString("utf8")) : new Uint8Array(raw);
-    return c.body(body, 200, {
+    return c.body(injectPlayerChromeHide(raw.toString("utf8")), 200, {
       "content-type": deckAssetContentType(ext),
-      "cache-control": deckAssetCacheControl(ext, rel),
+      "cache-control": cacheControl,
     });
   });
 

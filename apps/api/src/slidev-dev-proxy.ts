@@ -15,6 +15,25 @@ const DECK_ID_RE =
  * That HTML is the slide player only for a document path: no extension, `.html`, or trailing slash.
  * A real `image/*` (or any non-HTML) response is not a document — caller returns the proxy body.
  */
+/** Viewer iframe (`?pkStatic=1`) must be the built `dist`, not the Vite dev graph. */
+export function requestWantsStaticPlayer(search: string): boolean {
+  const q = search.startsWith("?") ? search.slice(1) : search;
+  return new URLSearchParams(q).has("pkStatic");
+}
+
+/**
+ * Proxy to Slidev dev only for an owner iframe that did not ask for the built player.
+ * A refresh with `pkStatic` stays on cached dist — the dev graph is hundreds of uncached modules.
+ */
+export function shouldProxyDeckToLive(opts: {
+  pkStatic: boolean;
+  owner: boolean;
+  live: boolean;
+}): boolean {
+  if (opts.pkStatic) return false;
+  return opts.owner && opts.live;
+}
+
 export function viteHtmlIsSlideDocument(pathname: string, contentType: string): boolean {
   if (!contentType.toLowerCase().includes("text/html")) return false;
   const path = (pathname.split("?")[0] ?? pathname).replace(/\/+$/, "/");

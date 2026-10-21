@@ -281,35 +281,21 @@ export async function applySlideStructure(opts: {
 
   // Must match generate/rewrite: absolute /p/:id/ so BASE_URL keeps images + router
   // under the deck path (base "./" resolves /slide-N.jpg to api origin → 404).
-  // Live Slidev (dev) pool: md write is enough — Vite HMR updates the owner iframe.
-  // A dead session must be restarted here. Falling through to `slidev build`
-  // takes ~6s and races the new dev process (prod: build=6504ms after exit 1).
-  const { isSlidevDevLive, markLiveDirty, slidevDevPoolEnabled, ensureSlidevDev } =
-    await import("./slidev-dev-pool.js");
-  let liveHmr = isSlidevDevLive(id);
-  if (!liveHmr && slidevDevPoolEnabled()) {
-    try {
-      await ensureSlidevDev(id, workDir);
-      liveHmr = isSlidevDevLive(id);
-    } catch (err) {
-      console.warn(
-        `[structure] live restart failed deck=${id}: ${String(err).slice(0, 200)}`,
-      );
-    }
+  // The viewer iframe is the built dist (`pkStatic`). Skipping this build and
+  // booting Vite instead makes the next refresh download the whole dev graph
+  // (~300 modules, tens of seconds) before the slide paints.
+  const { isSlidevDevLive, stopSlidevDev } = await import("./slidev-dev-pool.js");
+  if (isSlidevDevLive(id)) {
+    await stopSlidevDev(id);
   }
-  if (liveHmr) {
-    await markLiveDirty(workDir);
-    console.info(`[structure] skip build (live HMR) deck=${id} op=${op.op}`);
-  } else {
-    try {
-      await writeDeckActivity(workDir, activityLabelForPhase("structure-build"));
-    } catch {
-      /* optional */
-    }
-    await withDeckBuildPublish(id, "structure", async () => {
-      await buildSlidev(workDir, deckServeBase(id));
-    });
+  try {
+    await writeDeckActivity(workDir, activityLabelForPhase("structure-build"));
+  } catch {
+    /* optional */
   }
+  await withDeckBuildPublish(id, "structure", async () => {
+    await buildSlidev(workDir, deckServeBase(id));
+  });
 
   const sourceDir = filmstripThumbBackupDir(workDir);
   let thumbsOk = false;

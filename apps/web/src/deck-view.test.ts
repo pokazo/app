@@ -11,13 +11,21 @@ import {
 describe("embed urls", () => {
   it("keeps one deck URL without a slide index", () => {
     expect(embedDebugQuery()).toBe("");
-    expect(embedDeckUrl("https://api.pokazo.ru/p/abc/")).toBe("https://api.pokazo.ru/p/abc/?embedded");
-    expect(embedDeckUrl("https://api.pokazo.ru/p/abc")).toBe("https://api.pokazo.ru/p/abc/?embedded");
+    expect(embedDeckUrl("https://api.pokazo.ru/p/abc/")).toBe(
+      "https://api.pokazo.ru/p/abc/?embedded&pkStatic=1",
+    );
+    expect(embedDeckUrl("https://api.pokazo.ru/p/abc")).toBe(
+      "https://api.pokazo.ru/p/abc/?embedded&pkStatic=1",
+    );
   });
 
   it("uses Slidev path index with embedded flag", () => {
-    expect(embedSlideUrl("https://api.pokazo.ru/p/abc/", 3)).toBe("https://api.pokazo.ru/p/abc/3?embedded");
-    expect(embedSlideUrl("https://api.pokazo.ru/p/abc", 1)).toBe("https://api.pokazo.ru/p/abc/1?embedded");
+    expect(embedSlideUrl("https://api.pokazo.ru/p/abc/", 3)).toBe(
+      "https://api.pokazo.ru/p/abc/3?embedded&pkStatic=1",
+    );
+    expect(embedSlideUrl("https://api.pokazo.ru/p/abc", 1)).toBe(
+      "https://api.pokazo.ru/p/abc/1?embedded&pkStatic=1",
+    );
   });
 
   it("reposts navigate after the player iframe reloads on the same page", () => {

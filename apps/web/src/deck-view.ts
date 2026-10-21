@@ -6,12 +6,14 @@ export function embedDebugQuery(): string {
 
 export function embedDeckUrl(embedBase: string): string {
   const base = embedBase.endsWith("/") ? embedBase : `${embedBase}/`;
-  return `${base}?embedded${embedDebugQuery()}`;
+  // pkStatic: built dist. Without it the owner iframe is the Vite dev server
+  // and a refresh downloads the whole module graph before the slide paints.
+  return `${base}?embedded&pkStatic=1${embedDebugQuery()}`;
 }
 
 export function embedSlideUrl(embedBase: string, index: number): string {
   const base = embedBase.endsWith("/") ? embedBase : `${embedBase}/`;
-  return `${base}${index}?embedded${embedDebugQuery()}`;
+  return `${base}${index}?embedded&pkStatic=1${embedDebugQuery()}`;
 }
 
 export function slidevNavigateMessage(page: number) {

@@ -98,6 +98,79 @@ export const PLAYER_NAV_SCRIPT = `
     if (n && typeof n === "object" && "value" in n) n = n.value;
     return +n || 0;
   }
+  // Full-size /slide-N.jpg only for the visible slide and its neighbors.
+  // Slidev mounts every page; without this gate a refresh fetches every photo.
+  var imgSrcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+  function isSlidePhotoUrl(url) {
+    return /\\/slide-\\d+/i.test(String(url || ""));
+  }
+  function slideNoOf(img) {
+    var page = img.closest ? img.closest(".slidev-page") : null;
+    if (!page) return 0;
+    return +(page.getAttribute("data-slidev-no") || 0);
+  }
+  function currentPage() {
+    var n = pageNo(ctx());
+    if (n) return n;
+    var m = (location.pathname || "").match(/\\/(\\d+)\\/?$/);
+    return m ? +m[1] : 1;
+  }
+  function slidePhotoNear(slideNo, current) {
+    if (!(slideNo >= 1)) return false;
+    var cur = current >= 1 ? current : 1;
+    return Math.abs(slideNo - cur) <= 1;
+  }
+  function pkApplySlidePhotos(forcePage) {
+    if (!imgSrcDesc || typeof imgSrcDesc.set !== "function") return;
+    var cur = forcePage || currentPage();
+    var nodes = document.querySelectorAll("img[data-pk-src]");
+    for (var i = 0; i < nodes.length; i++) {
+      var img = nodes[i];
+      var url = img.getAttribute("data-pk-src") || "";
+      if (!url || !slidePhotoNear(slideNoOf(img), cur)) continue;
+      var now = imgSrcDesc.get ? imgSrcDesc.get.call(img) : "";
+      if (now === url) continue;
+      try {
+        if (now && new URL(url, location.href).href === now) continue;
+      } catch (eSame) {}
+      imgSrcDesc.set.call(img, url);
+    }
+  }
+  var photoQueued = false;
+  function scheduleSlidePhotos() {
+    if (photoQueued) return;
+    photoQueued = true;
+    requestAnimationFrame(function () {
+      photoQueued = false;
+      pkApplySlidePhotos();
+    });
+  }
+  if (imgSrcDesc && typeof imgSrcDesc.set === "function") {
+    try {
+      Object.defineProperty(HTMLImageElement.prototype, "src", {
+        configurable: true,
+        enumerable: true,
+        get: function () {
+          return imgSrcDesc.get ? imgSrcDesc.get.call(this) : "";
+        },
+        set: function (v) {
+          var url = String(v || "");
+          if (!isSlidePhotoUrl(url)) {
+            imgSrcDesc.set.call(this, v);
+            return;
+          }
+          this.setAttribute("data-pk-src", url);
+          if (slidePhotoNear(slideNoOf(this), currentPage())) imgSrcDesc.set.call(this, url);
+        }
+      });
+    } catch (ePhoto) {}
+  }
+  if (window.MutationObserver && document.documentElement) {
+    new MutationObserver(function () { scheduleSlidePhotos(); }).observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
   function disableVueTransition(slidev) {
     if (!slidev) return;
     try { slidev.configs.transition = false; } catch (e) {}
@@ -250,6 +323,7 @@ export const PLAYER_NAV_SCRIPT = `
     go(next.target, next.clickCount);
   }
   function animateThenGo(slidev, target, clickCount) {
+    pkApplySlidePhotos(target);
     var cur = pageNo(slidev);
     if (!cur || target === cur) {
       log("skip same-page", { cur: cur, target: target, clickCount: clickCount });
@@ -347,6 +421,7 @@ export const PLAYER_NAV_SCRIPT = `
     var slidev = ctx();
     if (!slidev) return false;
     disableVueTransition(slidev);
+    pkApplySlidePhotos(pageNo(slidev));
     log("boot", { page: pageNo(slidev) });
     return true;
   }
@@ -402,6 +477,38 @@ const VERSIONED_IMAGE = /-[a-f0-9]{8,12}(?:\.(?:jpe?g|png|webp|gif)|\.thumb\.web
  * Plain `/slide-N.jpg` is rewritten in place on rewrite — must NOT be immutable
  * or the player keeps showing the old picture after «сделай другую картинку».
  */
+/** Current slide plus one neighbor on each side. Slide 0 means the img is not in a page yet. */
+export function slidePhotoShouldLoad(slideNo: number, current: number): boolean {
+  if (!Number.isFinite(slideNo) || slideNo < 1) return false;
+  const cur = Number.isFinite(current) && current >= 1 ? current : 1;
+  return Math.abs(slideNo - cur) <= 1;
+}
+
+export function deckAssetValidators(
+  size: number,
+  mtimeMs: number,
+): { etag: string; lastModified: string } {
+  const etag = `W/"${Math.max(0, Math.round(size))}-${Math.round(mtimeMs)}"`;
+  return { etag, lastModified: new Date(mtimeMs).toUTCString() };
+}
+
+/** True when the browser already has this exact file (`no-cache` revalidation). */
+export function deckAssetNotModified(
+  ifNoneMatch: string | undefined,
+  ifModifiedSince: string | undefined,
+  validators: { etag: string; lastModified: string },
+): boolean {
+  const inm = ifNoneMatch?.trim();
+  if (inm) {
+    if (inm === "*") return true;
+    return inm.split(",").some((part) => part.trim() === validators.etag);
+  }
+  if (!ifModifiedSince) return false;
+  const since = Date.parse(ifModifiedSince);
+  const modified = Date.parse(validators.lastModified);
+  return Number.isFinite(since) && Number.isFinite(modified) && modified <= since;
+}
+
 export function deckAssetCacheControl(ext: string, relPath = ""): string {
   const base = relPath.replace(/^.*\//, "");
   if (IMAGE_EXTS.has(ext)) {

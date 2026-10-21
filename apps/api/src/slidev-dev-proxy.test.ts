@@ -10,9 +10,26 @@ import { getSlidevDevSession } from "./slidev-dev-pool.js";
 import {
   forwardUpgradeFrames,
   liveDeckIdFromPath,
+  requestWantsStaticPlayer,
+  shouldProxyDeckToLive,
   tryHandleSlidevDevUpgrade,
   viteHtmlIsSlideDocument,
 } from "./slidev-dev-proxy.js";
+
+describe("static player vs live proxy", () => {
+  it("detects pkStatic on the viewer iframe", () => {
+    expect(requestWantsStaticPlayer("?embedded&pkStatic=1")).toBe(true);
+    expect(requestWantsStaticPlayer("embedded")).toBe(false);
+    expect(requestWantsStaticPlayer("?embedded=true")).toBe(false);
+  });
+
+  it("does not proxy a refresh onto the Vite dev graph", () => {
+    expect(shouldProxyDeckToLive({ pkStatic: true, owner: true, live: true })).toBe(false);
+    expect(shouldProxyDeckToLive({ pkStatic: false, owner: true, live: true })).toBe(true);
+    expect(shouldProxyDeckToLive({ pkStatic: false, owner: false, live: true })).toBe(false);
+    expect(shouldProxyDeckToLive({ pkStatic: false, owner: true, live: false })).toBe(false);
+  });
+});
 
 describe("liveDeckIdFromPath", () => {
   beforeEach(() => {
