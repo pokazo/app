@@ -151,6 +151,23 @@ export async function syncFilmstripThumbBackup(
   await backupFilmstripThumbs(workDir, distDir, slideCount);
 }
 
+/**
+ * Pages to re-shoot after a structure build.
+ * Remap can copy a stale backup (filmstrip then shows the next slide).
+ * The built player is the source of truth — recapture every page, even
+ * when remap reported ok and no files are missing.
+ */
+export function filmstripRecaptureAfterStructure(opts: {
+  newCount: number;
+  remapOk?: boolean;
+  missing?: number[];
+}): number[] {
+  void opts.remapOk;
+  void opts.missing;
+  const n = Math.max(0, Math.min(16, Math.floor(opts.newCount)));
+  return Array.from({ length: n }, (_, i) => i + 1);
+}
+
 /** Test helper. */
 export async function writeFakeThumb(dir: string, n: number, body: string): Promise<void> {
   await mkdir(dir, { recursive: true });

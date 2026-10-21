@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   backupFilmstripThumbs,
+  filmstripRecaptureAfterStructure,
   filmstripThumbBackupDir,
   remapFilmstripThumbs,
   shiftFilmstripThumbsAfterDelete,
@@ -144,5 +145,33 @@ describe("shiftFilmstripThumbsAfterInsert", () => {
     expect(readDistThumb(dist, 2)).toBe(null);
     expect(readDistThumb(dist, 3)).toBe("B");
     expect(readDistThumb(dist, 4)).toBe("C");
+  });
+});
+
+describe("filmstripRecaptureAfterStructure", () => {
+  it("re-shoots every page after a move even when remap reported ok", () => {
+    expect(
+      filmstripRecaptureAfterStructure({
+        newCount: 9,
+        remapOk: true,
+        missing: [],
+      }),
+    ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it("still recaptures every page after insert, not only the new slot", () => {
+    expect(
+      filmstripRecaptureAfterStructure({
+        newCount: 4,
+        remapOk: true,
+        missing: [2],
+      }),
+    ).toEqual([1, 2, 3, 4]);
+  });
+
+  it("re-shoots every page after a theme rebuild the same way", () => {
+    expect(filmstripRecaptureAfterStructure({ newCount: 6, remapOk: true, missing: [] })).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
   });
 });

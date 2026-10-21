@@ -9,6 +9,7 @@ import {
 } from "./player-chrome.js";
 import { countDeckSlides } from "./deck-export-render.js";
 import { filmstripThumbPathV2 } from "./filmstrip-thumb-path.js";
+import { filmstripRecaptureAfterStructure } from "./filmstrip-thumb-remap.js";
 import {
   FILMSTRIP_CAPTURE_H,
   FILMSTRIP_CAPTURE_READY_SELECTOR,
@@ -258,6 +259,26 @@ export async function ensureDeckFilmstripThumbs(opts: {
     indices: missingBefore,
   });
   return { missingBefore, written: result.written };
+}
+
+/**
+ * Re-shoot every filmstrip page from the current dist player.
+ * Slot-numbered WebPs are a cache, not a second deck order.
+ */
+export async function recaptureAllFilmstripThumbs(opts: {
+  workDir: string;
+  deckId: string;
+  slideCount?: number;
+}): Promise<{ written: number; paths: string[] }> {
+  const slideCount = opts.slideCount ?? (await countDeckSlides(opts.workDir));
+  const indices = filmstripRecaptureAfterStructure({ newCount: slideCount });
+  const result = await renderDeckFilmstripThumbs({
+    workDir: opts.workDir,
+    deckId: opts.deckId,
+    slideCount,
+    indices,
+  });
+  return { written: result.written, paths: result.paths };
 }
 
 /** Best-effort thumbs after build — never fail the build; still fill gaps when possible. */

@@ -10,6 +10,7 @@ import {
   filmstripThumbPath,
   filmstripThumbPathV2,
   missingFilmstripThumbIndices,
+  recaptureAllFilmstripThumbs,
   renderDeckFilmstripThumbs,
 } from "./deck-thumbs.js";
 import { buildSlidev, writeSlides } from "./slidev.js";
@@ -72,6 +73,14 @@ describe("renderDeckFilmstripThumbs requires dist", () => {
     await writeFile(join(dir, "slides.md"), "# x\n", "utf8");
     await expect(
       renderDeckFilmstripThumbs({ workDir: dir, deckId: "x", slideCount: 1 }),
+    ).rejects.toThrow(/dist not ready/);
+  });
+
+  it("recaptureAllFilmstripThumbs also requires the built player", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pokazo-no-recapture-"));
+    await writeFile(join(dir, "slides.md"), "# x\n", "utf8");
+    await expect(
+      recaptureAllFilmstripThumbs({ workDir: dir, deckId: "x", slideCount: 9 }),
     ).rejects.toThrow(/dist not ready/);
   });
 });

@@ -99,8 +99,8 @@ export async function applyDeckTheme(
       await withDeckBuildPublish(deckId, "theme", async () => {
         await buildSlidev(dir, deckServeBase(deckId));
       });
-      const { ensureDeckFilmstripThumbs } = await import("./deck-thumbs.js");
-      await ensureDeckFilmstripThumbs({ workDir: dir, deckId });
+      const { recaptureAllFilmstripThumbs } = await import("./deck-thumbs.js");
+      await recaptureAllFilmstripThumbs({ workDir: dir, deckId });
     });
 
   await withDeckDistLock(id, () => rebuild(workDir, id));

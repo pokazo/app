@@ -268,9 +268,10 @@ export async function applySlideStructure(opts: {
   );
 
   const distDir = join(workDir, "dist");
-  // slidev build empties dist — stash thumbs outside first, remap after.
-  // Hold the dist lock across backup → build → remap so a pkStatic rebuild
-  // cannot restore the pre-insert backup onto the shifted filmstrip.
+  // slidev build empties dist — stash thumbs so the filmstrip is not blank
+  // during recapture. Remap is only a placeholder; the new player is reshot.
+  // Hold the dist lock across backup → build → remap → recapture so a
+  // pkStatic rebuild cannot restore a pre-edit backup onto the new shots.
   const {
     backupFilmstripThumbs,
     filmstripThumbBackupDir,
@@ -334,20 +335,7 @@ export async function applySlideStructure(opts: {
           oldCount: oldViewCount,
         });
         if (shifted.ok) {
-          try {
-            const { renderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
-            await renderDeckFilmstripThumbs({
-              workDir,
-              deckId: id,
-              slideCount: newViewCount,
-              indices: [shifted.newIndex],
-            });
-            thumbsOk = true;
-          } catch (err) {
-            console.warn(
-              `[structure] thumb capture insert ${id}: ${String(err).slice(0, 200)}`,
-            );
-          }
+          thumbsOk = true;
         } else {
           console.warn(
             `[structure] thumb remap insert missing=${shifted.missing.join(",")} deck=${id}`,
@@ -358,8 +346,18 @@ export async function applySlideStructure(opts: {
       console.warn(`[structure] thumb remap ${id}: ${String(err).slice(0, 200)}`);
     }
 
-    const { missingFilmstripThumbIndices, ensureDeckFilmstripThumbs } =
+    const { recaptureAllFilmstripThumbs, missingFilmstripThumbIndices, ensureDeckFilmstripThumbs } =
       await import("./deck-thumbs.js");
+    try {
+      await recaptureAllFilmstripThumbs({
+        workDir,
+        deckId: id,
+        slideCount: newViewCount,
+      });
+      thumbsOk = true;
+    } catch (err) {
+      console.warn(`[structure] thumb recapture ${id}: ${String(err).slice(0, 200)}`);
+    }
     if (!thumbsOk || missingFilmstripThumbIndices(distDir, newViewCount).length > 0) {
       try {
         await ensureDeckFilmstripThumbs({

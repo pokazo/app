@@ -507,6 +507,10 @@ export function DeckView() {
             setStageReady(false);
             setEmbedKey((k) => k + 1);
           }
+          if (pendingThumbSyncRef.current) {
+            pendingThumbSyncRef.current = false;
+            setThumbRev((n) => n + 1);
+          }
           markRewriteBusy(false);
           setThemeBusy(false);
           seenServerBuildingRef.current = false;
@@ -752,6 +756,7 @@ export function DeckView() {
     try {
       await changeDeckTheme(id, theme);
       acceptedPollGenRef.current = pollGenRef.current;
+      pendingThumbSyncRef.current = true;
       setDeckTheme(theme);
       setThemeOpen(false);
       setBuilding(true);
@@ -784,8 +789,8 @@ export function DeckView() {
       const accepted = await request();
       acceptedPollGenRef.current = pollGenRef.current;
       stayOnSlideRef.current = focusAfterStructure(accepted.slide, Math.max(last, accepted.slide));
+      pendingThumbSyncRef.current = true;
       if (live) {
-        pendingThumbSyncRef.current = true;
         // Job is markdown + HMR (tens of ms). Do not wait for a poll that
         // misses rewrite.json and then paints «Собираем остальные слайды…».
         markRewriteBusy(false);
