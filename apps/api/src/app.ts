@@ -998,10 +998,11 @@ export function createApp() {
         deckDistBehindMarkdown,
       } = await import("./slidev-dev-pool.js");
       const dir = join(config.deckDataDir, id);
+      const db = pool;
       const owner = async () => {
         const session = await auth.api.getSession({ headers: c.req.raw.headers });
         if (!session?.user) return false;
-        const { rows } = await pool.query(`SELECT 1 FROM deck WHERE id=$1 AND user_id=$2`, [
+        const { rows } = await db.query(`SELECT 1 FROM deck WHERE id=$1 AND user_id=$2`, [
           id,
           session.user.id,
         ]);
