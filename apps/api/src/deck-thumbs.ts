@@ -3,22 +3,29 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join, normalize } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-chromium";
-import sharp from "sharp";
 import {
   deckAssetContentType,
   injectPlayerChromeHide,
 } from "./player-chrome.js";
 import { countDeckSlides } from "./deck-export-render.js";
 import { filmstripThumbPathV2 } from "./filmstrip-thumb-path.js";
+import {
+  FILMSTRIP_CAPTURE_H,
+  FILMSTRIP_CAPTURE_READY_SELECTOR,
+  FILMSTRIP_CAPTURE_SELECTOR,
+  FILMSTRIP_CAPTURE_W,
+  FILMSTRIP_THUMB_WIDTH,
+  FILMSTRIP_WEBP_QUALITY,
+  pngToFilmstripWebp,
+} from "./slide-capture.js";
 
 export { filmstripThumbPath, filmstripThumbPathV2 } from "./filmstrip-thumb-path.js";
-
-/** Capture viewport — matches player aspect; then downscale to WebP. */
-export const FILMSTRIP_CAPTURE_W = 1280;
-export const FILMSTRIP_CAPTURE_H = 720;
-/** Filmstrip slot ~176 CSS px; 2× retina → ~360–400. */
-export const FILMSTRIP_THUMB_WIDTH = 400;
-export const FILMSTRIP_WEBP_QUALITY = 72;
+export {
+  FILMSTRIP_CAPTURE_H,
+  FILMSTRIP_CAPTURE_W,
+  FILMSTRIP_THUMB_WIDTH,
+  FILMSTRIP_WEBP_QUALITY,
+} from "./slide-capture.js";
 
 /** Legacy v1 abs path — kept for readers; new builds do not write here. */
 export function filmstripThumbAbs(distDir: string, slidevIndex: number): string {
@@ -112,17 +119,15 @@ async function captureSlideThumb(opts: {
   const { page, port, deckId, dist, index } = opts;
   const url = `http://127.0.0.1:${port}/p/${deckId}/${index}?embedded`;
   await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
-  await page.waitForSelector("#slide-container", { timeout: 30_000 });
+  await page.waitForSelector(FILMSTRIP_CAPTURE_READY_SELECTOR, { timeout: 30_000 });
+  await page.waitForSelector(FILMSTRIP_CAPTURE_SELECTOR, { timeout: 30_000 });
   const loading = page.locator(".slidev-slide-loading");
   if ((await loading.count()) > 0) {
     await loading.first().waitFor({ state: "detached", timeout: 30_000 }).catch(() => {});
   }
   await new Promise((r) => setTimeout(r, 250));
-  const png = Buffer.from(await page.locator("#slide-container").screenshot({ type: "png" }));
-  const webp = await sharp(png)
-    .resize({ width: FILMSTRIP_THUMB_WIDTH, withoutEnlargement: true })
-    .webp({ quality: FILMSTRIP_WEBP_QUALITY })
-    .toBuffer();
+  const png = Buffer.from(await page.locator(FILMSTRIP_CAPTURE_SELECTOR).screenshot({ type: "png" }));
+  const webp = await pngToFilmstripWebp(png);
   const abs = filmstripThumbAbsV2(dist, index);
   await writeFile(abs, webp);
   const path = filmstripThumbPathV2(index);

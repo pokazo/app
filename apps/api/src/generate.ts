@@ -27,6 +27,7 @@ import { runTopicResearch } from "./research.js";
 import { resolveDeckTheme } from "./theme-pick.js";
 import { sanitizePickerTheme, type SelectableThemeId } from "./themes.js";
 import { createPhaseTimer } from "./timing.js";
+import { withDeckDistLock } from "./deck-dist-lock.js";
 import { withDeckBuildPublish } from "./deck-ws-publish.js";
 import {
   activityLabelForPhase,
@@ -375,27 +376,29 @@ export async function generateDeck(opts: {
     }
   };
   const buildAndGate = async (label: string) => {
-    const kind = label === "preview" ? "preview" : "final";
-    await setActivity(activityLabelForPhase(label === "preview" ? "preview" : "final_build"));
-    await withDeckBuildPublish(opts.id, kind, async () => {
-      await guardWorkSlides(opts.workDir, theme);
-      const t0 = Date.now();
-      await buildSlidev(opts.workDir, base);
-      const buildMs = Date.now() - t0;
-      let gateMs = 0;
-      if (shouldRunLayoutRenderGate(label) && process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
-        const g0 = Date.now();
-        const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
-        await assertDeckLayoutsRender(opts.workDir, opts.id);
-        gateMs = Date.now() - g0;
-      }
-      const mdNow = await readFile(join(opts.workDir, "slides.md"), "utf8").catch(() => "");
-      const thumbCount = mdNow ? countSlidesInMarkdown(mdNow) : undefined;
-      const th0 = Date.now();
-      await renderThumbs(thumbCount);
-      console.info(
-        `[timing] ${label} build=${buildMs}ms gate=${gateMs}ms thumbs=${Date.now() - th0}ms`,
-      );
+    await withDeckDistLock(opts.id, async () => {
+      const kind = label === "preview" ? "preview" : "final";
+      await setActivity(activityLabelForPhase(label === "preview" ? "preview" : "final_build"));
+      await withDeckBuildPublish(opts.id, kind, async () => {
+        await guardWorkSlides(opts.workDir, theme);
+        const t0 = Date.now();
+        await buildSlidev(opts.workDir, base);
+        const buildMs = Date.now() - t0;
+        let gateMs = 0;
+        if (shouldRunLayoutRenderGate(label) && process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+          const g0 = Date.now();
+          const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
+          await assertDeckLayoutsRender(opts.workDir, opts.id);
+          gateMs = Date.now() - g0;
+        }
+        const mdNow = await readFile(join(opts.workDir, "slides.md"), "utf8").catch(() => "");
+        const thumbCount = mdNow ? countSlidesInMarkdown(mdNow) : undefined;
+        const th0 = Date.now();
+        await renderThumbs(thumbCount);
+        console.info(
+          `[timing] ${label} build=${buildMs}ms gate=${gateMs}ms thumbs=${Date.now() - th0}ms`,
+        );
+      });
     });
   };
 
@@ -439,13 +442,15 @@ export async function generateDeck(opts: {
         try {
           const t0 = Date.now();
           await setActivity(activityLabelForPhase("preview"));
-          await withDeckBuildPublish(opts.id, "progressive", async () => {
-            await guardWorkSlides(opts.workDir, theme);
-            await buildSlidev(opts.workDir, base);
-            builtSlideCount = mdCount;
-            await writePreviewBuild(opts.workDir, { builtSlideCount });
-            await renderThumbs(builtSlideCount);
-          });
+          await withDeckDistLock(opts.id, () =>
+            withDeckBuildPublish(opts.id, "progressive", async () => {
+              await guardWorkSlides(opts.workDir, theme);
+              await buildSlidev(opts.workDir, base);
+              builtSlideCount = mdCount;
+              await writePreviewBuild(opts.workDir, { builtSlideCount });
+              await renderThumbs(builtSlideCount);
+            }),
+          );
           console.info(
             `[generate] progressive preview ok slides=${builtSlideCount} build=${Date.now() - t0}ms`,
           );

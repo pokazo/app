@@ -10,6 +10,7 @@ import {
   filmstripThumbBackupDir,
   remapFilmstripThumbs,
 } from "./filmstrip-thumb-remap.js";
+import { withDeckDistLock } from "./deck-dist-lock.js";
 import { buildSlidev, deckServeBase } from "./slidev.js";
 import { deckDistBehindMarkdown, stopSlidevDev } from "./slidev-dev-pool.js";
 
@@ -19,7 +20,7 @@ export async function rebuildStaleDeckDist(deckId: string, workDir: string): Pro
   if (!deckDistBehindMarkdown(workDir)) return;
   const existing = inflight.get(deckId);
   if (existing) return existing;
-  const job = rebuild(deckId, workDir).finally(() => {
+  const job = withDeckDistLock(deckId, () => rebuild(deckId, workDir)).finally(() => {
     inflight.delete(deckId);
   });
   inflight.set(deckId, job);

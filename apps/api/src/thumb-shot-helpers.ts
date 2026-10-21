@@ -27,7 +27,7 @@ export const FILMSTRIP_THUMB_CSS = `
   .deck-thumb-img, .deck-thumb-blank {
     position: absolute; inset: 0; width: 100%; height: 100%; display: block;
   }
-  .deck-thumb-img { object-fit: cover; object-position: center; }
+  .deck-thumb-img { object-fit: contain; object-position: center; background: #eee; }
   .deck-thumb-blank { background: #eee; }
   .deck-thumb-n {
     position: absolute; top: 6px; left: 6px; z-index: 2; min-width: 20px;

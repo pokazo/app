@@ -1313,8 +1313,9 @@ body.is-deck-thumbs-resizing * {
   display: block;
 }
 .deck-thumb-img {
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
+  background: var(--pk-paper-2);
 }
 .deck-thumb-blank {
   background: var(--pk-paper-2);

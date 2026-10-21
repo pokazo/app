@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { activityLabelForPhase, writeDeckActivity } from "./activity.js";
+import { withDeckDistLock } from "./deck-dist-lock.js";
 import { withDeckBuildPublish } from "./deck-ws-publish.js";
 import { guardMarkdown } from "./md-guard.js";
 import { writeRewriteStatus } from "./rewrite-status.js";
@@ -102,7 +103,7 @@ export async function applyDeckTheme(
       await ensureDeckFilmstripThumbs({ workDir: dir, deckId });
     });
 
-  await rebuild(workDir, id);
+  await withDeckDistLock(id, () => rebuild(workDir, id));
 
   await writeRewriteStatus(workDir, {
     slide: 1,

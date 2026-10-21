@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { config } from "./env.js";
 import { buildSlidev, deckServeBase } from "./slidev.js";
+import { withDeckDistLock } from "./deck-dist-lock.js";
 import { withDeckBuildPublish } from "./deck-ws-publish.js";
 import { guardMarkdown } from "./md-guard.js";
 import { withSlidevMcp } from "./slidev-mcp.js";
@@ -394,20 +395,22 @@ async function rewriteHeroSlide(ctx: RewriteCtx): Promise<void> {
   let md = await guardWorkSlides(workDir, theme);
   const base = deckServeBase(id);
   const buildAndGate = async () => {
-    const bust = await bustSlideImageCache({ workDir, slidevIndex: 1 });
-    if (bust.changed) {
-      console.info(`[rewrite] image cache-bust ${bust.from} → ${bust.to} deck=${id}`);
-    }
-    md = await guardWorkSlides(workDir, theme);
-    await activity.set(activityLabelForPhase("rewrite-build"));
-    await withDeckBuildPublish(id, "rewrite", async () => {
-      await buildSlidev(workDir, base);
-      if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
-        const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
-        await assertDeckLayoutsRender(workDir, id);
+    await withDeckDistLock(id, async () => {
+      const bust = await bustSlideImageCache({ workDir, slidevIndex: 1 });
+      if (bust.changed) {
+        console.info(`[rewrite] image cache-bust ${bust.from} → ${bust.to} deck=${id}`);
       }
-      const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
-      await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });
+      md = await guardWorkSlides(workDir, theme);
+      await activity.set(activityLabelForPhase("rewrite-build"));
+      await withDeckBuildPublish(id, "rewrite", async () => {
+        await buildSlidev(workDir, base);
+        if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+          const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
+          await assertDeckLayoutsRender(workDir, id);
+        }
+        const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
+        await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });
+      });
     });
   };
 
@@ -537,20 +540,22 @@ async function rewriteBodySlide(ctx: RewriteCtx): Promise<void> {
   let md = await guardWorkSlides(workDir, theme);
   const base = deckServeBase(id);
   const buildAndGate = async () => {
-    const bust = await bustSlideImageCache({ workDir, slidevIndex });
-    if (bust.changed) {
-      console.info(`[rewrite] image cache-bust ${bust.from} → ${bust.to} deck=${id}`);
-    }
-    md = await guardWorkSlides(workDir, theme);
-    await activity.set(activityLabelForPhase("rewrite-build"));
-    await withDeckBuildPublish(id, "rewrite", async () => {
-      await buildSlidev(workDir, base);
-      if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
-        const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
-        await assertDeckLayoutsRender(workDir, id);
+    await withDeckDistLock(id, async () => {
+      const bust = await bustSlideImageCache({ workDir, slidevIndex });
+      if (bust.changed) {
+        console.info(`[rewrite] image cache-bust ${bust.from} → ${bust.to} deck=${id}`);
       }
-      const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
-      await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });
+      md = await guardWorkSlides(workDir, theme);
+      await activity.set(activityLabelForPhase("rewrite-build"));
+      await withDeckBuildPublish(id, "rewrite", async () => {
+        await buildSlidev(workDir, base);
+        if (process.env.SKIP_LAYOUT_RENDER_GATE !== "1") {
+          const { assertDeckLayoutsRender } = await import("./layout-render-gate.js");
+          await assertDeckLayoutsRender(workDir, id);
+        }
+        const { tryRenderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
+        await tryRenderDeckFilmstripThumbs({ workDir, deckId: id });
+      });
     });
   };
 
