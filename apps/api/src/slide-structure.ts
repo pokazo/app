@@ -329,7 +329,7 @@ export async function applySlideStructure(opts: {
         afterIndex: op.after,
         oldCount: oldViewCount,
       });
-      if (shifted.ok && !liveHmr) {
+      if (shifted.ok) {
         try {
           const { renderDeckFilmstripThumbs } = await import("./deck-thumbs.js");
           await renderDeckFilmstripThumbs({
@@ -344,8 +344,6 @@ export async function applySlideStructure(opts: {
             `[structure] thumb capture insert ${id}: ${String(err).slice(0, 200)}`,
           );
         }
-      } else if (shifted.ok && liveHmr) {
-        thumbsOk = true; // shifted existing thumbs; new slot blank until rebuild
       } else {
         console.warn(
           `[structure] thumb remap insert missing=${shifted.missing.join(",")} deck=${id}`,
@@ -356,24 +354,18 @@ export async function applySlideStructure(opts: {
     console.warn(`[structure] thumb remap ${id}: ${String(err).slice(0, 200)}`);
   }
 
-  // Live HMR: do not Playwright-capture thumbs from stale dist (would reintroduce multi-second lag).
-  if (!liveHmr) {
-    const { missingFilmstripThumbIndices, ensureDeckFilmstripThumbs } =
-      await import("./deck-thumbs.js");
-    if (!thumbsOk || missingFilmstripThumbIndices(distDir, newViewCount).length > 0) {
-      try {
-        await ensureDeckFilmstripThumbs({
-          workDir,
-          deckId: id,
-          slideCount: newViewCount,
-        });
-      } catch (err) {
-        console.warn(`[structure] thumbs fallback ${id}: ${String(err).slice(0, 200)}`);
-      }
+  const { missingFilmstripThumbIndices, ensureDeckFilmstripThumbs } =
+    await import("./deck-thumbs.js");
+  if (!thumbsOk || missingFilmstripThumbIndices(distDir, newViewCount).length > 0) {
+    try {
+      await ensureDeckFilmstripThumbs({
+        workDir,
+        deckId: id,
+        slideCount: newViewCount,
+      });
+    } catch (err) {
+      console.warn(`[structure] thumbs fallback ${id}: ${String(err).slice(0, 200)}`);
     }
-  } else if (op.op === "insert") {
-    // Insert capture needs a built page — skip until next full build / pool eviction.
-    console.info(`[structure] skip insert thumb capture (live HMR) deck=${id}`);
   }
 
   try {
