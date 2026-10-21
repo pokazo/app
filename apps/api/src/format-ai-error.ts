@@ -68,8 +68,18 @@ export function formatAiError(err: unknown, maxLen = AI_ERROR_MAX_LEN): string {
     }
   }
 
+  const geminiSchemaReject =
+    statusCode === 400 &&
+    (body?.includes("INVALID_ARGUMENT") ?? false) &&
+    (body?.includes("Google AI Studio") ?? false);
+
   const parts: string[] = [`${name}: ${message}`];
   if (statusCode != null) parts.push(`status=${statusCode}`);
+  if (geminiSchemaReject) {
+    parts.push(
+      "Gemini отклонил JSON Schema (часто maxItems). Outline fallback должен использовать gemini-json-schema; если видите это после деплоя — проверьте LLM_OUTLINE_MODEL.",
+    );
+  }
   if (providerMsg && providerMsg !== message) parts.push(providerMsg);
   if (body) parts.push(`body=${body}`);
   if (url) {

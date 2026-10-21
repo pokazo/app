@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
+import { generateObjectSchemaForProvider } from "./gemini-json-schema.js";
 import { join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { config } from "./env.js";
@@ -239,7 +240,7 @@ export async function reviseOutlineSlide(opts: {
     }
     const result = await generateObject({
       model: model(config.outlineModel),
-      schema: OutlineSlide,
+      schema: generateObjectSchemaForProvider(OutlineSlide, config.outlineModel),
       prompt: p,
     });
     return lockVisual(result.object);

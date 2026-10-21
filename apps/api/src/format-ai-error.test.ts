@@ -28,6 +28,26 @@ describe("formatAiError", () => {
     );
   });
 
+  it("adds Gemini schema hint for INVALID_ARGUMENT from Google AI Studio", () => {
+    const err = new APICallError({
+      message: "Provider returned error",
+      url: "http://91.207.75.72:8787/api/v1/chat/completions",
+      requestBodyValues: {},
+      statusCode: 400,
+      responseBody: JSON.stringify({
+        error: {
+          message: "Provider returned error",
+          metadata: {
+            raw: '{"error":{"status":"INVALID_ARGUMENT"}}',
+            provider_name: "Google AI Studio",
+          },
+        },
+      }),
+      isRetryable: false,
+    });
+    expect(formatAiError(err)).toMatch(/Gemini отклонил JSON Schema/);
+  });
+
   it("truncates to maxLen", () => {
     const err = new APICallError({
       message: "Provider returned error",

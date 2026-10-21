@@ -235,6 +235,7 @@ export async function generateDeck(opts: {
   console.info(`[generate] outline via layout MCP start`);
   const outlined = await generateOutlineWithLayoutMcp({
     model: outlineModel,
+    outlineModelId: config.outlineModel,
     reviseModel: outlineModel,
     topic: opts.topic,
     locale: opts.locale,

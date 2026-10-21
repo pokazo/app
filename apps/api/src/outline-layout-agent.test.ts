@@ -35,6 +35,7 @@ describe("createSubmitOutlineTool", () => {
     let accepted: OutlineT | null = null;
     const t = createSubmitOutlineTool({
       slideCount: 4,
+      outlineModelId: "openai/gpt-4.1-mini",
       onAccepted: (o) => {
         accepted = o;
       },
@@ -62,6 +63,7 @@ describe("createSubmitOutlineTool", () => {
     let accepted: OutlineT | null = null;
     const t = createSubmitOutlineTool({
       slideCount: 3,
+      outlineModelId: "openai/gpt-4.1-mini",
       onAccepted: (o) => {
         accepted = o;
       },
@@ -132,6 +134,7 @@ describe("submit_outline with malformed args", () => {
     const attempts: unknown[] = [];
     const t = createSubmitOutlineTool({
       slideCount: 4,
+      outlineModelId: "openai/gpt-4.1-mini",
       onAccepted: (o) => {
         accepted = o;
       },

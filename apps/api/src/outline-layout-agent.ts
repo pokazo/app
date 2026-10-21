@@ -1,4 +1,8 @@
-import { generateObject, generateText, jsonSchema, tool, zodSchema } from "ai";
+import { generateObject, generateText, tool } from "ai";
+import {
+  outlineGenerateObjectSchema,
+  toolJsonSchemaForProvider,
+} from "./gemini-json-schema.js";
 import {
   activityLabelForPhase,
   activityLabelForTools,
@@ -146,10 +150,6 @@ function unwrapToolResult(result: unknown): { ok?: boolean; issues?: unknown } |
  * `InvalidToolArgumentsError` and kills the whole run (seen with gemini-2.5-flash).
  * Instead execute() validates and returns `{ ok:false, issues }` so the model can fix it.
  */
-const submitOutlineParameters = jsonSchema<unknown>(zodSchema(Outline).jsonSchema, {
-  validate: (value) => ({ success: true, value }),
-});
-
 /** First pass + one retry turn when the agent stops without an accepted submit_outline. */
 const AGENT_ROUNDS = 2;
 const MAX_DRAFT_CHARS = 14_000;
@@ -171,6 +171,7 @@ export function outlineRetryFeedback(trace: OutlineAgentTrace, lastDraft: string
 
 export function createSubmitOutlineTool(opts: {
   slideCount: number;
+  outlineModelId: string;
   onAccepted: (outline: OutlineT) => void;
   /** Raw draft of every submit attempt (for the retry round). */
   onAttempt?: (raw: unknown) => void;
@@ -178,7 +179,7 @@ export function createSubmitOutlineTool(opts: {
   return tool({
     description:
       "Submit the final outline JSON after outline-validate returned ok:true. Re-runs the same plan gate; on fail returns structured issues with expect contracts.",
-    parameters: submitOutlineParameters,
+    parameters: toolJsonSchemaForProvider(Outline, opts.outlineModelId),
     execute: async (raw: unknown) => {
       opts.onAttempt?.(raw);
       if (skipOutlinePlan()) {
@@ -201,6 +202,8 @@ export function createSubmitOutlineTool(opts: {
 
 export async function generateOutlineWithLayoutMcp(opts: {
   model: Parameters<typeof generateText>[0]["model"];
+  /** OpenRouter model id (e.g. google/gemini-3.6-flash) — selects structured-output JSON Schema shape. */
+  outlineModelId: string;
   topic: string;
   locale: string;
   audience: string;
@@ -226,6 +229,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
     async (layoutTools) => {
       const submit_outline = createSubmitOutlineTool({
         slideCount: opts.slideCount,
+        outlineModelId: opts.outlineModelId,
         onAccepted: (o) => {
           accepted = o;
         },
@@ -316,9 +320,10 @@ export async function generateOutlineWithLayoutMcp(opts: {
       `reason=${agentError ? "agent_error" : trace.submitCalls === 0 ? "never_called_submit" : "submit_rejected"}${hitStepCap ? " step_cap" : ""} ` +
       formatTrace(trace),
   );
+  const outlineSchema = outlineGenerateObjectSchema(opts.outlineModelId);
   const first = await generateObject({
     model: opts.reviseModel ?? opts.model,
-    schema: Outline,
+    schema: outlineSchema,
     prompt: outlineUserPrompt({
       topic: opts.topic,
       locale: opts.locale,
@@ -340,7 +345,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
       );
       const revised = await generateObject({
         model: opts.reviseModel ?? opts.model,
-        schema: Outline,
+        schema: outlineSchema,
         prompt: outlineRevisePrompt({
           topic: opts.topic,
           locale: opts.locale,
