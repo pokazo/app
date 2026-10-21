@@ -1,7 +1,16 @@
 const WINDOW_MS = 60 * 60 * 1000;
 export const CONTACT_LIMIT = 5;
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** local@domain.tld — same source as the contact form `pattern`. */
+export const REPLY_EMAIL_PATTERN =
+  String.raw`[a-zA-Z0-9_%+-]+(?:\.[a-zA-Z0-9_%+-]+)*@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}`;
+const REPLY_EMAIL = new RegExp(`^${REPLY_EMAIL_PATTERN}$`);
+export const REPLY_EMAIL_ERROR = "Почта для ответа должна быть вида name@example.com.";
+
+export function isReplyEmail(value: string): boolean {
+  const email = value.trim();
+  return email.length > 0 && email.length <= 120 && REPLY_EMAIL.test(email);
+}
 const buckets = new Map<string, number[]>();
 
 export type ContactMessage = {
@@ -60,8 +69,8 @@ export function parseContact(body: unknown): ContactParse {
   const name = oneLine(raw.name, 80);
   const email = oneLine(raw.email, 120).toLowerCase();
   const message = typeof raw.message === "string" ? raw.message.replace(/\r\n/g, "\n").trim() : "";
-  if (!EMAIL.test(email)) {
-    return { ok: false, error: "Укажите почту, чтобы можно было ответить." };
+  if (!isReplyEmail(email)) {
+    return { ok: false, error: REPLY_EMAIL_ERROR };
   }
   if (message.length < 5) {
     return { ok: false, error: "Напишите сообщение — хотя бы пару слов." };

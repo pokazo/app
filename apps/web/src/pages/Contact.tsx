@@ -8,6 +8,16 @@ import { apiUrl } from "../safe";
 
 const TITLE = "Контакты — Показо";
 const DESC = "Напишите в Показо: вопрос, ошибка или претензия. Ответим на указанную почту.";
+/** Keep in sync with REPLY_EMAIL_PATTERN in apps/api/src/contact.ts. */
+const REPLY_EMAIL_PATTERN =
+  String.raw`[a-zA-Z0-9_%+-]+(?:\.[a-zA-Z0-9_%+-]+)*@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}`;
+const REPLY_EMAIL = new RegExp(`^${REPLY_EMAIL_PATTERN}$`);
+const REPLY_EMAIL_ERROR = "Почта для ответа должна быть вида name@example.com.";
+
+function replyEmailOk(value: string): boolean {
+  const email = value.trim();
+  return email.length > 0 && email.length <= 120 && REPLY_EMAIL.test(email);
+}
 
 export function Contact() {
   const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
@@ -40,6 +50,10 @@ export function Contact() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setErr("");
+    if (!replyEmailOk(email)) {
+      setErr(REPLY_EMAIL_ERROR);
+      return;
+    }
     if (!consent) {
       setErr("Нужно согласие на обработку персональных данных.");
       return;
@@ -49,7 +63,7 @@ export function Contact() {
       const res = await fetch(apiUrl("/api/contact"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, message, consent, website }),
+        body: JSON.stringify({ name, email: email.trim(), message, consent, website }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
@@ -93,16 +107,24 @@ export function Contact() {
                 />
               </label>
               <label className="contact-field">
-                <span>Почта</span>
+                <span>Почта для ответа</span>
                 <PkInput
                   type="email"
                   name="email"
                   required
+                  inputMode="email"
                   autoComplete="email"
                   maxLength={120}
-                  placeholder="you@example.com"
+                  pattern={REPLY_EMAIL_PATTERN}
+                  title="name@example.com"
+                  placeholder="name@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setEmail(next);
+                    if (next.trim() && !replyEmailOk(next)) setErr(REPLY_EMAIL_ERROR);
+                    else setErr((current) => (current === REPLY_EMAIL_ERROR ? "" : current));
+                  }}
                 />
               </label>
               <label className="contact-field">
@@ -132,7 +154,12 @@ export function Contact() {
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
                 Согласен на <a href="/legal/privacy">обработку персональных данных</a>
               </label>
-              <PkButton type="submit" data-pk="contact-submit" style={{ width: "100%" }} disabled={!consent || busy}>
+              <PkButton
+                type="submit"
+                data-pk="contact-submit"
+                style={{ width: "100%" }}
+                disabled={!consent || !replyEmailOk(email) || busy}
+              >
                 {busy ? "Отправляем…" : "Отправить"}
               </PkButton>
               {err ? <p className="err">{err}</p> : null}

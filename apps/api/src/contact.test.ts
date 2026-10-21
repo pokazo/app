@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CONTACT_LIMIT,
+  REPLY_EMAIL_ERROR,
   allowContact,
   buildContactMail,
   contactClientIp,
   handleContact,
+  isReplyEmail,
   parseContact,
   resetContactRateLimit,
 } from "./contact.js";
@@ -31,8 +33,21 @@ describe("parseContact", () => {
 
   it("rejects missing consent, a bad email, and a short message", () => {
     expect(parseContact({ ...valid, consent: false }).ok).toBe(false);
-    expect(parseContact({ ...valid, email: "not-an-email" }).ok).toBe(false);
+    const bad = parseContact({ ...valid, email: "not-an-email" });
+    expect(bad).toEqual({ ok: false, error: REPLY_EMAIL_ERROR });
     expect(parseContact({ ...valid, message: "ок" }).ok).toBe(false);
+  });
+
+  it("accepts only addresses that match the email pattern", () => {
+    expect(isReplyEmail("anna@example.com")).toBe(true);
+    expect(isReplyEmail("User.Name+tag@mail.ru")).toBe(true);
+    expect(isReplyEmail("  mail@antonbutov.com  ")).toBe(true);
+    expect(isReplyEmail("")).toBe(false);
+    expect(isReplyEmail("не почта")).toBe(false);
+    expect(isReplyEmail("a@b")).toBe(false);
+    expect(isReplyEmail("a@b.c")).toBe(false);
+    expect(isReplyEmail("a..b@example.com")).toBe(false);
+    expect(isReplyEmail("name@example")).toBe(false);
   });
 
   it("treats a filled honeypot as a silent success", () => {
