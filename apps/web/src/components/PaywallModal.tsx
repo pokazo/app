@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { BillingMe, BillingProduct } from "../billing";
+import { trackCheckoutStart } from "../payment-metrika";
 import { PkButton } from "./PkButton";
 
 type CheckoutResponse = { paymentUrl: string };
@@ -20,6 +21,7 @@ export function PaywallModal({ billing, onClose }: { billing: BillingMe; onClose
   async function checkout(product: BillingProduct) {
     setPending(product);
     setError("");
+    trackCheckoutStart(product);
     try {
       const result = await api<CheckoutResponse>("/api/billing/checkout", {
         method: "POST",

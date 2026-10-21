@@ -228,7 +228,7 @@ export function createApp() {
       amountKopecks,
     });
 
-    const successRedirectUrl = `${config.publicBaseUrl}/app?paid=1`;
+    const successRedirectUrl = `${config.publicBaseUrl}/app?paid=1&product=${encodeURIComponent(product)}`;
     if (config.billingFreeUnlock) {
       const operationId = `free-${paymentId}`;
       await applyPaidPayment(paymentId, operationId);

@@ -22,6 +22,7 @@ import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
 import { UploadAttach } from "../components/UploadAttach";
 import { PaywallModal } from "../components/PaywallModal";
+import { trackPaymentSuccess } from "../payment-metrika";
 import { BillingMe } from "../billing";
 import { clearPendingUploadFiles, getPendingUploadFiles } from "../pending-uploads";
 
@@ -121,6 +122,7 @@ export function AppHome() {
               current.plan !== baseline.plan ||
               current.planUntil !== baseline.planUntil)
           ) {
+            if (paidReturn) trackPaymentSuccess(baseline, current);
             break;
           }
           baseline ??= current;

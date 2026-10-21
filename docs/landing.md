@@ -55,7 +55,7 @@ H1 один. Не пихать «гамма» в title.
 
 ## Метрика
 
-`data-pk="cta-create"`, `data-pk="cta-login"`, `data-pk="auth-yandex"`, `data-pk="cta-pricing-nav"`, `data-pk="pricing-view"`, `data-pk="cta-pricing-free"`, `data-pk="cta-pricing-credit"`, `data-pk="cta-pricing-month"`.
+`data-pk="cta-create"`, `data-pk="cta-login"`, `data-pk="auth-yandex"`, `data-pk="cta-pricing-nav"`, `data-pk="pricing-view"`, `data-pk="cta-pricing-free"`, `data-pk="cta-pricing-credit"`, `data-pk="cta-pricing-month"`. Оплата (JS): `payment_checkout_credit`, `payment_checkout_month`, `payment_paid_credit`, `payment_paid_month`.
 
 ## Не брать / оговорки
 
