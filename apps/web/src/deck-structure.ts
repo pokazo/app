@@ -27,6 +27,24 @@ async function structureFetch(
   return body as StructureAccept;
 }
 
+/** Same index math as the API move: pull `from` out and insert it at `to` (1-based). */
+export function reorderSlidesByMove<T extends { index: number }>(
+  slides: T[],
+  from: number,
+  to: number,
+): T[] {
+  const ordered = [...slides].sort((a, b) => a.index - b.index);
+  if (from === to || from < 1 || to < 1 || from > ordered.length || to > ordered.length) {
+    return slides;
+  }
+  const fromPos = ordered.findIndex((s) => s.index === from);
+  if (fromPos < 0) return slides;
+  const [item] = ordered.splice(fromPos, 1);
+  if (!item) return slides;
+  ordered.splice(to - 1, 0, item);
+  return ordered.map((s, i) => ({ ...s, index: i + 1 }));
+}
+
 /** Move view-index `from` to absolute view-index `to` (1-based). */
 export function moveDeckSlide(deckId: string, from: number, to: number) {
   return structureFetch(`/api/decks/${deckId}/slides/${from}/move`, {

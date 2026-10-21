@@ -36,6 +36,7 @@ import {
   expireStaleRewriteStatus,
   isRewriteBuilding,
   readRewriteStatus,
+  viewEditKind,
   writeRewriteStatus,
 } from "./rewrite-status.js";
 import { parseOutline } from "./outline.js";
@@ -524,6 +525,11 @@ export function createApp() {
       slides,
       status: deckStatus,
       building: progressive || rewriting,
+      editKind: viewEditKind({
+        progressive,
+        rewriting,
+        instruction: rewrite?.instruction,
+      }),
       activity,
       rewritingSlide: rewriting ? rewrite?.slide : undefined,
       rewriteError: rewrite?.status === "failed" ? rewrite.error ?? "rewrite failed" : undefined,

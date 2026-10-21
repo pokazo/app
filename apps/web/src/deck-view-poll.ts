@@ -7,6 +7,20 @@ export function isDeckId(id: string): boolean {
 }
 
 /**
+ * Live structure (move/insert/delete) only rewrites markdown. Do not lock the
+ * filmstrip or show the progressive "rest of the deck" line for that.
+ */
+export function deckEditBlocksUi(opts: {
+  serverBuilding: boolean;
+  livePreview?: boolean;
+  editKind?: string | null;
+}): boolean {
+  if (!opts.serverBuilding) return false;
+  if (opts.livePreview && opts.editKind === "structure") return false;
+  return true;
+}
+
+/**
  * Keep polling /api/view until the first successful response (preview/ready dist),
  * then while progressive compose / single-slide rewrite is still running.
  */
@@ -40,10 +54,18 @@ export function shouldClearRewriteBusy(opts: {
   rewritingSlide?: number | null;
   /** At least one /api/view poll saw building=true since this edit started. */
   seenServerBuilding: boolean;
+  /**
+   * This poll started after the edit POST resolved.
+   * Live HMR structure ops finish in tens of ms, so a 1s poll can miss
+   * building=true entirely and would otherwise hold the UI forever.
+   * A poll that started before the POST can still show pre-edit idle — ignore it.
+   */
+  pollAfterAccept?: boolean;
 }): boolean {
+  const observed = opts.seenServerBuilding || Boolean(opts.pollAfterAccept);
   return (
     opts.rewriteBusy &&
-    opts.seenServerBuilding &&
+    observed &&
     !opts.serverBuilding &&
     (opts.rewritingSlide == null || opts.rewritingSlide === undefined)
   );

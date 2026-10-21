@@ -262,12 +262,6 @@ export async function applySlideStructure(opts: {
     await opts.onSlideCount(mutated.outline.slides.length);
   }
 
-  try {
-    await writeDeckActivity(workDir, activityLabelForPhase("structure-build"));
-  } catch {
-    /* optional */
-  }
-
   const distDir = join(workDir, "dist");
   // slidev build empties dist — stash thumbs outside first, remap after.
   const {
@@ -284,16 +278,34 @@ export async function applySlideStructure(opts: {
   // Must match generate/rewrite: absolute /p/:id/ so BASE_URL keeps images + router
   // under the deck path (base "./" resolves /slide-N.jpg to api origin → 404).
   // Live Slidev (dev) pool: md write is enough — Vite HMR updates the owner iframe.
-  const { isSlidevDevLive, markLiveDirty } = await import("./slidev-dev-pool.js");
-  const liveHmr = isSlidevDevLive(id);
-  await withDeckBuildPublish(id, "structure", async () => {
-    if (liveHmr) {
-      await markLiveDirty(workDir);
-      console.info(`[structure] skip build (live HMR) deck=${id} op=${op.op}`);
-      return;
+  // A dead session must be restarted here. Falling through to `slidev build`
+  // takes ~6s and races the new dev process (prod: build=6504ms after exit 1).
+  const { isSlidevDevLive, markLiveDirty, slidevDevPoolEnabled, ensureSlidevDev } =
+    await import("./slidev-dev-pool.js");
+  let liveHmr = isSlidevDevLive(id);
+  if (!liveHmr && slidevDevPoolEnabled()) {
+    try {
+      await ensureSlidevDev(id, workDir);
+      liveHmr = isSlidevDevLive(id);
+    } catch (err) {
+      console.warn(
+        `[structure] live restart failed deck=${id}: ${String(err).slice(0, 200)}`,
+      );
     }
-    await buildSlidev(workDir, deckServeBase(id));
-  });
+  }
+  if (liveHmr) {
+    await markLiveDirty(workDir);
+    console.info(`[structure] skip build (live HMR) deck=${id} op=${op.op}`);
+  } else {
+    try {
+      await writeDeckActivity(workDir, activityLabelForPhase("structure-build"));
+    } catch {
+      /* optional */
+    }
+    await withDeckBuildPublish(id, "structure", async () => {
+      await buildSlidev(workDir, deckServeBase(id));
+    });
+  }
 
   const sourceDir = filmstripThumbBackupDir(workDir);
   let thumbsOk = false;

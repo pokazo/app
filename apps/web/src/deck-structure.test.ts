@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   focusAfterStructure,
+  reorderSlidesByMove,
   structureErrorMessage,
   themeErrorMessage,
   thumbMoveTarget,
@@ -11,6 +12,27 @@ describe("focusAfterStructure", () => {
     expect(focusAfterStructure(3, 5)).toBe(3);
     expect(focusAfterStructure(0, 5)).toBe(1);
     expect(focusAfterStructure(9, 5)).toBe(5);
+  });
+});
+
+describe("reorderSlidesByMove", () => {
+  const slides = [
+    { index: 1, heading: "a" },
+    { index: 2, heading: "b" },
+    { index: 3, heading: "c" },
+  ];
+
+  it("moves a page to another index and renumbers", () => {
+    expect(reorderSlidesByMove(slides, 1, 3).map((s) => s.heading)).toEqual(["b", "c", "a"]);
+    expect(reorderSlidesByMove(slides, 3, 1).map((s) => `${s.index}:${s.heading}`)).toEqual([
+      "1:c",
+      "2:a",
+      "3:b",
+    ]);
+  });
+
+  it("leaves the list alone when the move is a no-op", () => {
+    expect(reorderSlidesByMove(slides, 2, 2)).toBe(slides);
   });
 });
 

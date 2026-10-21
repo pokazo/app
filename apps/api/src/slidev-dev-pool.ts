@@ -175,8 +175,22 @@ async function spawnSession(deckId: string, workDir: string): Promise<SlidevDevS
   };
   sessions.set(deckId, session);
 
+  // Keep stdout/stderr flowing after ready. Removing the last `data` listener
+  // pauses the pipe; once the buffer fills, Vite blocks and the next move
+  // sees `fetch failed` then `exit code=1`.
+  let logTail = "";
+  const keepLogs = (chunk: Buffer | string) => {
+    logTail = (logTail + String(chunk)).slice(-4000);
+  };
+  child.stdout?.on("data", keepLogs);
+  child.stderr?.on("data", keepLogs);
   child.on("exit", (code, signal) => {
     console.info(`[slidev-dev] exit deck=${deckId} code=${code} signal=${signal}`);
+    if (code && code !== 0 && logTail.trim()) {
+      console.warn(
+        `[slidev-dev] exit-tail deck=${deckId} ${logTail.trim().slice(-800)}`,
+      );
+    }
     if (sessions.get(deckId) === session) sessions.delete(deckId);
   });
 

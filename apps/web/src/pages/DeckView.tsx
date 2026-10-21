@@ -19,6 +19,7 @@ import {
   shouldRetreatKey,
 } from "../deck-present";
 import {
+  deckEditBlocksUi,
   isDeckId,
   progressiveSlideReveal,
   shouldClearRewriteBusy,
@@ -33,6 +34,7 @@ import {
   focusAfterStructure,
   insertDeckSlide,
   moveDeckSlide,
+  reorderSlidesByMove,
   structureErrorMessage,
   themeErrorMessage,
   thumbMoveTarget,
@@ -78,6 +80,8 @@ type ViewMeta = {
   rewriteError?: string;
   /** Owner iframe is proxied to a long-lived Slidev (dev) — HMR, skip remount thrash. */
   livePreview?: boolean;
+  /** Server: progressive | structure | rewrite, while that work is running. */
+  editKind?: "progressive" | "structure" | "rewrite" | null;
 };
 
 const WAIT_TIMEOUT_MS = 20 * 60 * 1000;
@@ -192,6 +196,10 @@ export function DeckView() {
   /** Set once /api/view reports building after we start an edit — gates busy clear. */
   const seenServerBuildingRef = useRef(false);
   const busyHoldLoggedRef = useRef(false);
+  /** Incremented at each /api/view fetch start. */
+  const pollGenRef = useRef(0);
+  /** pollGen at the moment the edit POST resolved. Polls at or before this are pre-accept. */
+  const acceptedPollGenRef = useRef(0);
   const stayOnSlideRef = useRef<number | null>(null);
   const rewriteFileRef = useRef<HTMLInputElement>(null);
 
@@ -200,6 +208,7 @@ export function DeckView() {
     if (busy) {
       seenServerBuildingRef.current = false;
       busyHoldLoggedRef.current = false;
+      acceptedPollGenRef.current = 0;
     }
     setRewriteBusy(busy);
   };
@@ -365,6 +374,7 @@ export function DeckView() {
         return;
       }
 
+      const myPollGen = ++pollGenRef.current;
       try {
         const data = await loadView();
         if (cancelled || stopped) return;
@@ -395,11 +405,19 @@ export function DeckView() {
             }
           }
         }
+        const liveStructure = Boolean(data.livePreview && data.editKind === "structure");
+        const blocksUi = deckEditBlocksUi({
+          serverBuilding,
+          livePreview: data.livePreview,
+          editKind: data.editKind,
+        });
         const rewriteDone = shouldClearRewriteBusy({
           rewriteBusy: rewriteBusyRef.current,
           serverBuilding,
           rewritingSlide: serverRewritingSlide,
           seenServerBuilding: seenServerBuildingRef.current,
+          pollAfterAccept:
+            acceptedPollGenRef.current > 0 && myPollGen > acceptedPollGenRef.current,
         });
         if (
           rewriteBusyRef.current &&
@@ -415,10 +433,13 @@ export function DeckView() {
           });
         }
         if (!isBuilding && !rewriteBusyRef.current) forcePollRef.current = false;
-        setMeta(data);
+        setMeta((prev) => {
+          if (liveStructure && prev?.slides) return { ...data, slides: prev.slides };
+          return data;
+        });
         setWaiting(false);
         setErr("");
-        setBuilding(isBuilding || rewriteBusyRef.current);
+        setBuilding((blocksUi || rewriteBusyRef.current) && !liveStructure);
         setActivity((data.activity ?? "").trim());
         setRewritingSlide(serverRewritingSlide);
         if (data.rewriteError && !isBuilding) {
@@ -686,6 +707,7 @@ export function DeckView() {
     seenServerBuildingRef.current = false;
     try {
       await changeDeckTheme(id, theme);
+      acceptedPollGenRef.current = pollGenRef.current;
       setDeckTheme(theme);
       setThemeOpen(false);
       setBuilding(true);
@@ -703,16 +725,29 @@ export function DeckView() {
     request: () => Promise<{ slide: number }>,
   ) {
     if (!id || !structureReady) return;
+    const live = Boolean(meta?.livePreview);
     setStructureErr("");
     markRewriteBusy(true);
-    setActivity(activityLabel);
+    setActivity(live ? "" : activityLabel);
     stayOnSlideRef.current = focusSlide;
     forcePollRef.current = true;
-    setBuilding(true);
-    setRewritingSlide(focusSlide);
+    if (!live) {
+      setBuilding(true);
+      setRewritingSlide(focusSlide);
+    }
     try {
       const accepted = await request();
+      acceptedPollGenRef.current = pollGenRef.current;
       stayOnSlideRef.current = focusAfterStructure(accepted.slide, Math.max(last, accepted.slide));
+      if (live) {
+        // Job is markdown + HMR (tens of ms). Do not wait for a poll that
+        // misses rewrite.json and then paints «Собираем остальные слайды…».
+        markRewriteBusy(false);
+        setBuilding(false);
+        setRewritingSlide(null);
+        setActivity("");
+        forcePollRef.current = true;
+      }
     } catch (err) {
       markRewriteBusy(false);
       forcePollRef.current = false;
@@ -731,8 +766,23 @@ export function DeckView() {
   }
 
   async function onMoveSlideTo(from: number, to: number) {
-    if (from === to) return;
-    await runStructure(to, "Правлю слайды…", () => moveDeckSlide(id, from, to));
+    if (from === to || !id || !structureReady) return;
+    const live = Boolean(meta?.livePreview);
+    const prevSlides = meta?.slides;
+    if (live && meta) {
+      setMeta({ ...meta, slides: reorderSlidesByMove(meta.slides, from, to) });
+      setCurrent(to);
+    }
+    await runStructure(to, "Правлю слайды…", async () => {
+      try {
+        return await moveDeckSlide(id, from, to);
+      } catch (err) {
+        if (live && prevSlides) {
+          setMeta((m) => (m ? { ...m, slides: prevSlides } : m));
+        }
+        throw err;
+      }
+    });
   }
 
   async function onMoveSlide(n: number, direction: "up" | "down") {
@@ -798,6 +848,7 @@ export function DeckView() {
         });
       }
       if (res.status === 202) {
+        acceptedPollGenRef.current = pollGenRef.current;
         console.info("[edit] rewrite_accepted", { deckId: id, slide: current });
         // Keep instruction text visible while «Пересобираем…» — clear after success.
         return;
@@ -988,7 +1039,8 @@ export function DeckView() {
         <p className="app-note deck-building">
           {rewritingSlide != null
             ? activity || `Правлю слайд ${rewritingSlide}…`
-            : activity || "Собираем остальные слайды…"}
+            : activity ||
+              (meta.editKind === "structure" ? "Правлю слайды…" : "Собираем остальные слайды…")}
         </p>
       ) : null}
       {speechOpen && id && isOwner && !building ? (

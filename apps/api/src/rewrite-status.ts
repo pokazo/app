@@ -50,6 +50,19 @@ export function isRewriteBuilding(
   return !isRewriteStatusStale(status, now);
 }
 
+/** What /api/view should tell the player is in progress. */
+export function viewEditKind(opts: {
+  progressive: boolean;
+  rewriting: boolean;
+  instruction?: string | null;
+}): "progressive" | "structure" | "rewrite" | null {
+  if (opts.rewriting) {
+    return (opts.instruction ?? "").startsWith("structure:") ? "structure" : "rewrite";
+  }
+  if (opts.progressive) return "progressive";
+  return null;
+}
+
 /**
  * Persist failed for a stuck running rewrite so /api/view stops reporting building
  * and the owner can retry. No-op when fresh or already terminal.

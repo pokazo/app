@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isDeckId,
+  deckEditBlocksUi,
   progressiveSlideReveal,
   shouldClearRewriteBusy,
   shouldPollDeckView,
@@ -14,6 +15,30 @@ describe("isDeckId", () => {
   it("rejects junk", () => {
     expect(isDeckId("")).toBe(false);
     expect(isDeckId("not-a-uuid")).toBe(false);
+  });
+});
+
+describe("deckEditBlocksUi", () => {
+  it("does not lock the filmstrip for a live structure edit", () => {
+    expect(
+      deckEditBlocksUi({
+        serverBuilding: true,
+        livePreview: true,
+        editKind: "structure",
+      }),
+    ).toBe(false);
+  });
+
+  it("still locks while a slide rewrite or a static structure build runs", () => {
+    expect(
+      deckEditBlocksUi({ serverBuilding: true, livePreview: true, editKind: "rewrite" }),
+    ).toBe(true);
+    expect(
+      deckEditBlocksUi({ serverBuilding: true, livePreview: false, editKind: "structure" }),
+    ).toBe(true);
+    expect(deckEditBlocksUi({ serverBuilding: false, livePreview: true, editKind: "structure" })).toBe(
+      false,
+    );
   });
 });
 
@@ -72,6 +97,30 @@ describe("shouldClearRewriteBusy", () => {
         serverBuilding: false,
         rewritingSlide: null,
         seenServerBuilding: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("clears when a poll started after accept already sees idle (missed the running window)", () => {
+    expect(
+      shouldClearRewriteBusy({
+        rewriteBusy: true,
+        serverBuilding: false,
+        rewritingSlide: null,
+        seenServerBuilding: false,
+        pollAfterAccept: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps busy when the post-accept poll still sees the server building", () => {
+    expect(
+      shouldClearRewriteBusy({
+        rewriteBusy: true,
+        serverBuilding: true,
+        rewritingSlide: 2,
+        seenServerBuilding: false,
+        pollAfterAccept: true,
       }),
     ).toBe(false);
   });

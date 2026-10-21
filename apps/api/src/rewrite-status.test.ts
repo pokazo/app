@@ -8,6 +8,7 @@ import {
   isRewriteBuilding,
   isRewriteStatusStale,
   readRewriteStatus,
+  viewEditKind,
   writeRewriteStatus,
 } from "./rewrite-status.js";
 
@@ -79,5 +80,18 @@ describe("rewrite-status", () => {
     });
     const kept = await expireStaleRewriteStatus(dir, now);
     expect(kept?.status).toBe("running");
+  });
+});
+
+describe("viewEditKind", () => {
+  it("marks a structure op separately from a slide rewrite", () => {
+    expect(
+      viewEditKind({ progressive: false, rewriting: true, instruction: "structure:move" }),
+    ).toBe("structure");
+    expect(viewEditKind({ progressive: false, rewriting: true, instruction: "короче" })).toBe(
+      "rewrite",
+    );
+    expect(viewEditKind({ progressive: true, rewriting: false })).toBe("progressive");
+    expect(viewEditKind({ progressive: false, rewriting: false })).toBe(null);
   });
 });
