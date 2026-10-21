@@ -34,6 +34,8 @@ export const config = {
   smtpUser: env("SMTP_USER"),
   smtpPass: env("SMTP_PASS"),
   smtpFrom: env("SMTP_FROM", "Показо <noreply@pokazo.ru>"),
+  /** Inbox for the public contact form. */
+  contactTo: env("CONTACT_TO", "mail@antonbutov.com"),
   openrouterKey: env("OPENROUTER_API_KEY"),
   openrouterBaseUrl: env("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
   outlineModel: env("LLM_OUTLINE_MODEL", "openai/gpt-4.1-mini"),

@@ -8,6 +8,7 @@ import { DeckHistory } from "./pages/DeckHistory";
 import { DeckView } from "./pages/DeckView";
 import { Legal } from "./pages/Legal";
 import { Pricing } from "./pages/Pricing";
+import { Contact } from "./pages/Contact";
 import { AUDIENCE_PAGES } from "./audience-pages";
 
 export function App() {
@@ -24,6 +25,7 @@ export function App() {
         <Route path="/app/history" element={<DeckHistory />} />
         <Route path="/view/:id" element={<DeckView />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/legal/:doc" element={<Legal />} />
       </Routes>
     </BrowserRouter>

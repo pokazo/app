@@ -6,6 +6,8 @@ export function SiteFooter() {
         <p className="foot-links">
           <a href="/pricing">Тарифы</a>
           {" · "}
+          <a href="/contact">Контакты</a>
+          {" · "}
           <a href="/legal/offer">Оферта</a>
           {" · "}
           <a href="/legal/privacy">Персональные данные</a>

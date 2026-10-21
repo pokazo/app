@@ -18,12 +18,16 @@ export function otpEmailContent(otp: string): { subject: string; text: string; h
   return { subject, text, html };
 }
 
-export async function sendOtpEmail(email: string, otp: string): Promise<void> {
-  const body = otpEmailContent(otp);
-  if (!config.smtpHost) {
-    console.log(`[mail] SMTP unset; OTP for ${email}: ${otp}`);
-    throw new Error("SMTP is not configured");
-  }
+type OutboundMail = {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  replyTo?: string;
+};
+
+async function deliver(mail: OutboundMail): Promise<void> {
+  if (!config.smtpHost) throw new Error("SMTP is not configured");
   const transporter = nodemailer.createTransport({
     host: config.smtpHost,
     port: config.smtpPort,
@@ -32,7 +36,28 @@ export async function sendOtpEmail(email: string, otp: string): Promise<void> {
   });
   await transporter.sendMail({
     from: config.smtpFrom,
-    to: email,
-    ...body,
+    to: mail.to,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html,
+    replyTo: mail.replyTo,
   });
+}
+
+export async function sendOtpEmail(email: string, otp: string): Promise<void> {
+  const body = otpEmailContent(otp);
+  if (!config.smtpHost) {
+    console.log(`[mail] SMTP unset; OTP for ${email}: ${otp}`);
+    throw new Error("SMTP is not configured");
+  }
+  await deliver({ to: email, ...body });
+}
+
+export async function sendContactEmail(mail: {
+  subject: string;
+  text: string;
+  replyTo: string;
+}): Promise<void> {
+  if (!config.contactTo) throw new Error("CONTACT_TO is not configured");
+  await deliver({ to: config.contactTo, ...mail });
 }

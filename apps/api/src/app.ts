@@ -5,6 +5,8 @@ import { extname, join, normalize } from "node:path";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { config } from "./env.js";
+import { sendContactEmail } from "./mail.js";
+import { handleContact } from "./contact.js";
 import { pool } from "./migrate.js";
 import { createAuth } from "./auth.js";
 import {
@@ -161,6 +163,21 @@ export function createApp() {
   );
 
   app.get("/api/health", (c) => c.json({ ok: true }));
+
+  app.post("/api/contact", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      body = null;
+    }
+    const result = await handleContact({
+      body,
+      forwardedFor: c.req.header("x-forwarded-for"),
+      send: sendContactEmail,
+    });
+    return c.json(result.body, result.status);
+  });
 
   app.get("/api/auth/me", async (c) => {
     if (!auth) return c.json({ error: "unavailable" }, 503);

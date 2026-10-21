@@ -213,6 +213,14 @@ export async function runSeoBuild(distDir = defaultDist) {
   await writeFile(indexPath, indexHtml, "utf8");
 
   await writePrerender(distDir, {
+    dirParts: ["contact"],
+    title: "Контакты — Показо",
+    description:
+      "Напишите в Показо: вопрос, ошибка или претензия. Ответим на указанную почту.",
+    bodyFile: "contact-body.html",
+  });
+
+  await writePrerender(distDir, {
     dirParts: ["pricing"],
     title: "Тарифы и цены — Показо",
     description:

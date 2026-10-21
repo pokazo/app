@@ -34,6 +34,9 @@ try {
     ["urok faq ld", urok.includes("FAQPage")],
     ["biznes h1", biznes.includes("<h1>Презентация для бизнеса</h1>")],
     ["landing audience links", index.includes('href="/urok"')],
+    ["landing contact link", index.includes('href="/contact"')],
+    ["contact h1", (await readFile(join(dir, "contact/index.html"), "utf8")).includes("<h1>Контакты</h1>")],
+    ["contact canonical", (await readFile(join(dir, "contact/index.html"), "utf8")).includes('href="https://pokazo.ru/contact"')],
     ["result ok", result.landingHasH1 && result.hasCanonical && result.hasFaqLd && result.audienceOk],
   ];
   const failed = checks.filter(([, ok]) => !ok);
