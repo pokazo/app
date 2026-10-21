@@ -988,35 +988,59 @@ export function createApp() {
   app.get("/p/:id/*", async (c) => {
     const id = c.req.param("id");
     // Owner + live Slidev: proxy Vite (HMR). Guests / no session → static dist.
+    // After a live move, thumbs in dist match slides.md but index.html is still
+    // the previous build. Never hand that player to the owner.
     if (auth && pool && DECK_UUID.test(id)) {
-      const { isSlidevDevLive } = await import("./slidev-dev-pool.js");
-      if (isSlidevDevLive(id)) {
+      const {
+        isSlidevDevLive,
+        slidevDevPoolEnabled,
+        ensureSlidevDev,
+        deckDistBehindMarkdown,
+      } = await import("./slidev-dev-pool.js");
+      const dir = join(config.deckDataDir, id);
+      const owner = async () => {
         const session = await auth.api.getSession({ headers: c.req.raw.headers });
-        if (session?.user) {
-          const { rows } = await pool.query(`SELECT 1 FROM deck WHERE id=$1 AND user_id=$2`, [
-            id,
-            session.user.id,
-          ]);
-          if (rows[0]) {
-            const { proxyHttpToSlidevDev, viteHtmlIsSlideDocument } = await import(
-              "./slidev-dev-proxy.js"
+        if (!session?.user) return false;
+        const { rows } = await pool.query(`SELECT 1 FROM deck WHERE id=$1 AND user_id=$2`, [
+          id,
+          session.user.id,
+        ]);
+        return Boolean(rows[0]);
+      };
+      const proxyLive = async () => {
+        const { proxyHttpToSlidevDev, viteHtmlIsSlideDocument } = await import(
+          "./slidev-dev-proxy.js"
+        );
+        const proxied = await proxyHttpToSlidevDev(c.req.raw, id);
+        if (!proxied) return null;
+        const ct = proxied.headers.get("content-type") || "";
+        const pathname = new URL(c.req.url).pathname;
+        if (viteHtmlIsSlideDocument(pathname, ct)) {
+          const html = injectPlayerChromeHide(await proxied.text());
+          return new Response(html, {
+            status: proxied.status,
+            headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+          });
+        }
+        // File request that Vite answered with index.html — serve dist instead.
+        if (!ct.toLowerCase().includes("text/html")) return proxied;
+        return null;
+      };
+      if (!isSlidevDevLive(id) && slidevDevPoolEnabled() && deckDistBehindMarkdown(dir)) {
+        if (await owner()) {
+          try {
+            await ensureSlidevDev(id, dir);
+            console.info(`[slidev-dev] owner dist stale, live deck=${id}`);
+          } catch (err) {
+            console.warn(
+              `[slidev-dev] live over stale dist failed deck=${id}: ${String(err).slice(0, 200)}`,
             );
-            const proxied = await proxyHttpToSlidevDev(c.req.raw, id);
-            if (proxied) {
-              const ct = proxied.headers.get("content-type") || "";
-              const pathname = new URL(c.req.url).pathname;
-              if (viteHtmlIsSlideDocument(pathname, ct)) {
-                const html = injectPlayerChromeHide(await proxied.text());
-                return new Response(html, {
-                  status: proxied.status,
-                  headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-                });
-              }
-              // File request that Vite answered with index.html — serve dist instead.
-              if (!ct.toLowerCase().includes("text/html")) return proxied;
-            }
           }
         }
+      }
+      if (isSlidevDevLive(id) && (await owner())) {
+        const live = await proxyLive();
+        if (live) return live;
       }
     }
     const rest = c.req.path.replace(`/p/${id}`, "") || "/";

@@ -8,6 +8,7 @@ vi.mock("./slidev-dev-pool.js", () => ({
 
 import { getSlidevDevSession } from "./slidev-dev-pool.js";
 import {
+  forwardUpgradeFrames,
   liveDeckIdFromPath,
   tryHandleSlidevDevUpgrade,
   viteHtmlIsSlideDocument,
@@ -69,6 +70,25 @@ describe("viteHtmlIsSlideDocument", () => {
   it("keeps a real image response off the document path", () => {
     expect(viteHtmlIsSlideDocument("/thumbs/v2/1.webp", "image/webp")).toBe(false);
     expect(viteHtmlIsSlideDocument("/slide-1.jpg", "image/jpeg")).toBe(false);
+  });
+});
+
+describe("forwardUpgradeFrames", () => {
+  it("sends Vite's preface to the browser and the browser preface to Vite", () => {
+    const client: Array<Buffer | string> = [];
+    const upstream: Array<Buffer | string> = [];
+    const clientHead = Buffer.from("masked-client");
+    const upstreamHead = Buffer.from("unmasked-server");
+    forwardUpgradeFrames(
+      { write: (chunk) => client.push(chunk) },
+      { write: (chunk) => upstream.push(chunk) },
+      "HTTP/1.1 101 Switching Protocols\r\n\r\n",
+      clientHead,
+      upstreamHead,
+    );
+    expect(client[0]).toContain("101");
+    expect(client[1]).toBe(upstreamHead);
+    expect(upstream).toEqual([clientHead]);
   });
 });
 

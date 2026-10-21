@@ -78,6 +78,24 @@ function guardSocket(socket: Duplex, onError?: () => void): void {
   });
 }
 
+/**
+ * Preface bytes already pulled off each socket during the 101 handshake.
+ * Vite's frames are unmasked server frames. Writing them back to Vite raises
+ * `WS_ERR_EXPECTED_MASK` and the Slidev process exits, so the owner iframe
+ * falls through to a pre-move `dist` while the filmstrip thumbs were remapped.
+ */
+export function forwardUpgradeFrames(
+  client: { write(chunk: Buffer | string): void },
+  upstream: { write(chunk: Buffer | string): void },
+  handshake: string,
+  clientHead: Buffer,
+  upstreamHead: Buffer,
+): void {
+  client.write(handshake);
+  if (clientHead.length) upstream.write(clientHead);
+  if (upstreamHead.length) client.write(upstreamHead);
+}
+
 function proxyWebSocketUpgrade(
   req: IncomingMessage,
   socket: Duplex,
@@ -104,9 +122,7 @@ function proxyWebSocketUpgrade(
       msg += `${k}: ${val}\r\n`;
     }
     msg += "\r\n";
-    socket.write(msg);
-    if (proxyHead?.length) proxySocket.write(proxyHead);
-    if (head?.length) proxySocket.write(head);
+    forwardUpgradeFrames(socket, proxySocket, msg, head, proxyHead);
     proxySocket.pipe(socket);
     socket.pipe(proxySocket);
   });

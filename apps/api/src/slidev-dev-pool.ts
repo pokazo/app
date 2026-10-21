@@ -6,7 +6,7 @@
  */
 import { createServer } from "node:net";
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "./env.js";
@@ -34,6 +34,21 @@ let starting = new Map<string, Promise<SlidevDevSession>>();
 
 export function slidevDevPoolEnabled(): boolean {
   return config.slidevDevPoolMax > 0;
+}
+
+/** True when slides.md was written after the last `slidev build` of dist/index.html. */
+export function markdownNewerThanDist(mdMtimeMs: number, distIndexMtimeMs: number | null): boolean {
+  if (!(mdMtimeMs > 0)) return false;
+  if (distIndexMtimeMs == null) return true;
+  return mdMtimeMs > distIndexMtimeMs;
+}
+
+export function deckDistBehindMarkdown(workDir: string): boolean {
+  const md = join(workDir, "slides.md");
+  if (!existsSync(md)) return false;
+  const index = join(workDir, "dist", "index.html");
+  const distMtime = existsSync(index) ? statSync(index).mtimeMs : null;
+  return markdownNewerThanDist(statSync(md).mtimeMs, distMtime);
 }
 
 export function isSlidevDevLive(deckId: string): boolean {
