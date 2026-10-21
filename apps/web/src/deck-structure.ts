@@ -28,7 +28,7 @@ async function structureFetch(
 }
 
 /** Same index math as the API move: pull `from` out and insert it at `to` (1-based). */
-export function reorderSlidesByMove<T extends { index: number }>(
+export function reorderSlidesByMove<T extends { index: number; slidevIndex?: number }>(
   slides: T[],
   from: number,
   to: number,
@@ -42,7 +42,9 @@ export function reorderSlidesByMove<T extends { index: number }>(
   const [item] = ordered.splice(fromPos, 1);
   if (!item) return slides;
   ordered.splice(to - 1, 0, item);
-  return ordered.map((s, i) => ({ ...s, index: i + 1 }));
+  // After HMR the player page number is the new position. A leftover
+  // slidevIndex sends the stage to the pre-move page.
+  return ordered.map((s, i) => ({ ...s, index: i + 1, slidevIndex: i + 1 }));
 }
 
 /** Move view-index `from` to absolute view-index `to` (1-based). */

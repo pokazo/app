@@ -29,6 +29,17 @@ describe("reorderSlidesByMove", () => {
       "2:a",
       "3:b",
     ]);
+    expect(
+      reorderSlidesByMove(
+        [
+          { index: 1, slidevIndex: 1, heading: "a" },
+          { index: 2, slidevIndex: 2, heading: "b" },
+          { index: 3, slidevIndex: 3, heading: "c" },
+        ],
+        2,
+        3,
+      ).map((s) => s.slidevIndex),
+    ).toEqual([1, 2, 3]);
   });
 
   it("leaves the list alone when the move is a no-op", () => {

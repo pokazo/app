@@ -262,6 +262,10 @@ export async function applySlideStructure(opts: {
     await opts.onSlideCount(mutated.outline.slides.length);
   }
 
+  console.info(
+    `[structure] order deck=${id} op=${op.op} focus=${mutated.focusViewIndex} ${[...mutated.md.matchAll(/^# (.+)$/gm)].map((m) => m[1]).join(" | ")}`,
+  );
+
   const distDir = join(workDir, "dist");
   // slidev build empties dist — stash thumbs outside first, remap after.
   const {

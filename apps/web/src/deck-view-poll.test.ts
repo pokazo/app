@@ -5,6 +5,8 @@ import {
   progressiveSlideReveal,
   shouldClearRewriteBusy,
   shouldPollDeckView,
+  viewPollKeepsLocalSlides,
+  viewPollStops,
 } from "./deck-view-poll.js";
 
 describe("isDeckId", () => {
@@ -15,6 +17,53 @@ describe("isDeckId", () => {
   it("rejects junk", () => {
     expect(isDeckId("")).toBe(false);
     expect(isDeckId("not-a-uuid")).toBe(false);
+  });
+});
+
+describe("viewPollKeepsLocalSlides", () => {
+  it("keeps the optimistic list until a poll that started after the POST", () => {
+    expect(
+      viewPollKeepsLocalSlides({
+        liveStructure: false,
+        editAccepted: true,
+        pollAfterAccept: false,
+      }),
+    ).toBe(true);
+    expect(
+      viewPollKeepsLocalSlides({
+        liveStructure: true,
+        editAccepted: true,
+        pollAfterAccept: true,
+      }),
+    ).toBe(true);
+    expect(
+      viewPollKeepsLocalSlides({
+        liveStructure: false,
+        editAccepted: true,
+        pollAfterAccept: true,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("viewPollStops", () => {
+  it("does not stop on an idle response that started before the POST", () => {
+    expect(
+      viewPollStops({
+        serverBuilding: false,
+        rewriteBusy: false,
+        editAccepted: true,
+        pollAfterAccept: false,
+      }),
+    ).toBe(false);
+    expect(
+      viewPollStops({
+        serverBuilding: false,
+        rewriteBusy: false,
+        editAccepted: true,
+        pollAfterAccept: true,
+      }),
+    ).toBe(true);
   });
 });
 

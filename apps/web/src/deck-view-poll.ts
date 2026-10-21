@@ -10,6 +10,32 @@ export function isDeckId(id: string): boolean {
  * Live structure (move/insert/delete) only rewrites markdown. Do not lock the
  * filmstrip or show the progressive "rest of the deck" line for that.
  */
+/**
+ * A /api/view fetch that started before the edit POST still carries the old
+ * slide list. Applying it reverts the filmstrip while Vite already shows the
+ * new order, then polling stops.
+ */
+export function viewPollKeepsLocalSlides(opts: {
+  liveStructure: boolean;
+  editAccepted: boolean;
+  pollAfterAccept: boolean;
+}): boolean {
+  if (opts.liveStructure) return true;
+  return opts.editAccepted && !opts.pollAfterAccept;
+}
+
+/** Stop /api/view polling only once a response that started after the POST is idle. */
+export function viewPollStops(opts: {
+  serverBuilding: boolean;
+  rewriteBusy: boolean;
+  editAccepted: boolean;
+  pollAfterAccept: boolean;
+}): boolean {
+  if (opts.serverBuilding || opts.rewriteBusy) return false;
+  if (opts.editAccepted && !opts.pollAfterAccept) return false;
+  return true;
+}
+
 export function deckEditBlocksUi(opts: {
   serverBuilding: boolean;
   livePreview?: boolean;

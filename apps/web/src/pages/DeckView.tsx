@@ -24,6 +24,8 @@ import {
   progressiveSlideReveal,
   shouldClearRewriteBusy,
   shouldPollDeckView,
+  viewPollKeepsLocalSlides,
+  viewPollStops,
   VIEW_NOT_FOUND_ERR,
   VIEW_WAITING_NOTE,
 } from "../deck-view-poll";
@@ -180,6 +182,8 @@ export function DeckView() {
   const [exportErr, setExportErr] = useState("");
   const [speechOpen, setSpeechOpen] = useState(false);
   const [embedKey, setEmbedKey] = useState(0);
+  const [thumbRev, setThumbRev] = useState(0);
+  const pendingThumbSyncRef = useRef(false);
   const [building, setBuilding] = useState(false);
   const [activity, setActivity] = useState("");
   const [rewriteText, setRewriteText] = useState("");
@@ -405,19 +409,26 @@ export function DeckView() {
             }
           }
         }
+        const pollAfterAccept =
+          acceptedPollGenRef.current > 0 && myPollGen > acceptedPollGenRef.current;
+        const editAccepted = acceptedPollGenRef.current > 0;
         const liveStructure = Boolean(data.livePreview && data.editKind === "structure");
         const blocksUi = deckEditBlocksUi({
           serverBuilding,
           livePreview: data.livePreview,
           editKind: data.editKind,
         });
+        const keepSlides = viewPollKeepsLocalSlides({
+          liveStructure,
+          editAccepted,
+          pollAfterAccept,
+        });
         const rewriteDone = shouldClearRewriteBusy({
           rewriteBusy: rewriteBusyRef.current,
           serverBuilding,
           rewritingSlide: serverRewritingSlide,
           seenServerBuilding: seenServerBuildingRef.current,
-          pollAfterAccept:
-            acceptedPollGenRef.current > 0 && myPollGen > acceptedPollGenRef.current,
+          pollAfterAccept,
         });
         if (
           rewriteBusyRef.current &&
@@ -432,9 +443,33 @@ export function DeckView() {
             reason: "await_server_building",
           });
         }
-        if (!isBuilding && !rewriteBusyRef.current) forcePollRef.current = false;
+        if (
+          viewPollStops({
+            serverBuilding: isBuilding,
+            rewriteBusy: rewriteBusyRef.current,
+            editAccepted,
+            pollAfterAccept,
+          })
+        ) {
+          forcePollRef.current = false;
+        }
+        console.info("[edit] view_apply", {
+          deckId: id,
+          pollGen: myPollGen,
+          acceptedPollGen: acceptedPollGenRef.current,
+          keepSlides,
+          serverBuilding,
+          editKind: data.editKind ?? null,
+          serverHeadings: data.slides.map(
+            (s) => `${s.index}:${s.slidevIndex ?? "?"}:${s.heading}`,
+          ),
+        });
+        if (!keepSlides && pendingThumbSyncRef.current && pollAfterAccept) {
+          pendingThumbSyncRef.current = false;
+          setThumbRev((n) => n + 1);
+        }
         setMeta((prev) => {
-          if (liveStructure && prev?.slides) return { ...data, slides: prev.slides };
+          if (keepSlides && prev?.slides) return { ...data, slides: prev.slides };
           return data;
         });
         setWaiting(false);
@@ -563,7 +598,15 @@ export function DeckView() {
     }
     if (!showStage) return;
     const page = slidevPageForOutlineIndex(meta?.slides ?? [], current);
+    const hit = meta?.slides?.find((s) => s.index === current);
     if (lastPostedSlidevPageRef.current === page) return;
+    console.info("[edit] stage_nav", {
+      current,
+      page,
+      heading: hit?.heading ?? "",
+      slidevIndex: hit?.slidevIndex ?? null,
+      filmstrip: (meta?.slides ?? []).map((s) => `${s.index}:${s.heading}`),
+    });
     lastPostedSlidevPageRef.current = page;
     stageRef.current?.contentWindow?.postMessage(slidevNavigateMessage(page), "*");
   }, [current, stageReady, meta?.slides, showStage]);
@@ -740,6 +783,7 @@ export function DeckView() {
       acceptedPollGenRef.current = pollGenRef.current;
       stayOnSlideRef.current = focusAfterStructure(accepted.slide, Math.max(last, accepted.slide));
       if (live) {
+        pendingThumbSyncRef.current = true;
         // Job is markdown + HMR (tens of ms). Do not wait for a poll that
         // misses rewrite.json and then paints «Собираем остальные слайды…».
         markRewriteBusy(false);
@@ -1132,7 +1176,7 @@ export function DeckView() {
                   heading={s.heading || `Слайд ${s.index}`}
                   imageUrl={
                     cover
-                      ? `${apiUrl(`/p/${id}${cover}`)}${embedKey ? `?_r=${embedKey}` : ""}`
+                      ? `${apiUrl(`/p/${id}${cover}`)}?_r=${embedKey}-${thumbRev}`
                       : null
                   }
                   enabled={mobileOverview || stageReady}
