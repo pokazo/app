@@ -213,6 +213,14 @@ export async function runSeoBuild(distDir = defaultDist) {
   await writeFile(indexPath, indexHtml, "utf8");
 
   await writePrerender(distDir, {
+    dirParts: ["pricing"],
+    title: "Тарифы и цены — Показо",
+    description:
+      "Сколько стоит нейросеть для презентаций Показо: одна колода бесплатно, разовая генерация и безлимит на месяц.",
+    bodyFile: "pricing-body.html",
+  });
+
+  await writePrerender(distDir, {
     dirParts: ["legal", "offer"],
     title: "Публичная оферта — Показо",
     description: "Публичная оферта сервиса Показо для создания презентаций онлайн.",

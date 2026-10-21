@@ -6,17 +6,22 @@ export type BillingProduct = "credit_1" | "month_30";
 export type BillingKind = "free" | "credit" | "month" | "off";
 type StoredBillingKind = BillingKind | "released" | "refunded";
 export type FinalizeBillingAction = "release_free" | "refund_credit" | "none";
-export type BillingMe = {
+export type BillingPrices = {
+  creditRub: number;
+  monthRub: number;
+};
+
+export type BillingCatalog = {
   paymentsEnabled: boolean;
+  prices: BillingPrices;
+};
+
+export type BillingMe = BillingCatalog & {
   credits: number;
   freeAvailable: boolean;
   plan: "free" | "month";
   planUntil: string | null;
   label: string;
-  prices: {
-    creditRub: number;
-    monthRub: number;
-  };
 };
 
 type BillingState = Omit<
@@ -97,6 +102,16 @@ export function computeFinalizeBillingAction(
   return "none";
 }
 
+export function getBillingCatalog(): BillingCatalog {
+  return {
+    paymentsEnabled: config.paymentsEnabled,
+    prices: {
+      creditRub: config.priceCreditKopecks / 100,
+      monthRub: config.priceMonthKopecks / 100,
+    },
+  };
+}
+
 export async function getBillingMe(userId: string): Promise<BillingMe> {
   const result = await requirePool().query<UserBillingRow>(
     `SELECT credits, free_used, plan, plan_until
@@ -119,13 +134,9 @@ export async function getBillingMe(userId: string): Promise<BillingMe> {
   };
 
   return {
-    paymentsEnabled: config.paymentsEnabled,
+    ...getBillingCatalog(),
     ...state,
     label: billingLabel(state),
-    prices: {
-      creditRub: config.priceCreditKopecks / 100,
-      monthRub: config.priceMonthKopecks / 100,
-    },
   };
 }
 

@@ -3,6 +3,15 @@ import { createApp } from "./app.js";
 import { config } from "./env.js";
 
 describe("billing http", () => {
+  it("billing/catalog is public", async () => {
+    const app = createApp();
+    const res = await app.request("/api/billing/catalog");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { prices: { creditRub: number; monthRub: number } };
+    expect(body.prices.creditRub).toBeGreaterThan(0);
+    expect(body.prices.monthRub).toBeGreaterThan(0);
+  });
+
   it("billing/me requires auth", async () => {
     const app = createApp();
     const res = await app.request("/api/billing/me");

@@ -7,6 +7,7 @@ import { AppHome } from "./pages/AppHome";
 import { DeckHistory } from "./pages/DeckHistory";
 import { DeckView } from "./pages/DeckView";
 import { Legal } from "./pages/Legal";
+import { Pricing } from "./pages/Pricing";
 import { AUDIENCE_PAGES } from "./audience-pages";
 
 export function App() {
@@ -22,6 +23,7 @@ export function App() {
         <Route path="/app" element={<AppHome />} />
         <Route path="/app/history" element={<DeckHistory />} />
         <Route path="/view/:id" element={<DeckView />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/legal/:doc" element={<Legal />} />
       </Routes>
     </BrowserRouter>

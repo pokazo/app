@@ -316,6 +316,117 @@ button.yandex:hover:not(:disabled), a.yandex:hover {
   justify-content: center;
   font-weight: 600;
 }
+.pricing-hero { padding-bottom: 24px; }
+.pricing-note {
+  text-align: center;
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+.pricing-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 960px;
+  margin: 0 auto;
+}
+.pricing-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px 24px;
+  background: var(--pk-paper);
+  border: 1px solid var(--pk-line);
+  border-radius: var(--pk-r-lg);
+  box-shadow: var(--pk-shadow);
+}
+.pricing-card-featured {
+  border-color: var(--pk-spot);
+  box-shadow: 0 0 0 1px var(--pk-spot-soft), var(--pk-shadow);
+}
+.pricing-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pk-spot);
+  background: var(--pk-spot-soft);
+  border-radius: 999px;
+}
+.pricing-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pk-ink-muted);
+}
+.pricing-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.pricing-blurb {
+  margin: 0;
+  font-size: 15px;
+  color: var(--pk-ink-muted);
+  min-height: 2.6em;
+}
+.pricing-price {
+  margin: 12px 0 0;
+  font-size: clamp(32px, 4vw, 40px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+.pricing-currency {
+  font-size: 0.55em;
+  font-weight: 500;
+}
+.pricing-period {
+  margin: 0;
+  font-size: 14px;
+  color: var(--pk-ink-muted);
+}
+.pricing-cta {
+  display: inline-flex;
+  justify-content: center;
+  margin-top: 8px;
+  text-decoration: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.pricing-features {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--pk-ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pricing-features li {
+  padding-left: 1.1em;
+  position: relative;
+}
+.pricing-features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--pk-ok);
+  font-weight: 600;
+}
+.pricing-legal {
+  margin: 28px auto 0;
+  max-width: 640px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--pk-ink-muted);
+}
 .thumbs {
   display: grid;
   gap: 16px;
@@ -1465,7 +1576,7 @@ body.is-deck-thumbs-resizing * {
   height: 100%;
 }
 @media (max-width: 800px) {
-  .thumbs, .steps { grid-template-columns: 1fr; }
+  .thumbs, .steps, .pricing-grid { grid-template-columns: 1fr; }
   .deck-thumbs-resizer { display: none; }
   /* Mobile overview: full-width thumb list. Tap opens present (real stage). */
   .deck-shell.is-mobile-overview:not(.is-mobile-present) .deck-toolbar {

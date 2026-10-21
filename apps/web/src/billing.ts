@@ -1,5 +1,18 @@
 export type BillingProduct = "credit_1" | "month_30";
 
+export type BillingCatalog = {
+  paymentsEnabled: boolean;
+  prices: {
+    creditRub: number;
+    monthRub: number;
+  };
+};
+
+export const DEFAULT_BILLING_CATALOG: BillingCatalog = {
+  paymentsEnabled: false,
+  prices: { creditRub: 199, monthRub: 399 },
+};
+
 export type BillingState = {
   credits: number;
   freeAvailable: boolean;
@@ -7,13 +20,8 @@ export type BillingState = {
   planUntil: string | null;
 };
 
-export type BillingMe = BillingState & {
-  paymentsEnabled: boolean;
+export type BillingMe = BillingState & BillingCatalog & {
   label: string;
-  prices: {
-    creditRub: number;
-    monthRub: number;
-  };
 };
 
 export function formatBillingLabel(billing: BillingState): string {

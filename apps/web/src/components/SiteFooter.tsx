@@ -4,6 +4,8 @@ export function SiteFooter() {
     <footer className="foot">
       <div className="wrap">
         <p className="foot-links">
+          <a href="/pricing">Тарифы</a>
+          {" · "}
           <a href="/legal/offer">Оферта</a>
           {" · "}
           <a href="/legal/privacy">Персональные данные</a>

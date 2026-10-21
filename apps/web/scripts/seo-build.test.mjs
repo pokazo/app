@@ -14,6 +14,7 @@ try {
   const result = await runSeoBuild(dir);
   const index = await readFile(join(dir, "index.html"), "utf8");
   const shell = await readFile(join(dir, "shell.html"), "utf8");
+  const pricing = await readFile(join(dir, "pricing/index.html"), "utf8");
   const offer = await readFile(join(dir, "legal/offer/index.html"), "utf8");
   const urok = await readFile(join(dir, "urok/index.html"), "utf8");
   const biznes = await readFile(join(dir, "biznes/index.html"), "utf8");
@@ -24,6 +25,8 @@ try {
     ["canonical", index.includes('href="https://pokazo.ru/"')],
     ["shell empty root", /<div id="root"><\/div>/.test(shell)],
     ["shell noindex", shell.includes('content="noindex"')],
+    ["pricing h1", pricing.includes("<h1>Тарифы</h1>")],
+    ["pricing canonical", pricing.includes('href="https://pokazo.ru/pricing"')],
     ["offer title", offer.includes("Публичная оферта")],
     ["urok h1", urok.includes("<h1>Презентация к уроку</h1>")],
     ["urok canonical", urok.includes('href="https://pokazo.ru/urok"')],

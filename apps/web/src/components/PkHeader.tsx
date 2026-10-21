@@ -48,7 +48,9 @@ export function PkHeader(props: {
   }, [props.me]);
 
   const label = props.me?.name || props.me?.email || "Профиль";
-  const onHome = useLocation().pathname === "/";
+  const path = useLocation().pathname;
+  const onHome = path === "/";
+  const onPricing = path === "/pricing";
 
   return (
     <div className="page-head">
@@ -58,6 +60,11 @@ export function PkHeader(props: {
         </Link>
         {props.me ? (
           <span className="head-actions">
+            {onPricing ? null : (
+              <Link className="pk-btn ghost" to="/pricing">
+                Тарифы
+              </Link>
+            )}
             {onHome ? null : (
               <Link className="pk-btn ghost" to="/app">
                 Создать
@@ -85,9 +92,16 @@ export function PkHeader(props: {
             </details>
           </span>
         ) : (
-          <Link className="pk-btn ghost" to="/login" data-pk="cta-login">
-            Войти
-          </Link>
+          <span className="head-actions">
+            {onPricing ? null : (
+              <Link className="pk-btn ghost" to="/pricing">
+                Тарифы
+              </Link>
+            )}
+            <Link className="pk-btn ghost" to="/login" data-pk="cta-login">
+              Войти
+            </Link>
+          </span>
         )}
       </header>
     </div>

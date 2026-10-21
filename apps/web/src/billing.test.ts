@@ -3,6 +3,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { formatBillingLabel } from "./billing";
 import { PaywallModal } from "./components/PaywallModal";
+import { MemoryRouter } from "react-router-dom";
+import { Pricing } from "./pages/Pricing";
 
 describe("formatBillingLabel", () => {
   it("formats free", () => {
@@ -48,5 +50,22 @@ describe("PaywallModal", () => {
 
     expect(html).toContain("Ещё одна — 249 ₽");
     expect(html).toContain("Безлимит на месяц — 499 ₽");
+  });
+});
+
+describe("Pricing page", () => {
+  it("renders API-provided prices", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(Pricing, {
+          catalog: { paymentsEnabled: true, prices: { creditRub: 249, monthRub: 499 } },
+        }),
+      ),
+    );
+    expect(html).toContain("249");
+    expect(html).toContain("499");
+    expect(html).toContain("<h1>Тарифы</h1>");
   });
 });

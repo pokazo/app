@@ -60,6 +60,7 @@ import {
   applyPaidPayment,
   billingLog,
   finalizeDeckBilling,
+  getBillingCatalog,
   getBillingMe,
   reserveGenerate,
   type BillingProduct,
@@ -173,6 +174,8 @@ export function createApp() {
   if (auth) {
     app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
   }
+
+  app.get("/api/billing/catalog", (c) => c.json(getBillingCatalog()));
 
   app.get("/api/billing/me", async (c) => {
     if (!auth || !pool) return c.json({ error: "unavailable" }, 503);
