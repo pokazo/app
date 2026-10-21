@@ -61,25 +61,16 @@ function pinTheme(md: string, theme: string): string {
 }
 
 export type GuardMarkdownOptions = {
-  /** Retheme: overwrite spotlight/agenda palettes too (default keeps model-chosen). */
+  /** Kept for retheme API compatibility; palettes are always pinned to the deck theme. */
   forceAllPalettes?: boolean;
 };
 
-/** Pin palette on every slide frontmatter — Slidev passes layout props per-slide only.
- * Exception: spotlight/agenda keep model-chosen palette when already set (layout picks bg),
- * unless forceAllPalettes is set (post-build retheme). */
-function pinPalette(md: string, palette: string, forceAllPalettes = false): string {
+/** Pin palette on every slide frontmatter — Slidev passes layout props per-slide only. */
+function pinPalette(md: string, palette: string, _forceAllPalettes = false): string {
   if (!md.trim().startsWith("---")) {
     return `---\npalette: ${palette}\n---\n\n${md}`;
   }
   return md.replace(/^---\n([\s\S]*?)\n---/gm, (_full, body: string) => {
-    const keepsOwnPalette =
-      !forceAllPalettes &&
-      /^layout:\s*(spotlight|agenda)\s*$/m.test(body) &&
-      /^palette:\s*\S+/m.test(body);
-    if (keepsOwnPalette) {
-      return `---\n${body}\n---`;
-    }
     let fm = body.replace(/^palette:\s*.+$/m, `palette: ${palette}`);
     if (!/^palette:/m.test(fm)) {
       fm = `palette: ${palette}\n${fm}`;

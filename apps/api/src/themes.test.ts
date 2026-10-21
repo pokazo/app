@@ -109,26 +109,38 @@ describe("md-guard theme", () => {
     expect(out).toMatch(/^theme: default$/m);
   });
 
-  it("preserves model-chosen palette on spotlight slides", () => {
+  it("pins deck palette on spotlight slides (ignores model palette)", () => {
     const out = guardMarkdown(
       `---\ntheme: default\nlayout: hero\n---\n\n# One\n\n---\nlayout: spotlight\npalette: ocean\nimage: /slide-2.png\n---\n\n# Spot`,
       "ink-dark",
     );
     const blocks = [...out.matchAll(/^---\n([\s\S]*?)\n---/gm)].map((m) => m[1]!);
     expect(blocks[0]).toMatch(/^palette: ink$/m);
-    expect(blocks[1]).toMatch(/^palette: ocean$/m);
+    expect(blocks[1]).toMatch(/^palette: ink$/m);
     expect(blocks[1]).toMatch(/^layout: spotlight$/m);
+    expect(blocks[1]).not.toMatch(/^palette: ocean$/m);
   });
 
-  it("preserves model-chosen palette on agenda slides", () => {
+  it("pins deck palette on agenda slides (ignores model palette)", () => {
     const out = guardMarkdown(
       `---\ntheme: default\nlayout: hero\n---\n\n# One\n\n---\nlayout: agenda\npalette: candy\nitems:\n  - title: A\n  - title: B\n  - title: C\n---\n\n# Agenda\n\nDesc.`,
       "ink-dark",
     );
     const blocks = [...out.matchAll(/^---\n([\s\S]*?)\n---/gm)].map((m) => m[1]!);
     expect(blocks[0]).toMatch(/^palette: ink$/m);
-    expect(blocks[1]).toMatch(/^palette: candy$/m);
+    expect(blocks[1]).toMatch(/^palette: ink$/m);
     expect(blocks[1]).toMatch(/^layout: agenda$/m);
+    expect(blocks[1]).not.toMatch(/^palette: candy$/m);
+  });
+
+  it("seriph deck keeps cream on agenda (no random slate jump)", () => {
+    const out = guardMarkdown(
+      `---\ntheme: seriph\nlayout: hero\npalette: cream\n---\n\n# One\n\n---\nlayout: agenda\npalette: slate\nitems:\n  - title: A\n---\n\n# TOC`,
+      "seriph",
+    );
+    const blocks = [...out.matchAll(/^---\n([\s\S]*?)\n---/gm)].map((m) => m[1]!);
+    expect(blocks[1]).toMatch(/^palette: cream$/m);
+    expect(blocks[1]).not.toMatch(/^palette: slate$/m);
   });
 
   it("forceAllPalettes overwrites spotlight and agenda palette on retheme", () => {

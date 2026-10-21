@@ -41,6 +41,7 @@ describe("injectPlayerChromeHide", () => {
     expect(out).toContain("content-reveal");
     expect(out).toContain("contentNodes");
     expect(out).toContain("pk-brick__grid");
+    expect(out).toContain("pk-agenda__waves");
     expect(out).toContain("ignore-dup-inflight");
     expect(out).toContain("drop-pending-same");
     expect(out).toContain("currentTransition");
