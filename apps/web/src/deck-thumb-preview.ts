@@ -15,10 +15,12 @@ export function thumbPlaceholderLayers(opts: {
 }
 
 /**
- * Progressive slide growth remounts the stage; thumbs stay keyed by index only.
+ * Filmstrip cells follow the thumb file, not the slot index.
+ * A reorder renumbers the slot but keeps the already painted webp.
  */
-export function thumbReactKey(index: number): string {
-  return `thumb-${index}`;
+export function thumbReactKey(index: number, imageThumb?: string | null): string {
+  const path = imageThumb?.split("?")[0]?.trim();
+  return path ? `thumb-${path}` : `thumb-${index}`;
 }
 
 /** Only backend slide screenshots — never full cover `image`. */

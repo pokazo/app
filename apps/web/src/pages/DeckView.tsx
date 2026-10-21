@@ -10,7 +10,7 @@ import {
 import { useLocation, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
-import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex } from "../deck-view";
+import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex, stageNavShouldPost } from "../deck-view";
 import {
   isPresentChromeRevealZone,
   isTypingTarget,
@@ -158,6 +158,7 @@ export function DeckView() {
   const stageRef = useRef<HTMLIFrameElement>(null);
   /** Avoid re-posting the same Slidev page when effect deps churn (meta.slides, etc.). */
   const lastPostedSlidevPageRef = useRef<number | null>(null);
+  const postedStageLoadRef = useRef(0);
   const stageHostRef = useRef<HTMLDivElement>(null);
   const presentChromeHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
@@ -178,12 +179,15 @@ export function DeckView() {
   const [mobilePresent, setMobilePresent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [stageReady, setStageReady] = useState(false);
+  const [stageLoad, setStageLoad] = useState(0);
   const [exporting, setExporting] = useState<"pdf" | "pptx" | "facts" | null>(null);
   const [exportErr, setExportErr] = useState("");
   const [speechOpen, setSpeechOpen] = useState(false);
   const [embedKey, setEmbedKey] = useState(0);
   const [thumbRev, setThumbRev] = useState(0);
   const pendingThumbSyncRef = useRef(false);
+  /** Live structure POST has not resolved. In-flight polls must not replace slides. */
+  const structureInflightRef = useRef(false);
   const [building, setBuilding] = useState(false);
   const [activity, setActivity] = useState("");
   const [rewriteText, setRewriteText] = useState("");
@@ -418,10 +422,12 @@ export function DeckView() {
           livePreview: data.livePreview,
           editKind: data.editKind,
         });
+        const structureInflight = structureInflightRef.current;
         const keepSlides = viewPollKeepsLocalSlides({
           liveStructure,
           editAccepted,
           pollAfterAccept,
+          structureInflight,
         });
         const rewriteDone = shouldClearRewriteBusy({
           rewriteBusy: rewriteBusyRef.current,
@@ -449,6 +455,7 @@ export function DeckView() {
             rewriteBusy: rewriteBusyRef.current,
             editAccepted,
             pollAfterAccept,
+            structureInflight,
           })
         ) {
           forcePollRef.current = false;
@@ -458,6 +465,7 @@ export function DeckView() {
           pollGen: myPollGen,
           acceptedPollGen: acceptedPollGenRef.current,
           keepSlides,
+          structureInflight,
           serverBuilding,
           editKind: data.editKind ?? null,
           serverHeadings: data.slides.map(
@@ -599,17 +607,28 @@ export function DeckView() {
     if (!showStage) return;
     const page = slidevPageForOutlineIndex(meta?.slides ?? [], current);
     const hit = meta?.slides?.find((s) => s.index === current);
-    if (lastPostedSlidevPageRef.current === page) return;
+    if (
+      !stageNavShouldPost({
+        lastPosted: lastPostedSlidevPageRef.current,
+        page,
+        postedLoad: postedStageLoadRef.current,
+        stageLoad,
+      })
+    ) {
+      return;
+    }
     console.info("[edit] stage_nav", {
       current,
       page,
       heading: hit?.heading ?? "",
       slidevIndex: hit?.slidevIndex ?? null,
+      stageLoad,
       filmstrip: (meta?.slides ?? []).map((s) => `${s.index}:${s.heading}`),
     });
     lastPostedSlidevPageRef.current = page;
+    postedStageLoadRef.current = stageLoad;
     stageRef.current?.contentWindow?.postMessage(slidevNavigateMessage(page), "*");
-  }, [current, stageReady, meta?.slides, showStage]);
+  }, [current, stageReady, stageLoad, meta?.slides, showStage]);
 
   useEffect(() => {
     function onAnimLog(ev: MessageEvent) {
@@ -770,6 +789,7 @@ export function DeckView() {
     if (!id || !structureReady) return;
     const live = Boolean(meta?.livePreview);
     setStructureErr("");
+    structureInflightRef.current = true;
     markRewriteBusy(true);
     setActivity(live ? "" : activityLabel);
     stayOnSlideRef.current = focusSlide;
@@ -806,6 +826,8 @@ export function DeckView() {
       setStructureErr(
         structureErrorMessage(err instanceof Error ? err.message : String(err)),
       );
+    } finally {
+      structureInflightRef.current = false;
     }
   }
 
@@ -1125,7 +1147,7 @@ export function DeckView() {
               .join(" ");
             return (
             <div
-              key={s.index}
+              key={thumbReactKey(s.index, cover)}
               data-thumb={s.index}
               className={itemClass}
               onDragOver={(e) => {
@@ -1169,7 +1191,7 @@ export function DeckView() {
                 onClick={() => openSlide(s.index)}
               >
                 <DeckThumbPreview
-                  key={thumbReactKey(s.index)}
+                  key={thumbReactKey(s.index, cover)}
                   embedBase={embedBase}
                   embedCacheKey={embedKey}
                   index={s.slidevIndex ?? s.index}
@@ -1266,7 +1288,10 @@ export function DeckView() {
                     title={meta.topic ?? "Презентация"}
                     src={`${embedDeckUrl(embedBase)}${embedKey ? `&_r=${embedKey}` : ""}`}
                     fetchPriority="high"
-                    onLoad={() => setStageReady(true)}
+                    onLoad={() => {
+                      setStageReady(true);
+                      setStageLoad((n) => n + 1);
+                    }}
                   />
                 ) : null}
                 <div className="deck-stage-nav" aria-hidden>

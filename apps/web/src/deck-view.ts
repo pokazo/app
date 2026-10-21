@@ -18,6 +18,20 @@ export function slidevNavigateMessage(page: number) {
   return { target: "slidev" as const, type: "navigate" as const, no: page, clicks: 0 };
 }
 
+/**
+ * Post navigate again after the iframe document reloads (Slidev HMR), even
+ * when the selected page number did not change. Otherwise the player boots
+ * on page 1 and the filmstrip stays on the moved slide.
+ */
+export function stageNavShouldPost(opts: {
+  lastPosted: number | null;
+  page: number;
+  postedLoad: number;
+  stageLoad: number;
+}): boolean {
+  return opts.lastPosted !== opts.page || opts.postedLoad !== opts.stageLoad;
+}
+
 /** Outline thumb index → Slidev page (uses slidevIndex when API provides it). */
 export function slidevPageForOutlineIndex(
   slides: Array<{ index: number; slidevIndex?: number }>,

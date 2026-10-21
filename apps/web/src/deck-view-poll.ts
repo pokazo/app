@@ -11,15 +11,18 @@ export function isDeckId(id: string): boolean {
  * filmstrip or show the progressive "rest of the deck" line for that.
  */
 /**
- * A /api/view fetch that started before the edit POST still carries the old
- * slide list. Applying it reverts the filmstrip while Vite already shows the
- * new order, then polling stops.
+ * A /api/view fetch that started before the edit POST can return the new order
+ * before the client records that the POST was accepted. Applying it swaps
+ * thumb paths while the cache key is still the previous one.
  */
 export function viewPollKeepsLocalSlides(opts: {
   liveStructure: boolean;
   editAccepted: boolean;
   pollAfterAccept: boolean;
+  /** Live move/insert/delete POST has not returned yet. */
+  structureInflight?: boolean;
 }): boolean {
+  if (opts.structureInflight) return true;
   if (opts.liveStructure) return true;
   return opts.editAccepted && !opts.pollAfterAccept;
 }
@@ -30,7 +33,9 @@ export function viewPollStops(opts: {
   rewriteBusy: boolean;
   editAccepted: boolean;
   pollAfterAccept: boolean;
+  structureInflight?: boolean;
 }): boolean {
+  if (opts.structureInflight) return false;
   if (opts.serverBuilding || opts.rewriteBusy) return false;
   if (opts.editAccepted && !opts.pollAfterAccept) return false;
   return true;

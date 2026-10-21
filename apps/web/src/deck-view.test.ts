@@ -5,6 +5,7 @@ import {
   embedSlideUrl,
   slidevNavigateMessage,
   slidevPageForOutlineIndex,
+  stageNavShouldPost,
 } from "./deck-view";
 
 describe("embed urls", () => {
@@ -17,6 +18,18 @@ describe("embed urls", () => {
   it("uses Slidev path index with embedded flag", () => {
     expect(embedSlideUrl("https://api.pokazo.ru/p/abc/", 3)).toBe("https://api.pokazo.ru/p/abc/3?embedded");
     expect(embedSlideUrl("https://api.pokazo.ru/p/abc", 1)).toBe("https://api.pokazo.ru/p/abc/1?embedded");
+  });
+
+  it("reposts navigate after the player iframe reloads on the same page", () => {
+    expect(
+      stageNavShouldPost({ lastPosted: 3, page: 3, postedLoad: 1, stageLoad: 1 }),
+    ).toBe(false);
+    expect(
+      stageNavShouldPost({ lastPosted: 3, page: 3, postedLoad: 1, stageLoad: 2 }),
+    ).toBe(true);
+    expect(
+      stageNavShouldPost({ lastPosted: 1, page: 3, postedLoad: 2, stageLoad: 2 }),
+    ).toBe(true);
   });
 
   it("matches Slidev embed navigate payload", () => {

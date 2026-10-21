@@ -44,6 +44,17 @@ describe("viewPollKeepsLocalSlides", () => {
       }),
     ).toBe(false);
   });
+
+  it("keeps local slides while the structure POST has not returned", () => {
+    expect(
+      viewPollKeepsLocalSlides({
+        liveStructure: false,
+        editAccepted: false,
+        pollAfterAccept: false,
+        structureInflight: true,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("viewPollStops", () => {
@@ -64,6 +75,15 @@ describe("viewPollStops", () => {
         pollAfterAccept: true,
       }),
     ).toBe(true);
+    expect(
+      viewPollStops({
+        serverBuilding: false,
+        rewriteBusy: false,
+        editAccepted: false,
+        pollAfterAccept: false,
+        structureInflight: true,
+      }),
+    ).toBe(false);
   });
 });
 

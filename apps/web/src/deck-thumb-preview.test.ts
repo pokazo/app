@@ -71,6 +71,15 @@ describe("thumbCoverPath / thumbIsSlideShot", () => {
 describe("thumb progressive dynamics", () => {
   it("keeps stable React keys across embed cache bumps", () => {
     expect(thumbReactKey(1)).toBe("thumb-1");
-    expect([1, 2, 3].map(thumbReactKey)).toEqual(["thumb-1", "thumb-2", "thumb-3"]);
+    expect([1, 2, 3].map((index) => thumbReactKey(index))).toEqual([
+      "thumb-1",
+      "thumb-2",
+      "thumb-3",
+    ]);
+  });
+
+  it("keys a cell by its thumb path so a reorder does not remount the image", () => {
+    expect(thumbReactKey(2, "/thumbs/v2/3.webp?_r=0-2")).toBe("thumb-/thumbs/v2/3.webp");
+    expect(thumbReactKey(3, "/thumbs/v2/3.webp")).toBe(thumbReactKey(2, "/thumbs/v2/3.webp"));
   });
 });
