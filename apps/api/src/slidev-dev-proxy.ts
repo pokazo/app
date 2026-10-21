@@ -10,6 +10,21 @@ import { getSlidevDevSession } from "./slidev-dev-pool.js";
 const DECK_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Vite SPA fallback is `text/html` for missing files (filmstrip webp, etc.).
+ * That HTML is the slide player only for a document path: no extension, `.html`, or trailing slash.
+ * A real `image/*` (or any non-HTML) response is not a document — caller returns the proxy body.
+ */
+export function viteHtmlIsSlideDocument(pathname: string, contentType: string): boolean {
+  if (!contentType.toLowerCase().includes("text/html")) return false;
+  const path = (pathname.split("?")[0] ?? pathname).replace(/\/+$/, "/");
+  if (path.endsWith("/")) return true;
+  const base = path.split("/").pop() ?? "";
+  const dot = base.lastIndexOf(".");
+  if (dot <= 0) return true;
+  return base.slice(dot).toLowerCase() === ".html";
+}
+
 /** Path is under /p/:uuid/ (or bare /p/:uuid) for a live session. */
 export function liveDeckIdFromPath(pathname: string): string | undefined {
   const m = pathname.match(/^\/p\/([0-9a-f-]{36})(?:\/|$)/i);
@@ -25,13 +40,14 @@ export async function proxyHttpToSlidevDev(
   const session = getSlidevDevSession(deckId);
   if (!session) return null;
   const url = new URL(req.url);
-  const target = `http://127.0.0.1:${session.port}${url.pathname}${url.search}`;
+  // Vite/Slidev binds IPv6 loopback (::1) even with --bind 127.0.0.1 in this image.
+  const target = `http://[::1]:${session.port}${url.pathname}${url.search}`;
   const headers = new Headers();
   req.headers.forEach((v, k) => {
     if (k === "host" || k === "connection") return;
     headers.set(k, v);
   });
-  headers.set("host", `127.0.0.1:${session.port}`);
+  headers.set("host", `[::1]:${session.port}`);
   try {
     const upstream = await fetch(target, {
       method: req.method,
@@ -53,9 +69,9 @@ function proxyWebSocketUpgrade(
   head: Buffer,
   port: number,
 ): void {
-  const headers = { ...req.headers, host: `127.0.0.1:${port}` };
+  const headers = { ...req.headers, host: `[::1]:${port}` };
   const proxyReq = http.request({
-    hostname: "127.0.0.1",
+    hostname: "::1",
     port,
     path: req.url,
     method: "GET",

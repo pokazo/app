@@ -992,18 +992,22 @@ export function createApp() {
             session.user.id,
           ]);
           if (rows[0]) {
-            const { proxyHttpToSlidevDev } = await import("./slidev-dev-proxy.js");
+            const { proxyHttpToSlidevDev, viteHtmlIsSlideDocument } = await import(
+              "./slidev-dev-proxy.js"
+            );
             const proxied = await proxyHttpToSlidevDev(c.req.raw, id);
             if (proxied) {
               const ct = proxied.headers.get("content-type") || "";
-              if (ct.includes("text/html")) {
+              const pathname = new URL(c.req.url).pathname;
+              if (viteHtmlIsSlideDocument(pathname, ct)) {
                 const html = injectPlayerChromeHide(await proxied.text());
                 return new Response(html, {
                   status: proxied.status,
                   headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
                 });
               }
-              return proxied;
+              // File request that Vite answered with index.html — serve dist instead.
+              if (!ct.toLowerCase().includes("text/html")) return proxied;
             }
           }
         }

@@ -5,7 +5,7 @@ vi.mock("./slidev-dev-pool.js", () => ({
 }));
 
 import { getSlidevDevSession } from "./slidev-dev-pool.js";
-import { liveDeckIdFromPath } from "./slidev-dev-proxy.js";
+import { liveDeckIdFromPath, viteHtmlIsSlideDocument } from "./slidev-dev-proxy.js";
 
 describe("liveDeckIdFromPath", () => {
   beforeEach(() => {
@@ -38,5 +38,30 @@ describe("liveDeckIdFromPath", () => {
   it("ignores non-uuid paths", () => {
     expect(liveDeckIdFromPath("/p/not-a-uuid/")).toBeUndefined();
     expect(liveDeckIdFromPath("/ws/deck/x")).toBeUndefined();
+  });
+});
+
+describe("viteHtmlIsSlideDocument", () => {
+  it("treats a filmstrip webp answered as HTML as a file, not the player", () => {
+    expect(viteHtmlIsSlideDocument("/thumbs/v2/1.webp", "text/html")).toBe(false);
+    expect(
+      viteHtmlIsSlideDocument(
+        "/p/bed0ddd0-7520-4a71-b0e7-21d899a7143a/thumbs/v2/1.webp",
+        "text/html; charset=utf-8",
+      ),
+    ).toBe(false);
+  });
+
+  it("treats / and index.html as the slide document", () => {
+    expect(viteHtmlIsSlideDocument("/", "text/html")).toBe(true);
+    expect(viteHtmlIsSlideDocument("/index.html", "text/html; charset=utf-8")).toBe(true);
+    expect(
+      viteHtmlIsSlideDocument("/p/bed0ddd0-7520-4a71-b0e7-21d899a7143a/", "text/html"),
+    ).toBe(true);
+  });
+
+  it("keeps a real image response off the document path", () => {
+    expect(viteHtmlIsSlideDocument("/thumbs/v2/1.webp", "image/webp")).toBe(false);
+    expect(viteHtmlIsSlideDocument("/slide-1.jpg", "image/jpeg")).toBe(false);
   });
 });
