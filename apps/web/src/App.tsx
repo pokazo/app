@@ -1,4 +1,6 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { notePageUrl, pageHitUrl, trackPageHit } from "./metrika";
 import { Landing } from "./pages/Landing";
 import { AudienceLanding } from "./pages/AudienceLanding";
 import { Login } from "./pages/Login";
@@ -11,9 +13,19 @@ import { Pricing } from "./pages/Pricing";
 import { Contact } from "./pages/Contact";
 import { AUDIENCE_PAGES } from "./audience-pages";
 
+function MetrikaPageHit() {
+  const location = useLocation();
+  useEffect(() => {
+    const url = pageHitUrl(location.pathname, location.search);
+    if (notePageUrl(url)) trackPageHit(url);
+  }, [location.pathname, location.search]);
+  return null;
+}
+
 export function App() {
   return (
     <BrowserRouter>
+      <MetrikaPageHit />
       <Routes>
         <Route path="/" element={<Landing />} />
         {AUDIENCE_PAGES.map((p) => (
