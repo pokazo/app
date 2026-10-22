@@ -62,6 +62,7 @@ import { BuildLoader } from "../components/BuildLoader";
 import { ThemePicker } from "../components/ThemePicker";
 import { shouldShowBuildLoader } from "../deck-ws";
 import { useDeckSocket } from "../useDeckSocket";
+import { nextFreeDeckWatch, noteFreeDeckBuilding, trackFreeDeckReady, watchForDeck } from "../free-deck-metrika";
 
 type Me = { id: string; email: string; name: string };
 type Slide = {
@@ -166,6 +167,12 @@ export function DeckView() {
   const [presentChromeVisible, setPresentChromeVisible] = useState(false);
   /** True only when signed-in user owns this deck (GET /api/decks/:id). */
   const [isOwner, setIsOwner] = useState(false);
+  const freeWatchRef = useRef(watchForDeck(id));
+  const freeWatchDeckRef = useRef(id);
+  if (freeWatchDeckRef.current !== id) {
+    freeWatchDeckRef.current = id;
+    freeWatchRef.current = watchForDeck(id);
+  }
   const [deckTheme, setDeckTheme] = useState("default");
   const [themeOpen, setThemeOpen] = useState(false);
   const [themeBusy, setThemeBusy] = useState(false);
@@ -289,8 +296,14 @@ export function DeckView() {
         setIsOwner(r.ok);
         if (!r.ok) return;
         try {
-          const body = (await r.json()) as { theme?: string };
+          const body = (await r.json()) as { theme?: string; billingKind?: string | null };
           setDeckTheme(sanitizeEditableDeckTheme(body.theme));
+          const freeStep = nextFreeDeckWatch(freeWatchRef.current, {
+            billingKnown: true,
+            billingKind: body.billingKind ?? null,
+          });
+          freeWatchRef.current = freeStep.watch;
+          if (freeStep.track) trackFreeDeckReady(id);
         } catch {
           /* keep default */
         }
@@ -308,6 +321,14 @@ export function DeckView() {
     if (!r.ok) throw new Error("not ready");
     return r.json() as Promise<ViewMeta>;
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !meta?.status) return;
+    const freeStep = nextFreeDeckWatch(freeWatchRef.current, { status: meta.status });
+    freeWatchRef.current = freeStep.watch;
+    noteFreeDeckBuilding(id, meta.status);
+    if (freeStep.track) trackFreeDeckReady(id);
+  }, [id, meta?.status]);
 
   // Wait for first preview dist, then poll until compose finishes (remount iframe on ready).
   useEffect(() => {

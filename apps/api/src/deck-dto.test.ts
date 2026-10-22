@@ -19,5 +19,7 @@ describe("toDeckDto", () => {
     expect(toDeckDto({ ...row, status: "preview" }).viewUrl).toMatch(
       /\/view\/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee$/,
     );
+    expect(toDeckDto(row).billingKind).toBeNull();
+    expect(toDeckDto({ ...row, billing_kind: "free" }).billingKind).toBe("free");
   });
 });

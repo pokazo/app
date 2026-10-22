@@ -23,6 +23,7 @@ import { SlideCountPicker } from "../components/SlideCountPicker";
 import { UploadAttach } from "../components/UploadAttach";
 import { PaywallModal } from "../components/PaywallModal";
 import { trackPaymentSuccess } from "../payment-metrika";
+import { initialFreeDeckWatch, nextFreeDeckWatch, noteFreeDeckBuilding, trackFreeDeckReady } from "../free-deck-metrika";
 import { BillingMe } from "../billing";
 import { clearPendingUploadFiles, getPendingUploadFiles } from "../pending-uploads";
 
@@ -161,6 +162,7 @@ export function AppHome() {
   /** Poll one deck until the player can open it (or it fails). Stops if Home unmounts. */
   async function trackDeck(deckId: string, openWhenViewable = true) {
     let failures = 0;
+    let freeWatch = initialFreeDeckWatch();
     while (aliveRef.current) {
       await new Promise((r) => setTimeout(r, 1000));
       if (!aliveRef.current) return;
@@ -169,6 +171,7 @@ export function AppHome() {
         viewUrl: string | null;
         error?: string;
         activity?: string | null;
+        billingKind?: string | null;
       };
       try {
         d = await api(`/api/decks/${deckId}`);
@@ -179,6 +182,14 @@ export function AppHome() {
       }
       failures = 0;
       if (!aliveRef.current) return;
+      const freeStep = nextFreeDeckWatch(freeWatch, {
+        status: d.status,
+        billingKnown: true,
+        billingKind: d.billingKind ?? null,
+      });
+      freeWatch = freeStep.watch;
+      if (freeStep.track) trackFreeDeckReady(deckId);
+      noteFreeDeckBuilding(deckId, d.status);
       setStatus(d.status);
       setActivity(d.activity ?? "");
       noteInFlight(deckId, d.status, d.activity);

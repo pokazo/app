@@ -7,6 +7,7 @@ export type DeckRow = {
   error: string | null;
   slide_count: number;
   theme?: string | null;
+  billing_kind?: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -23,6 +24,7 @@ export function toDeckDto(deck: DeckRow) {
     error: deck.error,
     slideCount: Number(deck.slide_count),
     theme: typeof deck.theme === "string" && deck.theme ? deck.theme : "default",
+    billingKind: deck.billing_kind ?? null,
     createdAt: iso(deck.created_at),
     updatedAt: iso(deck.updated_at),
     viewUrl:
