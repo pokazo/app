@@ -47,6 +47,18 @@ import { withUploadImagesMcp } from "./upload-images-mcp.js";
 import { createUploadImageUseTools, type UploadToolAttribution } from "./upload-images-tools.js";
 import { hasUploadImages, uploadDirForDeck } from "./upload-store.js";
 
+async function patchInputSlideCount(workDir: string, slideCount: number): Promise<void> {
+  const path = join(workDir, "input.json");
+  let input: Record<string, unknown> = {};
+  try {
+    input = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+  } catch {
+    input = {};
+  }
+  input.slideCount = slideCount;
+  await writeFile(path, JSON.stringify(input));
+}
+
 function model(id: string) {
   const openai = createOpenAI({
     apiKey: config.openrouterKey,
@@ -119,6 +131,8 @@ export async function generateDeck(opts: {
   onPreviewReady?: () => Promise<void>;
   /** Called when auto theme is resolved (or user theme confirmed) so DB/UI can update. */
   onThemeResolved?: (theme: SelectableThemeId, meta: { reason: string; via: string }) => Promise<void>;
+  /** Called when the outline agent overrides the form slider via set-slide-count. */
+  onSlideCountResolved?: (slideCount: number) => Promise<void>;
 }): Promise<void> {
   const mcpCalls: McpCallLog[] = [];
   const attributions: Array<
@@ -247,18 +261,25 @@ export async function generateDeck(opts: {
   });
   timer.mark("outline");
   console.info(
-    `[generate] outline via=${outlined.via} title="${outlined.outline.title}" slides=${outlined.outline.slides.length} ` +
+    `[generate] outline via=${outlined.via} title="${outlined.outline.title}" slides=${outlined.outline.slides.length} slideCount=${outlined.slideCount} ` +
       `layoutMcpCalls=${outlined.mcpCalls.length}`,
   );
 
   const outline = { object: outlined.outline };
+  if (outlined.slideCount !== opts.slideCount) {
+    await patchInputSlideCount(opts.workDir, outlined.slideCount);
+    if (opts.onSlideCountResolved) await opts.onSlideCountResolved(outlined.slideCount);
+    console.info(
+      `[generate] slide-count override slider=${opts.slideCount} resolved=${outlined.slideCount}`,
+    );
+  }
   await writeFile(join(opts.workDir, "outline.json"), JSON.stringify(outline.object, null, 2));
   await writeFile(
     join(opts.workDir, "outline-plan-check.json"),
     JSON.stringify(
       {
         via: outlined.via,
-        issues: validateOutlinePlan(outline.object, { slideCount: opts.slideCount }),
+        issues: validateOutlinePlan(outline.object, { slideCount: outlined.slideCount }),
         layoutMcpCalls: outlined.mcpCalls.length,
       },
       null,

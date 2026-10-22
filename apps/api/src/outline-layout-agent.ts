@@ -1,4 +1,5 @@
 import { generateObject, generateText, tool } from "ai";
+import { z } from "zod";
 import {
   outlineGenerateObjectSchema,
   toolJsonSchemaForProvider,
@@ -23,15 +24,18 @@ import {
 } from "./outline-validate.js";
 import { outlineRevisePrompt, outlineUserPrompt } from "./compose-skill.js";
 import { withLayoutMcp } from "./layout-mcp.js";
+import { SLIDE_COUNT_MAX, SLIDE_COUNT_MIN } from "./slide-structure.js";
 import type { McpCallLog } from "./slidev-mcp.js";
 
 export const OUTLINE_LAYOUT_SYSTEM = `You plan a Pokazo Slidev deck outline as JSON.
 
-You have MCP tools for layouts:
+You have tools:
+- set-slide-count — only when the topic text explicitly asks for a slide count
 - layout-list — browse layouts
 - layout-get — full contract for one id
 - layout-match — ranked candidates for an intent
 - outline-validate — plan gate with exact expect contract per failing slide
+- submit_outline — accept the plan after outline-validate returned ok:true
 
 Rules:
 1. Before assigning visual on slides, call layout-list or layout-match (and layout-get for unfamiliar ids). Both return limits (H1, kicker, …) — read them before picking a visual.
@@ -39,10 +43,11 @@ Rules:
 3. For visual=icon|features|process: every iconHint MUST be copied from that layout's iconHints allowlist (layout-get). Never invent Carbon names.
 4. Choose a visual only when heading/points fit that layout's limits.H1 (and other limits). If the idea needs a long thesis title, pick another layout (two-cols, cards, …) or shorten the heading — never assign statement/fact/quote with an overlong H1 (overflow clips).
 5. Honor limits from layout-list/match and fields[].limit from layout-get when filling heading/points/kicker (esp. image-right/image-left: short copy, ≤3 bullets; statement: H1 ≈3–10 words; spotlight: char caps + palette; pie: 3–5 slices + char caps; agenda: 3–5 titles + palette).
-6. After drafting the full outline, call outline-validate (outlineJson + slideCount). If ok:false, fix each slide using issues[].expect (outlineFields, antiPatterns, example, limits, iconHints) and call outline-validate again.
-7. Only when outline-validate returns ok:true, call submit_outline with the full outline object (title + slides).
-8. If submit_outline returns ok:false with issues, fix using expect and re-validate then submit again.
-9. Do not invent layout ids outside the catalog.`;
+6. Slide count starts as the form slider in the user message. If the topic text explicitly asks for a number of slides («6 слайдов», «на 6 страниц», «6 slides»), call set-slide-count with that integer BEFORE drafting, then plan exactly that many. Do not treat grades, years, or other numbers as a slide count («9 класс», «1861»). If the topic names no slide count, do not call set-slide-count.
+7. After drafting the full outline, call outline-validate (outlineJson + the active slide count). If ok:false, fix each slide using issues[].expect (outlineFields, antiPatterns, example, limits, iconHints) and call outline-validate again.
+8. Only when outline-validate returns ok:true, call submit_outline with the full outline object (title + slides).
+9. If submit_outline returns ok:false with issues, fix using expect and re-validate then submit again.
+10. Do not invent layout ids outside the catalog.`;
 
 function skipOutlinePlan(): boolean {
   return process.env.SKIP_OUTLINE_PLAN === "1";
@@ -169,8 +174,41 @@ export function outlineRetryFeedback(trace: OutlineAgentTrace, lastDraft: string
     .join("\n");
 }
 
+export type SlideCountState = { slideCount: number };
+
+/** Form slider or an in-agent override. Read at execute time so set-slide-count is visible. */
+export function resolveSlideCount(slideCount: number | SlideCountState): number {
+  return typeof slideCount === "number" ? slideCount : slideCount.slideCount;
+}
+
+/** Clamp a model-requested count into the product range (same bounds as the slider). */
+export function clampSlideCount(value: number): number {
+  if (!Number.isFinite(value)) return SLIDE_COUNT_MIN;
+  return Math.min(SLIDE_COUNT_MAX, Math.max(SLIDE_COUNT_MIN, Math.round(value)));
+}
+
+export function createSetSlideCountTool(state: SlideCountState) {
+  return tool({
+    description:
+      "Override the form slider when the topic text explicitly requests a slide count («6 слайдов», «на 6 страниц», «6 slides»). Call once before drafting. Do not call for grades, years, or other numbers, and do not call when the topic names no slide count. Value is clamped to 3–16.",
+    parameters: z.object({
+      slideCount: z
+        .number()
+        .int()
+        .describe("Slide count taken from the topic text, not the form slider"),
+    }),
+    execute: async ({ slideCount }: { slideCount: number }) => {
+      const previous = state.slideCount;
+      const next = clampSlideCount(slideCount);
+      state.slideCount = next;
+      console.info(`[outline] set-slide-count ${previous} → ${next}`);
+      return { ok: true, slideCount: next, previous, clamped: next !== slideCount };
+    },
+  });
+}
+
 export function createSubmitOutlineTool(opts: {
-  slideCount: number;
+  slideCount: number | SlideCountState;
   outlineModelId: string;
   onAccepted: (outline: OutlineT) => void;
   /** Raw draft of every submit attempt (for the retry round). */
@@ -178,10 +216,11 @@ export function createSubmitOutlineTool(opts: {
 }) {
   return tool({
     description:
-      "Submit the final outline JSON after outline-validate returned ok:true. Re-runs the same plan gate; on fail returns structured issues with expect contracts.",
+      "Submit the final outline JSON after outline-validate returned ok:true. Re-runs the same plan gate; on fail returns structured issues with expect contracts. Slide count is the form slider unless set-slide-count changed it.",
     parameters: toolJsonSchemaForProvider(Outline, opts.outlineModelId),
     execute: async (raw: unknown) => {
       opts.onAttempt?.(raw);
+      const slideCount = resolveSlideCount(opts.slideCount);
       if (skipOutlinePlan()) {
         const parsed = safeParseOutline(raw);
         if (!parsed.success) {
@@ -190,7 +229,7 @@ export function createSubmitOutlineTool(opts: {
         opts.onAccepted(parsed.data);
         return { ok: true, slides: parsed.data.slides.length, title: parsed.data.title };
       }
-      const result = outlineValidate(raw, { slideCount: opts.slideCount });
+      const result = outlineValidate(raw, { slideCount });
       if (!result.ok) {
         return { ok: false, issues: result.issues };
       }
@@ -217,6 +256,8 @@ export async function generateOutlineWithLayoutMcp(opts: {
   outline: OutlineT;
   via: "submit_outline" | "generateObject_fallback";
   mcpCalls: McpCallLog[];
+  /** Slider, or the count set-slide-count stored before the plan was accepted. */
+  slideCount: number;
 }> {
   const mcpCalls: McpCallLog[] = [];
   let accepted: OutlineT | null = null;
@@ -224,11 +265,13 @@ export async function generateOutlineWithLayoutMcp(opts: {
   const maxSteps = opts.maxSteps ?? 24;
   let lastDraft = "";
   let agentError: unknown = null;
+  const slideCountState: SlideCountState = { slideCount: opts.slideCount };
 
   await withLayoutMcp(
     async (layoutTools) => {
+      const set_slide_count = createSetSlideCountTool(slideCountState);
       const submit_outline = createSubmitOutlineTool({
-        slideCount: opts.slideCount,
+        slideCount: slideCountState,
         outlineModelId: opts.outlineModelId,
         onAccepted: (o) => {
           accepted = o;
@@ -243,6 +286,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
       });
       const rawTools = {
         ...layoutTools,
+        "set-slide-count": set_slide_count,
         submit_outline,
       };
       const activity = opts.onActivity
@@ -265,7 +309,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
         const prompt =
           round === 1
             ? basePrompt
-            : `${basePrompt}\n\n${outlineRetryFeedback(trace, lastDraft)}`;
+            : `${basePrompt}\n\n${outlineRetryFeedback(trace, lastDraft)}\nАктивное число слайдов сейчас: ${slideCountState.slideCount}. Строй ровно столько.`;
         if (round > 1) {
           console.warn(
             `[outline] agent round ${round}/${AGENT_ROUNDS} — no accepted submit yet; ${formatTrace(trace)}`,
@@ -299,7 +343,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
           // Do not abort the deck: fall through to generateObject + demotion below.
           agentError = err;
           console.error(`[outline] agent round ${round} threw ${formatTrace(trace)}`);
-          logAiError("outline", err, { topic: opts.topic, slideCount: opts.slideCount });
+          logAiError("outline", err, { topic: opts.topic, slideCount: slideCountState.slideCount });
           break;
         }
       }
@@ -311,7 +355,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
   );
 
   if (accepted) {
-    return { outline: accepted, via: "submit_outline", mcpCalls };
+    return { outline: accepted, via: "submit_outline", mcpCalls, slideCount: slideCountState.slideCount };
   }
 
   const hitStepCap = trace.steps >= maxSteps;
@@ -328,16 +372,21 @@ export async function generateOutlineWithLayoutMcp(opts: {
       topic: opts.topic,
       locale: opts.locale,
       audience: opts.audience,
-      slideCount: opts.slideCount,
+      slideCount: slideCountState.slideCount,
       researchMarkdown: opts.researchMarkdown,
     }),
   });
   if (skipOutlinePlan()) {
-    return { outline: first.object, via: "generateObject_fallback", mcpCalls };
+    return {
+      outline: first.object,
+      via: "generateObject_fallback",
+      mcpCalls,
+      slideCount: slideCountState.slideCount,
+    };
   }
   const refined = await refineOutlineUntilValid({
     initial: first.object,
-    slideCount: opts.slideCount,
+    slideCount: slideCountState.slideCount,
     maxAttempts: 3,
     revise: async (current, issues) => {
       console.warn(
@@ -350,7 +399,7 @@ export async function generateOutlineWithLayoutMcp(opts: {
           topic: opts.topic,
           locale: opts.locale,
           audience: opts.audience,
-          slideCount: opts.slideCount,
+          slideCount: slideCountState.slideCount,
           previous: current,
           issues: formatEnrichedPlanIssues(current, issues),
           researchMarkdown: opts.researchMarkdown,
@@ -367,14 +416,19 @@ export async function generateOutlineWithLayoutMcp(opts: {
     // Last resort: unfilled features/process/… slides become plain image-right bullets.
     const rescued = demoteUnfilledSlides(refined.outline);
     if (rescued.demoted.length) {
-      const after = validateOutlinePlan(rescued.outline, { slideCount: opts.slideCount });
+      const after = validateOutlinePlan(rescued.outline, { slideCount: slideCountState.slideCount });
       console.warn(
         `[outline] demoted unfilled slides ${rescued.demoted
           .map((d) => `#${d.slide}:${d.from}→image-right`)
           .join(",")} remainingIssues=${summarizeOutlineIssues(after)}`,
       );
       if (!after.length) {
-        return { outline: rescued.outline, via: "generateObject_fallback", mcpCalls };
+        return {
+          outline: rescued.outline,
+          via: "generateObject_fallback",
+          mcpCalls,
+          slideCount: slideCountState.slideCount,
+        };
       }
     }
     console.error(
@@ -385,7 +439,12 @@ export async function generateOutlineWithLayoutMcp(opts: {
       `Outline plan failed validation:\n${formatEnrichedPlanIssues(refined.outline, refined.issues)}`,
     );
   }
-  return { outline: refined.outline, via: "generateObject_fallback", mcpCalls };
+  return {
+    outline: refined.outline,
+    via: "generateObject_fallback",
+    mcpCalls,
+    slideCount: slideCountState.slideCount,
+  };
 }
 
 /** Re-export for tests / MCP description parity. */

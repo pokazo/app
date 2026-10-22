@@ -18,6 +18,7 @@ describe("activityLabelForTools", () => {
     expect(activityLabelForTools(["web-search"])).toBe("Ищу факты");
     expect(activityLabelForTools(["hero-list"])).toBe("Выбираю стиль");
     expect(activityLabelForTools(["outline-validate"])).toBe("Проверяю план");
+    expect(activityLabelForTools(["set-slide-count"])).toBe("Считаю слайды");
     expect(activityLabelForTools(["hero-get", "yandex-image-search"])).toBe("Ищу фон");
     expect(activityLabelForTools(["slidev-update-slide"])).toBe("Верстаю слайд");
     expect(activityLabelForTools(["slidev-insert-slide"])).toBe("Добавляю слайд");

@@ -188,17 +188,31 @@ export async function processDeck(
       workDir,
       onThemeResolved: async (theme) => {
         await db.query(`UPDATE deck SET theme=$2, updated_at=now() WHERE id=$1`, [id, theme]);
+        const inputPath = join(workDir, "input.json");
+        let slideCount = deck.slide_count as number;
+        try {
+          const prev = JSON.parse(await readFile(inputPath, "utf8")) as { slideCount?: number };
+          if (typeof prev.slideCount === "number") slideCount = prev.slideCount;
+        } catch {
+          /* input.json is written just above; keep the row count */
+        }
         await writeFile(
-          join(workDir, "input.json"),
+          inputPath,
           JSON.stringify({
             topic: deck.topic,
             locale: deck.locale,
-            slideCount: deck.slide_count,
+            slideCount,
             audience: deck.audience,
             theme,
             requestedTheme: sanitizePickerTheme(deck.theme),
           }),
         );
+      },
+      onSlideCountResolved: async (slideCount) => {
+        await db.query(`UPDATE deck SET slide_count=$2, updated_at=now() WHERE id=$1`, [
+          id,
+          slideCount,
+        ]);
       },
       onPreviewReady: async () => {
         await db.query(`UPDATE deck SET status='preview', updated_at=now() WHERE id=$1`, [id]);

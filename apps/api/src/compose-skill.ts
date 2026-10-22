@@ -88,7 +88,9 @@ export function outlineUserPrompt(opts: {
   return `Тема: ${opts.topic}
 Язык: ${opts.locale}
 Аудитория: ${audienceForPrompt(opts.audience)}
-Число слайдов: ровно ${opts.slideCount}
+Число слайдов с ползунка: ${opts.slideCount}.
+Если в теме явно сказано число слайдов («6 слайдов», «на 6 страниц», «6 slides») — первым вызови set-slide-count с этим числом и дальше строй ровно столько. Класс, год и прочие числа («9 класс», «1861») — не число слайдов. Если в теме числа слайдов нет — не вызывай set-slide-count и строй ровно ${opts.slideCount}.
+В outline-validate передавай это же активное число.
 ${researchBriefBlock(opts.researchMarkdown)}Составь оглавление презентации.
 
 Сначала через MCP: layout-list / layout-match / layout-get — выбери visual по контракту layout’а. Читай fields[].limit и не превышай их в heading/points/kicker. Затем outline-validate (outlineJson + slideCount); при ok:false правь по issues[].expect и вызывай снова. Только при ok:true — submit_outline.

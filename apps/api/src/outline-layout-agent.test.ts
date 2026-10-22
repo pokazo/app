@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampSlideCount,
+  createSetSlideCountTool,
   createSubmitOutlineTool,
   OUTLINE_LAYOUT_SYSTEM,
   outlineRetryFeedback,
@@ -11,6 +13,83 @@ describe("OUTLINE_LAYOUT_SYSTEM", () => {
   it("requires reading limits before picking a visual", () => {
     expect(OUTLINE_LAYOUT_SYSTEM).toMatch(/limits\.H1|limits \(H1/i);
     expect(OUTLINE_LAYOUT_SYSTEM).toMatch(/statement: H1 ≈3–10 words/);
+  });
+
+  it("tells the planner to call set-slide-count only for an explicit count", () => {
+    expect(OUTLINE_LAYOUT_SYSTEM).toMatch(/set-slide-count/);
+    expect(OUTLINE_LAYOUT_SYSTEM).toMatch(/9 класс/);
+    expect(OUTLINE_LAYOUT_SYSTEM).toMatch(/do not call set-slide-count/i);
+  });
+});
+
+function textSlides(n: number) {
+  return Array.from({ length: n }, (_, i) => ({
+    heading: `S${i + 1}`,
+    points: ["1"],
+    intent: "t",
+    visual: "none" as const,
+    ...emptyVisual,
+  }));
+}
+
+describe("set-slide-count", () => {
+  it("clamps to the slider range", () => {
+    expect(clampSlideCount(6)).toBe(6);
+    expect(clampSlideCount(1)).toBe(3);
+    expect(clampSlideCount(100)).toBe(16);
+  });
+
+  it("overrides the slider, and submit_outline then expects that count", async () => {
+    const state = { slideCount: 8 };
+    const setCount = createSetSlideCountTool(state);
+    const before = createSubmitOutlineTool({
+      slideCount: state,
+      outlineModelId: "openai/gpt-4.1-mini",
+      onAccepted: () => {},
+    });
+    const kept = (await before.execute!(
+      { title: "T", slides: textSlides(6) },
+      {} as never,
+    )) as { ok: boolean; issues: Array<{ code?: string; message?: string }> };
+    expect(kept.ok).toBe(false);
+    expect(kept.issues.some((i) => i.code === "slide_count" && /ожидалось 8/.test(i.message ?? ""))).toBe(
+      true,
+    );
+
+    const set = (await setCount.execute!({ slideCount: 6 }, {} as never)) as {
+      ok: boolean;
+      slideCount: number;
+      previous: number;
+    };
+    expect(set).toMatchObject({ ok: true, slideCount: 6, previous: 8 });
+    expect(state.slideCount).toBe(6);
+
+    const after = createSubmitOutlineTool({
+      slideCount: state,
+      outlineModelId: "openai/gpt-4.1-mini",
+      onAccepted: () => {},
+    });
+    const moved = (await after.execute!(
+      { title: "T", slides: textSlides(6) },
+      {} as never,
+    )) as { ok: boolean; issues: Array<{ code?: string }> };
+    expect(moved.ok).toBe(false);
+    expect(moved.issues.some((i) => i.code === "slide_count")).toBe(false);
+  });
+
+  it("leaves the slider in place when the tool is not called", async () => {
+    const state = { slideCount: 5 };
+    const submit = createSubmitOutlineTool({
+      slideCount: state,
+      outlineModelId: "openai/gpt-4.1-mini",
+      onAccepted: () => {},
+    });
+    const result = (await submit.execute!(
+      { title: "T", slides: textSlides(5) },
+      {} as never,
+    )) as { issues: Array<{ code?: string }> };
+    expect(state.slideCount).toBe(5);
+    expect(result.issues.some((i) => i.code === "slide_count")).toBe(false);
   });
 });
 

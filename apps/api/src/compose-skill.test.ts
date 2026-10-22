@@ -177,6 +177,9 @@ describe("outlineUserPrompt", () => {
     expect(prompt).toMatch(/cards — массив/);
     expect(prompt).toMatch(/outline-validate/);
     expect(prompt).toMatch(/issues\[\]\.expect/);
+    expect(prompt).toMatch(/set-slide-count/);
+    expect(prompt).toMatch(/Число слайдов с ползунка: 8/);
+    expect(prompt).toMatch(/не вызывай set-slide-count/);
   });
 
   it("embeds research brief when provided", () => {

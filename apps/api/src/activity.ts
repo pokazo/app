@@ -51,6 +51,10 @@ const TOOL_LABELS: Array<{ tools: string[]; label: string }> = [
     label: "Выбираю стиль",
   },
   {
+    tools: ["set-slide-count"],
+    label: "Считаю слайды",
+  },
+  {
     tools: ["outline-validate"],
     label: "Проверяю план",
   },
