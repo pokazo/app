@@ -4,7 +4,7 @@
  * - inject crawler-visible body into index.html
  * - write shell.html (empty #root) for /app|/login|…
  * - write /legal/<doc>/index.html with unique titles
- * - write audience landings /urok|/doklad|/shkola|/studenty|/biznes
+ * - write audience landings from src/audience.json (not hand-written body files)
  * - ensure head has canonical / OG / JSON-LD
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -19,70 +19,146 @@ const seo = join(webRoot, "seo");
 const SITE = "https://pokazo.ru";
 const INDEXNOW_KEY = "08707910eccd89cc15a79a4bc7d77e88";
 
-const LANDING_TITLE = "Нейросеть для презентаций — Показо";
-const LANDING_DESC =
-  "Создайте презентацию по теме онлайн. Русский язык, без VPN. Показ по ссылке в браузере.";
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
-const ORG_JSON_LD = JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "Показо",
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  url: SITE,
-  description: LANDING_DESC,
-  inLanguage: "ru",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "RUB",
-    description: "Тестовый доступ до запуска оплаты",
-  },
-  publisher: {
-    "@type": "Organization",
+function headerHtml() {
+  return `<header>
+  <a href="/">Показо</a>
+  <a href="/login">Войти</a>
+</header>`;
+}
+
+function footerHtml() {
+  return `<footer>
+  <p><a href="/pricing">Тарифы</a> · <a href="/contact">Контакты</a> · <a href="/legal/offer">Оферта</a> · <a href="/legal/privacy">Персональные данные</a></p>
+  <p>ИП Бутов Антон Сергеевич · ИНН 614302304615 · ОГРНИП 326619600045863</p>
+</footer>`;
+}
+
+function faqHtml(faq) {
+  return faq
+    .map((item) => `<h3>${escapeHtml(item.q)}</h3>\n    <p>${escapeHtml(item.a)}</p>`)
+    .join("\n    ");
+}
+
+function landingBody(home) {
+  const leads = home.lead.map((line) => `<p>${escapeHtml(line)}</p>`).join("\n    ");
+  const steps = home.steps
+    .map((step) => `<li><strong>${escapeHtml(step.title)}</strong> — ${escapeHtml(step.text)}</li>`)
+    .join("\n      ");
+  const examples = home.examples
+    .map(
+      (item) =>
+        `<article>\n      <h3>${escapeHtml(item.title)}</h3>\n      <p>${escapeHtml(item.text)}</p>\n    </article>`,
+    )
+    .join("\n    ");
+  return `${headerHtml()}
+<main>
+  <section>
+    <h1>${escapeHtml(home.h1)}</h1>
+    ${leads}
+  </section>
+  <section>
+    <h2>От идеи к показу за три шага</h2>
+    <ol>
+      ${steps}
+    </ol>
+  </section>
+  <section>
+    <h2>Что можно создать</h2>
+    ${examples}
+  </section>
+  <section>
+    <h2>Для кого</h2>
+    <p>
+      <a href="/urok">Урок</a> ·
+      <a href="/doklad">Доклад</a> ·
+      <a href="/shkola">Школа</a> ·
+      <a href="/studenty">Студенты</a> ·
+      <a href="/biznes">Бизнес</a>
+    </p>
+  </section>
+  <section>
+    <h2>Вопросы</h2>
+    ${faqHtml(home.faq)}
+  </section>
+</main>
+${footerHtml()}`;
+}
+
+function audienceBody(page, pages, home) {
+  const links = pages
+    .map((item) =>
+      item.slug === page.slug
+        ? escapeHtml(item.chip)
+        : `<a href="/${item.slug}">${escapeHtml(item.chip)}</a>`,
+    )
+    .join(" · ");
+  const outline = page.outline.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n      ");
+  return `${headerHtml()}
+<main>
+  <section>
+    <h1>${escapeHtml(page.h1)}</h1>
+    <p>${escapeHtml(page.lead)}</p>
+  </section>
+  <section>
+    <h2>От темы к показу</h2>
+    <ol>
+      <li><strong>Тема</strong> — ${escapeHtml(page.stepsNote)}</li>
+      <li><strong>ИИ собирает слайды</strong> — нейросеть собирает показ под задачу.</li>
+      <li><strong>Смотрите по ссылке</strong> — ${escapeHtml(home.shareStep)}</li>
+    </ol>
+  </section>
+  <section>
+    <h2>${escapeHtml(page.outlineTitle)}</h2>
+    <p>${escapeHtml(page.scenario)}</p>
+    <ol>
+      ${outline}
+    </ol>
+    <p>${escapeHtml(home.offerNote)}</p>
+  </section>
+  <section>
+    <h2>Ещё аудитории</h2>
+    <p>${links}</p>
+    <p><a href="/">Нейросеть для презентаций</a></p>
+  </section>
+  <section>
+    <h2>Вопросы</h2>
+    ${faqHtml(page.faq)}
+  </section>
+</main>
+${footerHtml()}`;
+}
+
+function orgJsonLd(home) {
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
     name: "Показо",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
     url: SITE,
-  },
-});
-
-const FAQ_JSON_LD = JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "Нужен ли VPN?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Нет. Показо работает в России на русском языке, без VPN и зарубежных аккаунтов.",
-      },
+    description: home.description,
+    inLanguage: "ru",
+    offers: {
+      "@type": "AggregateOffer",
+      lowPrice: "0",
+      highPrice: "399",
+      priceCurrency: "RUB",
+      offerCount: "3",
     },
-    {
-      "@type": "Question",
-      name: "Можно без PowerPoint?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Да. Презентация открывается в браузере по ссылке — коллегам и ученикам файл не нужен.",
-      },
+    publisher: {
+      "@type": "Organization",
+      name: "Показо",
+      url: SITE,
     },
-    {
-      "@type": "Question",
-      name: "Можно скачать PDF или PPTX?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Да. В готовой презентации есть «Скачать PDF» и «Скачать PPTX». PPTX — слайды как картинки.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "На каком языке слайды?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "На русском: тема, структура и тексты слайдов под урок, доклад, школу, студентов и бизнес.",
-      },
-    },
-  ],
-});
+  });
+}
 
 function escapeAttr(s) {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
@@ -176,14 +252,14 @@ function injectRoot(html, bodyInner) {
   );
 }
 
-async function writePrerender(distDir, { dirParts, title, description, bodyFile, jsonLd = [] }) {
+async function writePrerender(distDir, { dirParts, title, description, body, bodyFile, jsonLd = [] }) {
   const template = await readFile(join(distDir, "shell.html"), "utf8");
-  const body = await readFile(join(seo, bodyFile), "utf8");
+  const inner = body ?? (await readFile(join(seo, bodyFile), "utf8"));
   const pathSeg = dirParts.join("/");
   const canonical = `${SITE}/${pathSeg}`;
   let html = template.replace(/\s*<meta name="robots" content="noindex"\s*\/?>/, "");
   html = injectHead(html, { title, description, canonical, jsonLd });
-  html = injectRoot(html, body);
+  html = injectRoot(html, inner);
   const dir = join(distDir, ...dirParts);
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "index.html"), html, "utf8");
@@ -191,25 +267,25 @@ async function writePrerender(distDir, { dirParts, title, description, bodyFile,
 }
 
 export async function runSeoBuild(distDir = defaultDist) {
+  const home = JSON.parse(await readFile(join(webRoot, "src/home-copy.json"), "utf8"));
   const indexPath = join(distDir, "index.html");
   let indexHtml = await readFile(indexPath, "utf8");
 
   const shellHtml = injectHead(indexHtml, {
     title: "Показо",
-    description: LANDING_DESC,
+    description: home.description,
     canonical: `${SITE}/`,
     noindex: true,
   });
   await writeFile(join(distDir, "shell.html"), shellHtml, "utf8");
 
-  const landingBody = await readFile(join(seo, "landing-body.html"), "utf8");
   indexHtml = injectHead(indexHtml, {
-    title: LANDING_TITLE,
-    description: LANDING_DESC,
+    title: home.title,
+    description: home.description,
     canonical: `${SITE}/`,
-    jsonLd: [ORG_JSON_LD, FAQ_JSON_LD],
+    jsonLd: [orgJsonLd(home), faqJsonLd(home.faq)],
   });
-  indexHtml = injectRoot(indexHtml, landingBody);
+  indexHtml = injectRoot(indexHtml, landingBody(home));
   await writeFile(indexPath, indexHtml, "utf8");
 
   await writePrerender(distDir, {
@@ -248,7 +324,7 @@ export async function runSeoBuild(distDir = defaultDist) {
       dirParts: [page.slug],
       title: page.title,
       description: page.description,
-      bodyFile: `${page.slug}-body.html`,
+      body: audienceBody(page, audience, home),
       jsonLd: [faqJsonLd(page.faq)],
     });
     audienceResults.push({
@@ -256,6 +332,7 @@ export async function runSeoBuild(distDir = defaultDist) {
       hasH1: html.includes(`<h1>${page.h1}</h1>`),
       hasCanonical: html.includes(`href="${SITE}/${page.slug}"`),
       notMainH1: !html.includes("<h1>Нейросеть для презентаций</h1>"),
+      hasOutline: page.outline.every((item) => html.includes(escapeHtml(item))),
     });
   }
 
@@ -269,7 +346,7 @@ export async function runSeoBuild(distDir = defaultDist) {
     landingHasH1: indexHtml.includes("<h1>Нейросеть для презентаций</h1>"),
     hasCanonical: indexHtml.includes('rel="canonical"'),
     hasFaqLd: indexHtml.includes("FAQPage"),
-    audienceOk: audienceResults.every((r) => r.hasH1 && r.hasCanonical && r.notMainH1),
+    audienceOk: audienceResults.every((r) => r.hasH1 && r.hasCanonical && r.notMainH1 && r.hasOutline),
     audienceResults,
   };
 }

@@ -1,4 +1,5 @@
 import audienceJson from "./audience.json";
+import type { ExampleThumbId } from "./components/ExampleThumb";
 
 /** SEO landings for Wordstat audience clusters — paths are slashless canonicals. */
 export type AudienceSlug = "urok" | "doklad" | "shkola" | "studenty" | "biznes";
@@ -15,6 +16,11 @@ export type AudiencePage = {
   title: string;
   description: string;
   stepsNote: string;
+  scenario: string;
+  outlineTitle: string;
+  outline: string[];
+  exampleThumb: ExampleThumbId;
+  exampleTitle: string;
   faq: AudienceFaq[];
 };
 

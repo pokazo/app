@@ -5,28 +5,16 @@ import { SiteFooter } from "../components/SiteFooter";
 import { LandingPromptForm } from "../components/LandingPromptForm";
 import { ExampleThumb, type ExampleThumbId } from "../components/ExampleThumb";
 import { AUDIENCE_PAGES } from "../audience-pages";
+import homeCopy from "../home-copy.json";
 import { apiUrl } from "../safe";
-
-const THUMBS: { id: ExampleThumbId; title: string }[] = [
-  { id: "photosynthesis", title: "Фотосинтез" },
-  { id: "report", title: "Как сделать доклад" },
-  { id: "pitch", title: "Питч для работы" },
-  { id: "ai", title: "ИИ для презентаций" },
-  { id: "defense", title: "Вуз: курсовая защита" },
-  { id: "lesson", title: "Урок за вечер" },
-];
-
-const HOME_TITLE = "Нейросеть для презентаций — Показо";
-const HOME_DESC =
-  "Создайте презентацию по теме онлайн. Русский язык, без VPN. Показ по ссылке в браузере.";
 
 export function Landing() {
   const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
 
   useEffect(() => {
-    document.title = HOME_TITLE;
+    document.title = homeCopy.title;
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", HOME_DESC);
+    if (meta) meta.setAttribute("content", homeCopy.description);
   }, []);
 
   useEffect(() => {
@@ -47,8 +35,12 @@ export function Landing() {
             <h1>
               <span className="accent">Нейросеть</span> для презентаций
             </h1>
-            <p className="lead">Тема — слайды в браузере за пару минут. Ссылку можно отправить.</p>
-            <LandingPromptForm placeholder="Например: «Фотосинтез, 8 слайдов, 8 класс»" />
+            {homeCopy.lead.map((line) => (
+              <p className="lead" key={line}>
+                {line}
+              </p>
+            ))}
+            <LandingPromptForm placeholder={homeCopy.placeholder} />
           </div>
         </section>
         <section className="section alt">
@@ -56,27 +48,15 @@ export function Landing() {
             <p className="kicker" style={{ textAlign: "center" }}>Как это работает</p>
             <h2>От идеи к показу за три шага</h2>
             <div className="steps">
-              <div>
-                <div className="step-n">1</div>
-                <strong>Тема</strong>
-                <p className="lead" style={{ margin: "8px 0 0" }}>
-                  Пишешь, о чём доклад.
-                </p>
-              </div>
-              <div>
-                <div className="step-n">2</div>
-                <strong>ИИ собирает слайды</strong>
-                <p className="lead" style={{ margin: "8px 0 0" }}>
-                  Нейросеть для презентаций собирает показ.
-                </p>
-              </div>
-              <div>
-                <div className="step-n">3</div>
-                <strong>Смотрите по ссылке</strong>
-                <p className="lead" style={{ margin: "8px 0 0" }}>
-                  Онлайн, без VPN и без файла.
-                </p>
-              </div>
+              {homeCopy.steps.map((step, i) => (
+                <div key={step.title}>
+                  <div className="step-n">{i + 1}</div>
+                  <strong>{step.title}</strong>
+                  <p className="lead" style={{ margin: "8px 0 0" }}>
+                    {step.text}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -84,8 +64,8 @@ export function Landing() {
           <p className="kicker" style={{ textAlign: "center" }}>Примеры</p>
           <h2>Что можно создать</h2>
           <div className="thumbs">
-            {THUMBS.map((s) => (
-              <ExampleThumb key={s.id} id={s.id} title={s.title} />
+            {homeCopy.examples.map((s) => (
+              <ExampleThumb key={s.id} id={s.id as ExampleThumbId} title={s.title} />
             ))}
           </div>
         </section>
@@ -103,26 +83,12 @@ export function Landing() {
           <p className="kicker" style={{ textAlign: "center" }}>FAQ</p>
           <h2>Вопросы</h2>
           <div className="faq">
-            <details open>
-              <summary>Нужен ли VPN?</summary>
-              <p>Нет. Показо работает в России на русском языке, без VPN и зарубежных аккаунтов.</p>
-            </details>
-            <details>
-              <summary>Можно без PowerPoint?</summary>
-              <p>Да. Презентация открывается в браузере по ссылке — коллегам и ученикам файл не нужен.</p>
-            </details>
-            <details>
-              <summary>Можно скачать PDF или PPTX?</summary>
-              <p>
-                Да — хозяин презентации скачивает PDF и PPTX из готовой колоды. PPTX — слайды как
-                картинки (удобно показать в PowerPoint; текст внутри файла не правится). По ссылке
-                гости только смотрят.
-              </p>
-            </details>
-            <details>
-              <summary>На каком языке слайды?</summary>
-              <p>На русском: тема, структура и тексты слайдов под урок, доклад, школу, студентов и бизнес.</p>
-            </details>
+            {homeCopy.faq.map((item, i) => (
+              <details key={item.q} open={i === 0}>
+                <summary>{item.q}</summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
           </div>
         </section>
       </main>

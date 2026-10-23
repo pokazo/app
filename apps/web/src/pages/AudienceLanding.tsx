@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { SiteFooter } from "../components/SiteFooter";
 import { LandingPromptForm } from "../components/LandingPromptForm";
+import { ExampleThumb } from "../components/ExampleThumb";
 import { AUDIENCE_PAGES, audienceBySlug, type AudienceSlug } from "../audience-pages";
+import homeCopy from "../home-copy.json";
 import { apiUrl } from "../safe";
 
 export function AudienceLanding(props: { slug: AudienceSlug }) {
@@ -77,11 +79,24 @@ export function AudienceLanding(props: { slug: AudienceSlug }) {
                 <div className="step-n">3</div>
                 <strong>Смотрите по ссылке</strong>
                 <p className="lead" style={{ margin: "8px 0 0" }}>
-                  Онлайн, без VPN и без файла.
+                  {homeCopy.shareStep}
                 </p>
               </div>
             </div>
           </div>
+        </section>
+        <section className="section wrap">
+          <h2>{page.outlineTitle}</h2>
+          <p className="lead">{page.scenario}</p>
+          <div className="thumbs">
+            <ExampleThumb id={page.exampleThumb} title={page.exampleTitle} />
+          </div>
+          <ol>
+            {page.outline.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ol>
+          <p>{homeCopy.offerNote}</p>
         </section>
         <section className="section alt who">
           <div className="wrap">
