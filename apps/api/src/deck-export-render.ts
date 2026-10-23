@@ -8,29 +8,48 @@ import {
   injectPlayerChromeHide,
 } from "./player-chrome.js";
 import { pptxFromPngs } from "./pptx-images.js";
+import { maxViewSlideCount } from "./rewrite-lock.js";
 import type { SlidevExportFormat } from "./slidev.js";
+import { countSlidesInMarkdown } from "./view-meta.js";
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
 
+/**
+ * Slidev pages the player lists.
+ * Outline length alone drops the extra leading hero: view shows outline+1,
+ * and a rewrite rebuild then never shoots that last filmstrip thumb.
+ */
 export async function countDeckSlides(workDir: string): Promise<number> {
+  let outlineCount = 0;
   try {
     const outline = JSON.parse(await readFile(join(workDir, "outline.json"), "utf8")) as {
       slides?: unknown[];
     };
-    if (Array.isArray(outline.slides) && outline.slides.length > 0) {
-      return outline.slides.length;
-    }
+    if (Array.isArray(outline.slides)) outlineCount = outline.slides.length;
   } catch {
-    /* fall through */
+    /* no outline */
   }
+
+  let md = "";
   try {
-    const md = await readFile(join(workDir, "slides.md"), "utf8");
-    const parts = md.split(/^---$/m).filter((p) => p.trim().length > 0);
-    return Math.max(1, parts.length - 1);
+    md = await readFile(join(workDir, "slides.md"), "utf8");
   } catch {
-    return 1;
+    /* no markdown */
   }
+
+  if (md.trim()) {
+    const mdCount = countSlidesInMarkdown(md);
+    if (outlineCount > 0) {
+      const view = maxViewSlideCount(md, outlineCount);
+      if (mdCount > 0 && view > mdCount) return mdCount;
+      return Math.max(1, view);
+    }
+    return Math.max(1, mdCount);
+  }
+
+  if (outlineCount > 0) return outlineCount;
+  return 1;
 }
 
 function startDistServer(workDir: string, deckId: string): Promise<{ server: Server; port: number }> {
