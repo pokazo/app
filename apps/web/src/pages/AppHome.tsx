@@ -22,8 +22,8 @@ import { ThemePicker } from "../components/ThemePicker";
 import { SlideCountPicker } from "../components/SlideCountPicker";
 import { UploadAttach } from "../components/UploadAttach";
 import { PaywallModal } from "../components/PaywallModal";
+import { BuildLoader } from "../components/BuildLoader";
 import { trackPaymentSuccess } from "../payment-metrika";
-import { initialFreeDeckWatch, nextFreeDeckWatch, noteFreeDeckBuilding, trackFreeDeckReady } from "../free-deck-metrika";
 import { BillingMe } from "../billing";
 import { clearPendingUploadFiles, getPendingUploadFiles } from "../pending-uploads";
 
@@ -50,7 +50,6 @@ export function AppHome() {
   const [activity, setActivity] = useState(() => getInFlightBuild()?.activity ?? "");
   const [err, setErr] = useState("");
   const creatingRef = useRef(false);
-  const aliveRef = useRef(true);
   const topicRef = useRef(topic);
   const themeRef = useRef(theme);
   const slideCountRef = useRef(slideCount);
@@ -61,13 +60,6 @@ export function AppHome() {
   slideCountRef.current = slideCount;
   audienceRef.current = audience;
   filesRef.current = files;
-
-  useEffect(() => {
-    aliveRef.current = true;
-    return () => {
-      aliveRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     fetch(apiUrl("/api/auth/me"), { credentials: "include" })
@@ -159,62 +151,8 @@ export function AppHome() {
     });
   }
 
-  /** Poll one deck until the player can open it (or it fails). Stops if Home unmounts. */
-  async function trackDeck(deckId: string, openWhenViewable = true) {
-    let failures = 0;
-    let freeWatch = initialFreeDeckWatch();
-    while (aliveRef.current) {
-      await new Promise((r) => setTimeout(r, 1000));
-      if (!aliveRef.current) return;
-      let d: {
-        status: string;
-        viewUrl: string | null;
-        error?: string;
-        activity?: string | null;
-        billingKind?: string | null;
-      };
-      try {
-        d = await api(`/api/decks/${deckId}`);
-      } catch (error) {
-        failures += 1;
-        if (failures >= 5) throw error;
-        continue;
-      }
-      failures = 0;
-      if (!aliveRef.current) return;
-      const freeStep = nextFreeDeckWatch(freeWatch, {
-        status: d.status,
-        billingKnown: true,
-        billingKind: d.billingKind ?? null,
-      });
-      freeWatch = freeStep.watch;
-      if (freeStep.track) trackFreeDeckReady(deckId);
-      noteFreeDeckBuilding(deckId, d.status);
-      setStatus(d.status);
-      setActivity(d.activity ?? "");
-      noteInFlight(deckId, d.status, d.activity);
-      if (d.status === "failed") {
-        setErr(d.error || "Не собралось");
-        setStatus("");
-        setActivity("");
-        creatingRef.current = false;
-        return;
-      }
-      if (d.status === "ready") {
-        creatingRef.current = false;
-        if (openWhenViewable) {
-          nav(`/view/${deckId}`, { state: { awaitingPreview: true } });
-        } else {
-          setStatus("");
-          setActivity("");
-        }
-        return;
-      }
-      if (openWhenViewable && deckViewable(d.status)) {
-        nav(`/view/${deckId}`, { state: { awaitingPreview: true } });
-        return;
-      }
-    }
+  function openBuild(deckId: string) {
+    nav(`/view/${deckId}`, { state: { awaitingPreview: true } });
   }
 
   async function createDeck() {
@@ -259,7 +197,7 @@ export function AppHome() {
         });
       }
       noteInFlight(created.deckId, "queued", "Создаём…");
-      await trackDeck(created.deckId);
+      openBuild(created.deckId);
     } catch (error) {
       if (error instanceof ApiError && error.status === 402) {
         const body = error.body as { billing?: BillingMe } | null;
@@ -334,21 +272,8 @@ export function AppHome() {
           stripTopicParam();
           return;
         }
-        creatingRef.current = true;
-        setErr("");
-        setStatus(pending.status);
-        setActivity(inflight?.deckId === pending.deckId ? inflight.activity ?? "" : "");
         stripTopicParam();
-        try {
-          await trackDeck(pending.deckId, false);
-        } catch {
-          if (!aliveRef.current) return;
-          setErr("Не удалось получить статус сборки");
-          setStatus("");
-          setActivity("");
-          creatingRef.current = false;
-          rememberInFlightBuild(null);
-        }
+        openBuild(pending.deckId);
         return;
       }
 
@@ -395,37 +320,43 @@ export function AppHome() {
       <main className="app-page">
         <div className="wrap app-form">
           <h1>Новая презентация</h1>
-          <form className="prompt-card" onSubmit={onCreate}>
-            <textarea
-              className="pk"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="Тема новой презентации…"
-            />
-            <div className="actions">
-              <div className="prompt-card-actions-left">
-                <UploadAttach
-                  files={files}
-                  onChange={setFiles}
-                  disabled={Boolean(status)}
-                />
-                <SlideCountPicker
-                  value={slideCount}
-                  onChange={setSlideCount}
-                  disabled={Boolean(status)}
-                />
-              </div>
-              <PkButton disabled={topic.trim().length < 5 || Boolean(status)} type="submit">
-                {status ? label || "Создаём…" : "Создать"}
-              </PkButton>
+          {status ? (
+            <div className="deck-waiting-build">
+              <BuildLoader variant="stage" label={label || "Думаю…"} />
             </div>
-            {files.length ? (
-              <p className="upload-attach-hint">
-                Прикреплено: {files.map((f) => f.name).join(", ")}
-              </p>
-            ) : null}
-          </form>
-          <ThemePicker value={theme} onChange={setTheme} disabled={Boolean(status)} />
+          ) : (
+            <form className="prompt-card" onSubmit={onCreate}>
+              <textarea
+                className="pk"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="Тема новой презентации…"
+              />
+              <div className="actions">
+                <div className="prompt-card-actions-left">
+                  <UploadAttach
+                    files={files}
+                    onChange={setFiles}
+                    disabled={Boolean(status)}
+                  />
+                  <SlideCountPicker
+                    value={slideCount}
+                    onChange={setSlideCount}
+                    disabled={Boolean(status)}
+                  />
+                </div>
+                <PkButton disabled={topic.trim().length < 5 || Boolean(status)} type="submit">
+                  Создать
+                </PkButton>
+              </div>
+              {files.length ? (
+                <p className="upload-attach-hint">
+                  Прикреплено: {files.map((f) => f.name).join(", ")}
+                </p>
+              ) : null}
+            </form>
+          )}
+          {status ? null : <ThemePicker value={theme} onChange={setTheme} />}
           {err ? <p className="err app-note">{err}</p> : null}
           {resumeDecks.length > 0 ? (
             <section className="app-resume" aria-label="Продолжить просмотр">
