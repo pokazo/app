@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Decks created today (Europe/Moscow) on prod pokazo Postgres.
-# Prints a player URL that pages through slides: https://api.pokazo.ru/p/{id}/
+# Prints the deck view URL: https://pokazo.ru/view/{id}
 set -euo pipefail
 
 HOST="${POKAZO_DECKS_HOST:-root@80.87.196.33}"
@@ -19,9 +19,9 @@ SELECT u.email,
        d.topic,
        CASE
          WHEN d.status IN ('ready', 'preview')
-         THEN 'https://api.pokazo.ru/p/' || d.id || '/'
+         THEN 'https://pokazo.ru/view/' || d.id
          ELSE ''
-       END AS player
+       END AS view
 FROM deck d
 JOIN "user" u ON u.id = d.user_id
 WHERE d.created_at >= (

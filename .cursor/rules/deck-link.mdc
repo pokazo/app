@@ -1,0 +1,16 @@
+---
+description: Ссылку на колоду pokazo давать только как https://pokazo.ru/view/{id}
+alwaysApply: true
+---
+
+# Ссылка на колоду
+
+Когда отдаёшь ссылку на презентацию, давай страницу просмотра:
+
+`https://pokazo.ru/view/{id}`
+
+Пример: `https://pokazo.ru/view/f4f6654e-fc5f-4439-89b3-5130c015cb8e`
+
+Не подставляй `https://api.pokazo.ru/p/{id}/`, `?embedded` и голый `/p/{id}/1`.
+
+Ссылку давать, если `status` = `ready` или `preview`. Иначе назвать статус и ссылку не подставлять.
