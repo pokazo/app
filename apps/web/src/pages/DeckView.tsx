@@ -27,7 +27,6 @@ import {
   viewPollKeepsLocalSlides,
   viewPollStops,
   VIEW_NOT_FOUND_ERR,
-  VIEW_WAITING_NOTE,
 } from "../deck-view-poll";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
@@ -46,6 +45,7 @@ import {
   SLIDE_COUNT_MAX,
   SLIDE_COUNT_MIN,
   canRethemeDeck,
+  deckBusy,
   sanitizeEditableDeckTheme,
 } from "../decks";
 import { thumbCoverPath, thumbReactKey } from "../deck-thumb-preview";
@@ -59,6 +59,7 @@ import {
 import { DeckThumbPreview } from "./DeckThumbPreview";
 import { SpeechModal } from "./SpeechModal";
 import { BuildLoader } from "../components/BuildLoader";
+import { buildWaitMode } from "../build-stage";
 import { ThemePicker } from "../components/ThemePicker";
 import { shouldShowBuildLoader } from "../deck-ws";
 import { useDeckSocket } from "../useDeckSocket";
@@ -255,22 +256,34 @@ export function DeckView() {
   const liveActivity = (deckSocket.activity ?? activity).trim();
   // Until meta arrives, keep assemble labels visible; once ready+idle, drop stale ones.
   const deckBusyForLoader = Boolean(
-    !meta ||
-      building ||
+    !meta || building || rewriteBusy || deckBusy(meta.status ?? ""),
+  );
+  // A missing meta must not flash the full scene on an already finished deck.
+  const generationBusy = Boolean(
+    building ||
       rewriteBusy ||
-      meta.status === "preview" ||
-      meta.status === "generating" ||
-      meta.status === "building",
+      (meta && deckBusy(meta.status ?? "")) ||
+      (!meta && (awaitingPreview || Boolean(liveActivity || activity))),
   );
   const showBuildLoader = shouldShowBuildLoader({
     buildLive: deckSocket.buildLive,
     activity: liveActivity || activity,
     deckBusy: deckBusyForLoader,
   });
-  const buildLoaderLabel = liveActivity || activity || "Собираю показ";
+  const buildLoaderLabel = liveActivity || activity || "Думаю…";
+  const slideCount = meta?.slides.length ?? 0;
   const showRewriteForm = Boolean(
     meta && isOwner && meta.status === "ready" && !mobilePresent && !presenting,
   );
+  const waitMode = buildWaitMode({
+    busy: generationBusy,
+    presenting,
+    hasError: Boolean(err),
+    slideCount,
+    rewriteForm: showRewriteForm,
+  });
+  const showStageScene = waitMode === "scene";
+  const showAssembleBar = waitMode === "bar";
 
   const embedBase = apiUrl(`/p/${id}/`);
   const idOk = isDeckId(id);
@@ -1101,15 +1114,13 @@ export function DeckView() {
           />
         </div>
       ) : null}
-      {waiting && !err && !showStage && (activity || awaitingPreview || showBuildLoader) ? (
+      {!showStage && (showStageScene || showAssembleBar) ? (
         <div className="deck-waiting-build">
-          {showBuildLoader ? <BuildLoader label={buildLoaderLabel} /> : null}
-          {!showBuildLoader ? (
-            <p className="app-note deck-building">{activity || VIEW_WAITING_NOTE}</p>
-          ) : null}
+          {showStageScene ? <BuildLoader variant="stage" label={buildLoaderLabel} /> : null}
+          {showAssembleBar ? <BuildLoader variant="bar" label={buildLoaderLabel} /> : null}
         </div>
       ) : null}
-      {building && meta && !showBuildLoader ? (
+      {building && meta && !showBuildLoader && !showAssembleBar && !showStageScene ? (
         <p className="app-note deck-building">
           {rewritingSlide != null
             ? activity || `Правлю слайд ${rewritingSlide}…`
@@ -1289,7 +1300,8 @@ export function DeckView() {
               onMouseMove={onPresentHostMouseMove}
             >
               <div className="deck-stage-frame">
-                {id && meta && !err ? (
+                {showStageScene ? <BuildLoader variant="stage" label={buildLoaderLabel} /> : null}
+                {id && meta && !err && !showStageScene ? (
                   <iframe
                     key={embedKey}
                     ref={stageRef}
@@ -1302,6 +1314,7 @@ export function DeckView() {
                     }}
                   />
                 ) : null}
+                {!showStageScene ? (
                 <div className="deck-stage-nav" aria-hidden>
                   {presenting ? (
                     <button
@@ -1316,6 +1329,7 @@ export function DeckView() {
                     </>
                   )}
                 </div>
+                ) : null}
               </div>
               {presenting ? (
                 <div
@@ -1349,7 +1363,8 @@ export function DeckView() {
                   </button>
                 </div>
               ) : null}
-              {!showRewriteForm && showBuildLoader ? (
+              {showAssembleBar ? <BuildLoader variant="bar" label={buildLoaderLabel} /> : null}
+              {!showRewriteForm && showBuildLoader && !showAssembleBar && !showStageScene ? (
                 <BuildLoader label={buildLoaderLabel} corner />
               ) : null}
             </div>
