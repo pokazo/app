@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { SiteFooter } from "../components/SiteFooter";
 import { LandingPromptForm } from "../components/LandingPromptForm";
+import { HeroWash } from "../components/HeroWash";
 import { ExampleThumb, type ExampleThumbId } from "../components/ExampleThumb";
 import { AUDIENCE_PAGES } from "../audience-pages";
 import homeCopy from "../home-copy.json";
@@ -30,7 +31,8 @@ export function Landing() {
     <>
       <PkHeader me={me} />
       <main>
-        <section className="hero">
+        <section className="hero hero-wash">
+          <HeroWash />
           <div className="wrap">
             <h1>
               <span className="accent">Нейросеть</span> для презентаций

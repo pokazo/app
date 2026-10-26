@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { SiteFooter } from "../components/SiteFooter";
 import { LandingPromptForm } from "../components/LandingPromptForm";
+import { HeroWash } from "../components/HeroWash";
 import { ExampleThumb } from "../components/ExampleThumb";
 import { AUDIENCE_PAGES, audienceBySlug, type AudienceSlug } from "../audience-pages";
 import homeCopy from "../home-copy.json";
@@ -49,7 +50,8 @@ export function AudienceLanding(props: { slug: AudienceSlug }) {
     <>
       <PkHeader me={me} />
       <main>
-        <section className="hero">
+        <section className="hero hero-wash">
+          <HeroWash />
           <div className="wrap">
             <h1>{page.h1}</h1>
             <p className="lead">{page.lead}</p>
