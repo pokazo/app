@@ -6,7 +6,7 @@ describe("formatAiError", () => {
   it("includes status and OpenRouter body message for APICallError", () => {
     const err = new APICallError({
       message: "Provider returned error",
-      url: "http://91.207.75.72:8787/api/v1/chat/completions",
+      url: "https://mcp.antonbutov.com/api/v1/chat/completions",
       requestBodyValues: {},
       statusCode: 400,
       responseBody: JSON.stringify({
@@ -31,7 +31,7 @@ describe("formatAiError", () => {
   it("adds Gemini schema hint for INVALID_ARGUMENT from Google AI Studio", () => {
     const err = new APICallError({
       message: "Provider returned error",
-      url: "http://91.207.75.72:8787/api/v1/chat/completions",
+      url: "https://mcp.antonbutov.com/api/v1/chat/completions",
       requestBodyValues: {},
       statusCode: 400,
       responseBody: JSON.stringify({
