@@ -61,7 +61,6 @@ function landingBody(home) {
 <main>
   <section>
     <h1>${escapeHtml(home.h1)}</h1>
-    ${leads}
   </section>
   <section>
     <h2>От идеи к показу за три шага</h2>
@@ -86,6 +85,7 @@ function landingBody(home) {
   <section>
     <h2>Вопросы</h2>
     ${faqHtml(home.faq)}
+    ${leads}
   </section>
 </main>
 ${footerHtml()}`;

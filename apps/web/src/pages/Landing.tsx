@@ -35,11 +35,6 @@ export function Landing() {
             <h1>
               <span className="accent">Нейросеть</span> для презентаций
             </h1>
-            {homeCopy.lead.map((line) => (
-              <p className="lead" key={line}>
-                {line}
-              </p>
-            ))}
             <LandingPromptForm placeholder={homeCopy.placeholder} />
           </div>
         </section>
@@ -88,6 +83,11 @@ export function Landing() {
                 <summary>{item.q}</summary>
                 <p>{item.a}</p>
               </details>
+            ))}
+          </div>
+          <div className="seo-note">
+            {homeCopy.lead.map((line) => (
+              <p key={line}>{line}</p>
             ))}
           </div>
         </section>

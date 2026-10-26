@@ -43,6 +43,7 @@ try {
     ["faq ld", index.includes("FAQPage")],
     ["canonical", index.includes('href="https://pokazo.ru/"')],
     ["price in landing", index.includes("199") && index.includes("PPTX")],
+    ["price after faq", index.indexOf("Первая презентация бесплатно") > index.indexOf("<h2>Вопросы</h2>")],
     ["no stale pptx promise", !index.includes("не обещаем")],
     ["description length", home.description.length <= 180],
     ["aggregate offer", index.includes("AggregateOffer") && index.includes('"highPrice":"399"')],
