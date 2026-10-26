@@ -8,6 +8,14 @@ const webRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const home = JSON.parse(await readFile(join(webRoot, "src/home-copy.json"), "utf8"));
 const audience = JSON.parse(await readFile(join(webRoot, "src/audience.json"), "utf8"));
 
+function hidesPrerenderBeforePaint(html) {
+  const boot = html.indexOf('document.documentElement.classList.add("js")');
+  const style = html.search(/html\.js #prerender\{display:none !important\}/);
+  const node = html.indexOf('<div id="prerender">');
+  const headEnd = html.indexOf("</head>");
+  return boot !== -1 && style !== -1 && node !== -1 && boot < headEnd && style < headEnd && headEnd < node;
+}
+
 const dir = await mkdtemp(join(tmpdir(), "pokazo-seo-"));
 try {
   const minimal = `<!doctype html>
@@ -53,6 +61,8 @@ try {
     ["shell noindex", shell.includes('content="noindex"')],
     ["pricing h1", pricing.includes("<h1>Тарифы</h1>")],
     ["pricing canonical", pricing.includes('href="https://pokazo.ru/pricing"')],
+    ["js hides prerender before paint", hidesPrerenderBeforePaint(pricing) && hidesPrerenderBeforePaint(index) && hidesPrerenderBeforePaint(urok)],
+    ["shell stays empty", /<div id="root"><\/div>/.test(shell) && !shell.includes('id="prerender"')],
     ["offer title", offer.includes("Публичная оферта")],
     ["urok h1", urok.includes("<h1>Презентация к уроку</h1>")],
     ["urok canonical", urok.includes('href="https://pokazo.ru/urok"')],

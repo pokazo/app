@@ -242,13 +242,21 @@ function injectHead(html, { title, description, canonical, jsonLd = [], noindex 
   return out;
 }
 
+/** Runs in <head> before #prerender is parsed, so a refresh does not paint crawler HTML. */
+const PRERENDER_BOOT = `<script>document.documentElement.classList.add("js")</script>
+    <style>html.js #prerender{display:none !important}</style>`;
+
 function injectRoot(html, bodyInner) {
   if (!/<div id="root"><\/div>/.test(html)) {
     throw new Error('seo-build: expected empty <div id="root"></div>');
   }
-  return html.replace(
+  let out = html;
+  if (!out.includes('document.documentElement.classList.add("js")')) {
+    out = out.replace("</head>", `    ${PRERENDER_BOOT}\n  </head>`);
+  }
+  return out.replace(
     /<div id="root"><\/div>/,
-    `<div id="root">${bodyInner.trim()}</div>`,
+    `<div id="root"><div id="prerender">${bodyInner.trim()}</div></div>`,
   );
 }
 
