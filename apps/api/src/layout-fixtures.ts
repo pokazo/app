@@ -391,8 +391,21 @@ items:
 # The Power of Java
 
 An introduction to the language that powers billions of devices.
+
+---
+layout: fact
+palette: cream
+kicker: ЗАКЛЮЧЕНИЕ
+---
+
+# От аристократии — к глобальному институту
+
+За полтора десятилетия движение обрело ритуалы, зимние дисциплины и гендерное участие.
 `;
 }
+
+/** Extra gallery frame: sentence-length fact claim. Not a catalog layout id. */
+export const FACT_LONG_SHOT = "fact-long" as const;
 
 /** Multi-palette agenda deck for visual theme screenshots. */
 export const AGENDA_PALETTE_SHOT_ORDER = [

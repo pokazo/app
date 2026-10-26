@@ -222,6 +222,21 @@ export function assertFactLayout(opts) {
   }
 }
 
+/**
+ * Short KPI ("3× faster delivery") keeps the huge narrow stack.
+ * A sentence-length claim uses the left column; at 9ch the em dash
+ * and a one-letter word land on their own line ("— к").
+ */
+export function factClaimTier(heading) {
+  const text = String(heading ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "short";
+  const words = text.split(" ").filter(Boolean);
+  if (words.length > 3 || text.length > 22) return "long";
+  return "short";
+}
+
 export function assertTwoColsLayout(opts) {
   if (!opts.hasLeftSlot || !opts.hasRightSlot) {
     throw layoutError("two-cols", "both ::left:: and ::right:: slots are required");

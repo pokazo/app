@@ -42,6 +42,7 @@ const names = [
   "spotlight",
   "pie",
   "agenda",
+  "fact-long",
 ];
 const heroVariantNames = [
   "hero-ribbon",

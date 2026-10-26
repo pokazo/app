@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useSlots } from 'vue'
-import { assertFactLayout } from './layout-assert.js'
+import { computed, useSlots } from 'vue'
+import { assertFactLayout, factClaimTier } from './layout-assert.js'
 import { paletteClass as resolvePaletteClass } from './palette-class.js'
 
 const props = defineProps<{
@@ -13,6 +13,30 @@ const slots = useSlots()
 assertFactLayout({ hasBodySlot: Boolean(slots.default) })
 
 const paletteClass = resolvePaletteClass(props.palette)
+
+function vnodeText(node: unknown): string {
+  if (node == null || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(vnodeText).join('')
+  if (typeof node === 'object' && 'children' in node) {
+    return vnodeText((node as { children?: unknown }).children)
+  }
+  return ''
+}
+
+function headingText(nodes: unknown): string {
+  const list = Array.isArray(nodes) ? nodes : nodes ? [nodes] : []
+  for (const n of list) {
+    if (!n || typeof n !== 'object') continue
+    const vnode = n as { type?: unknown; children?: unknown }
+    if (vnode.type === 'h1') return vnodeText(vnode.children).replace(/\s+/g, ' ').trim()
+    const nested = headingText(vnode.children)
+    if (nested) return nested
+  }
+  return ''
+}
+
+const claimTier = computed(() => factClaimTier(headingText(slots.default?.())))
 </script>
 
 <template>
@@ -23,7 +47,7 @@ const paletteClass = resolvePaletteClass(props.palette)
         <span class="pk-kicker__line" />
         <span class="pk-kicker__text">{{ kicker }}</span>
       </div>
-      <div class="pk-fact__body">
+      <div class="pk-fact__body" :class="`is-${claimTier}`">
         <slot />
         <p v-if="source" class="pk-fact__src">{{ source }}</p>
       </div>
@@ -119,6 +143,17 @@ const paletteClass = resolvePaletteClass(props.palette)
   letter-spacing: -0.045em;
   max-width: 9ch;
   align-self: center;
+}
+/* Slide canvas is ~980px, so the left column is ~480px. 40px keeps a
+   sentence on two lines ("От аристократии — к" / "глобальному институту").
+   9ch at 84px stacks every word and parks "— к" alone. */
+.pk-fact__body.is-long :deep(h1) {
+  font-size: 40px;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  width: 100%;
+  max-width: 100%;
+  text-wrap: balance;
 }
 .pk-fact__body :deep(h1 ~ p),
 .pk-fact__body :deep(h1 ~ ul) {

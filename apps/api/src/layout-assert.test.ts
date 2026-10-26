@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertCardsLayout,
   assertFactLayout,
+  factClaimTier,
   assertFeaturesLayout,
   assertHeroLayout,
   assertIconLayout,
@@ -308,6 +309,12 @@ describe("assertQuoteLayout / assertFactLayout / assertStatementLayout", () => {
     expect(() => assertQuoteLayout({ hasBodySlot: true })).not.toThrow();
     expect(() => assertFactLayout({ hasBodySlot: true })).not.toThrow();
     expect(() => assertStatementLayout({ hasBodySlot: true })).not.toThrow();
+  });
+
+  it("keeps a short KPI huge and widens a sentence-length claim", () => {
+    expect(factClaimTier("3× faster delivery")).toBe("short");
+    expect(factClaimTier("От аристократии — к глобальному институту")).toBe("long");
+    expect(factClaimTier("One clear product bet today")).toBe("long");
   });
 });
 

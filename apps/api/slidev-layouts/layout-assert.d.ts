@@ -46,6 +46,7 @@ export function assertHeroLayout(props: {
 
 export function assertQuoteLayout(opts: { hasBodySlot: boolean }): void;
 export function assertFactLayout(opts: { hasBodySlot: boolean }): void;
+export function factClaimTier(heading?: string | null): "short" | "long";
 export function assertStatementLayout(opts: { hasBodySlot: boolean }): void;
 export function assertTwoColsLayout(opts: {
   hasLeftSlot: boolean;

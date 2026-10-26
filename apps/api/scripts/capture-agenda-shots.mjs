@@ -38,6 +38,7 @@ const names = [
   "spotlight",
   "pie",
   "agenda",
+  "fact-long",
 ];
 
 const palettes = [

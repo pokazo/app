@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   HERO_VARIANT_SHOT_ORDER,
+  FACT_LONG_SHOT,
   LAYOUT_SHOT_ORDER,
   happyPathLayoutsMarkdown,
   heroVariantsMarkdown,
@@ -49,15 +50,16 @@ describe.skipIf(!e2e)("layout golden screenshots (RUN_LAYOUT_E2E=1)", () => {
       await writeSlides(dir, happyPathLayoutsMarkdown(), "default");
       await buildSlidev(dir, `/p/${deckId}/`, 300_000);
 
+      const names = [...LAYOUT_SHOT_ORDER, FACT_LONG_SHOT];
       const { pngs, layoutErrors } = await visitDeckSlides({
         workDir: dir,
         deckId,
-        slideCount: LAYOUT_SHOT_ORDER.length,
+        slideCount: names.length,
         viewport: { width: 1920, height: 1080 },
         capture: true,
       });
       expect(layoutErrors).toEqual([]);
-      assertGoldens(pngs, LAYOUT_SHOT_ORDER);
+      assertGoldens(pngs, names);
     },
     360_000,
   );
