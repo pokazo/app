@@ -24,6 +24,15 @@ export type BillingMe = BillingState & BillingCatalog & {
   label: string;
 };
 
+/** PDF/PPTX of a free-slot deck stay locked until an active month. Paid decks still download. */
+export function deckFileDownloadAllowed(opts: {
+  plan: "free" | "month";
+  billingKind: string | null | undefined;
+}): boolean {
+  if (opts.plan === "month") return true;
+  return opts.billingKind !== "free";
+}
+
 export function formatBillingLabel(billing: BillingState): string {
   if (billing.plan === "month" && billing.planUntil) {
     const until = new Intl.DateTimeFormat("ru-RU", {

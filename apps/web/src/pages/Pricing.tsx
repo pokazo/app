@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { SiteFooter } from "../components/SiteFooter";
 import { BillingCatalog, DEFAULT_BILLING_CATALOG } from "../billing";
@@ -15,6 +15,7 @@ function appCta(me: { email?: string } | null): string {
 }
 
 export function Pricing(props: { catalog?: BillingCatalog }) {
+  const [params] = useSearchParams();
   const [me, setMe] = useState<{ name?: string | null; email?: string } | null>(null);
   const [catalog, setCatalog] = useState<BillingCatalog>(props.catalog ?? DEFAULT_BILLING_CATALOG);
 
@@ -61,6 +62,11 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
               Одна презентация бесплатно. Дальше — разово или безлимит на месяц. Цены в рублях, оплата
               картой через Точку.
             </p>
+            {params.get("reason") === "export" ? (
+              <p className="pricing-note">
+                PDF и PPTX скачиваются на платном тарифе: разовая колода или безлимит.
+              </p>
+            ) : null}
           </div>
         </section>
         <section className="section">
@@ -80,7 +86,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 <ul className="pricing-features">
                   <li>1 готовая презентация на аккаунт</li>
                   <li>Показ по ссылке в браузере</li>
-                  <li>Правки слайдов и экспорт PDF / PPTX</li>
+                  <li>Правки слайдов</li>
                 </ul>
               </article>
 
@@ -97,6 +103,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 </Link>
                 <ul className="pricing-features">
                   <li>+1 новая презентация после бесплатной</li>
+                  <li>Скачивание PDF и PPTX этой колоды</li>
                   <li>Оплата в момент создания</li>
                   <li>Готовые колоды остаются в истории</li>
                 </ul>
@@ -115,7 +122,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 </Link>
                 <ul className="pricing-features">
                   <li>Неограниченные генерации в рамках лимитов сервиса</li>
-                  <li>Правка слайдов и экспорт без доплат</li>
+                  <li>Правка слайдов и скачивание PDF и PPTX</li>
                   <li>Оформление в приложении при создании колоды</li>
                 </ul>
               </article>
@@ -137,8 +144,8 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
               <details open>
                 <summary>Что считается одной генерацией?</summary>
                 <p>
-                  Новая колода по теме. Переписать текст слайда, поменять картинку или скачать уже
-                  готовую презентацию кредит не тратит.
+                  Новая колода по теме. Правка слайда кредит не тратит. PDF и PPTX бесплатной колоды
+                  скачиваются после оплаты тарифа.
                 </p>
               </details>
               <details>

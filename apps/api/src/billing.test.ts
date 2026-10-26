@@ -3,7 +3,25 @@ import {
   billingLabel,
   computeFinalizeBillingAction,
   computeReserveKind,
+  deckFileDownloadAllowed,
 } from "./billing.js";
+
+describe("deckFileDownloadAllowed", () => {
+  it("blocks a free-slot deck on the free plan", () => {
+    expect(deckFileDownloadAllowed({ plan: "free", billingKind: "free" })).toBe(false);
+  });
+
+  it("allows a free-slot deck while a month is active", () => {
+    expect(deckFileDownloadAllowed({ plan: "month", billingKind: "free" })).toBe(true);
+  });
+
+  it("allows a credit deck and decks that are not the free slot", () => {
+    expect(deckFileDownloadAllowed({ plan: "free", billingKind: "credit" })).toBe(true);
+    expect(deckFileDownloadAllowed({ plan: "free", billingKind: "month" })).toBe(true);
+    expect(deckFileDownloadAllowed({ plan: "free", billingKind: "off" })).toBe(true);
+    expect(deckFileDownloadAllowed({ plan: "free", billingKind: null })).toBe(true);
+  });
+});
 
 describe("billingLabel", () => {
   it("shows free available", () => {

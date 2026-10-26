@@ -62,6 +62,7 @@ import {
   applyPaidPayment,
   billingLog,
   finalizeDeckBilling,
+  deckFileDownloadAllowed,
   getBillingCatalog,
   getBillingMe,
   reserveGenerate,
@@ -982,6 +983,24 @@ export function createApp() {
     const { id } = owner;
     const format = c.req.param("format");
     if (!isExportFormat(format)) return c.json({ error: "bad format" }, 400);
+    const userId = owner.deck.user_id;
+    if (!userId) return c.json({ error: "upgrade_required" }, 402);
+    const billing = await getBillingMe(userId);
+    if (
+      !deckFileDownloadAllowed({
+        plan: billing.plan,
+        billingKind: owner.deck.billing_kind,
+      })
+    ) {
+      billingLog("info", "export_denied", {
+        deckId: id,
+        userId,
+        format,
+        plan: billing.plan,
+        billingKind: owner.deck.billing_kind ?? null,
+      });
+      return c.json({ error: "upgrade_required" }, 402);
+    }
     const dir = join(config.deckDataDir, id);
     if (!existsSync(join(dir, "slides.md")) || !existsSync(join(dir, "dist", "index.html"))) {
       return c.json({ error: "not ready" }, 404);

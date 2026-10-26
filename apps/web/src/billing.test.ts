@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { formatBillingLabel } from "./billing";
+import { formatBillingLabel, deckFileDownloadAllowed } from "./billing";
 import { PaywallModal } from "./components/PaywallModal";
 import { MemoryRouter } from "react-router-dom";
 import { Pricing } from "./pages/Pricing";
+
+describe("deckFileDownloadAllowed", () => {
+  it("blocks a free-slot deck and allows a paid month", () => {
+    expect(deckFileDownloadAllowed({ plan: "free", billingKind: "free" })).toBe(false);
+    expect(deckFileDownloadAllowed({ plan: "month", billingKind: "free" })).toBe(true);
+    expect(deckFileDownloadAllowed({ plan: "free", billingKind: "credit" })).toBe(true);
+  });
+});
 
 describe("formatBillingLabel", () => {
   it("formats free", () => {
@@ -67,5 +75,19 @@ describe("Pricing page", () => {
     expect(html).toContain("249");
     expect(html).toContain("499");
     expect(html).toContain("<h1>Тарифы</h1>");
+    expect(html).not.toContain("экспорт PDF");
+  });
+
+  it("explains why a free export landed here", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        { initialEntries: ["/pricing?reason=export"] },
+        createElement(Pricing, {
+          catalog: { paymentsEnabled: true, prices: { creditRub: 249, monthRub: 499 } },
+        }),
+      ),
+    );
+    expect(html).toContain("PDF и PPTX скачиваются на платном тарифе");
   });
 });

@@ -8,6 +8,7 @@ export type DeckRow = {
   slide_count: number;
   theme?: string | null;
   billing_kind?: string | null;
+  user_id?: string;
   created_at: Date | string;
   updated_at: Date | string;
 };

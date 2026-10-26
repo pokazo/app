@@ -7,7 +7,7 @@ import {
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex, stageNavShouldPost } from "../deck-view";
@@ -64,6 +64,7 @@ import { ThemePicker } from "../components/ThemePicker";
 import { shouldShowBuildLoader } from "../deck-ws";
 import { useDeckSocket } from "../useDeckSocket";
 import { nextFreeDeckWatch, noteFreeDeckBuilding, trackFreeDeckReady, watchForDeck } from "../free-deck-metrika";
+import { deckFileDownloadAllowed } from "../billing";
 
 type Me = { id: string; email: string; name: string };
 type Slide = {
@@ -146,6 +147,7 @@ function DeckSideIcon({ name }: { name: "link" | "full" | "theme" | "speech" | "
 export function DeckView() {
   const { id = "" } = useParams();
   const location = useLocation();
+  const nav = useNavigate();
   /** Only from create→view navigation; lost on refresh so the soft waiting copy stays off. */
   const awaitingPreview = Boolean(
     (location.state as { awaitingPreview?: boolean } | null)?.awaitingPreview,
@@ -168,6 +170,10 @@ export function DeckView() {
   const [presentChromeVisible, setPresentChromeVisible] = useState(false);
   /** True only when signed-in user owns this deck (GET /api/decks/:id). */
   const [isOwner, setIsOwner] = useState(false);
+  const [exportGate, setExportGate] = useState<{
+    plan: "free" | "month";
+    billingKind: string | null;
+  } | null>(null);
   const freeWatchRef = useRef(watchForDeck(id));
   const freeWatchDeckRef = useRef(id);
   if (freeWatchDeckRef.current !== id) {
@@ -300,9 +306,11 @@ export function DeckView() {
   useEffect(() => {
     if (!idOk || !me) {
       setIsOwner(false);
+      setExportGate(null);
       return;
     }
     let cancelled = false;
+    setExportGate(null);
     void fetch(apiUrl(`/api/decks/${id}`), { credentials: "include" })
       .then(async (r) => {
         if (cancelled) return;
@@ -311,12 +319,23 @@ export function DeckView() {
         try {
           const body = (await r.json()) as { theme?: string; billingKind?: string | null };
           setDeckTheme(sanitizeEditableDeckTheme(body.theme));
+          const billingKind = body.billingKind ?? null;
           const freeStep = nextFreeDeckWatch(freeWatchRef.current, {
             billingKnown: true,
-            billingKind: body.billingKind ?? null,
+            billingKind,
           });
           freeWatchRef.current = freeStep.watch;
           if (freeStep.track) trackFreeDeckReady(id);
+          const billingRes = await fetch(apiUrl("/api/billing/me"), { credentials: "include" });
+          const billing = billingRes.ok
+            ? ((await billingRes.json()) as { plan?: "free" | "month" })
+            : null;
+          if (!cancelled && (billing?.plan === "free" || billing?.plan === "month")) {
+            setExportGate({
+              plan: billing.plan,
+              billingKind,
+            });
+          }
         } catch {
           /* keep default */
         }
@@ -738,12 +757,24 @@ export function DeckView() {
 
   async function downloadExport(format: "pdf" | "pptx" | "facts") {
     if (!id || !isOwner || exporting || building) return;
+    if (
+      (format === "pdf" || format === "pptx") &&
+      exportGate &&
+      !deckFileDownloadAllowed(exportGate)
+    ) {
+      nav("/pricing?reason=export");
+      return;
+    }
     setExporting(format);
     setExportErr("");
     try {
       const res = await fetch(apiUrl(`/api/decks/${id}/export/${format}`), {
         credentials: "include",
       });
+      if (res.status === 402 && (format === "pdf" || format === "pptx")) {
+        nav("/pricing?reason=export");
+        return;
+      }
       if (!res.ok) throw new Error("export failed");
       const blob = await res.blob();
       const cd = res.headers.get("content-disposition") ?? "";
