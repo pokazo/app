@@ -102,6 +102,79 @@ header.top {
   width: 100%;
   justify-content: flex-start;
 }
+.head-burger {
+  display: none;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--pk-line);
+  border-radius: 12px;
+  background: var(--pk-paper);
+  color: var(--pk-ink);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.head-burger-bars {
+  display: grid;
+  gap: 5px;
+  width: 18px;
+}
+.head-burger-bars i {
+  display: block;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+.head-burger.is-open .head-burger-bars i:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.head-burger.is-open .head-burger-bars i:nth-child(2) {
+  opacity: 0;
+}
+.head-burger.is-open .head-burger-bars i:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+.head-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--pk-paper);
+  padding-top: 72px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.head-drawer-nav {
+  display: grid;
+  gap: 8px;
+  padding-block: 8px 20px;
+}
+.head-drawer-nav .pk-btn {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  font-size: 17px;
+}
+.head-drawer-profile {
+  display: grid;
+  gap: 10px;
+  padding-block: 16px 32px;
+  border-top: 1px solid var(--pk-line);
+}
+.head-drawer-email {
+  margin: 0;
+  font-size: 15px;
+  color: var(--pk-ink-muted);
+  word-break: break-word;
+}
+.page-head.is-menu-open {
+  position: relative;
+  z-index: 95;
+}
 .hero {
   text-align: center;
   padding: 56px 0 72px;
@@ -2159,6 +2232,11 @@ body.is-deck-thumbs-resizing * {
     aspect-ratio: 16 / 9;
   }
 }
+/* Match deck mobile breakpoint so header collapses with the player. */
+@media (max-width: 800px) {
+  .head-actions--desktop { display: none; }
+  .head-burger { display: inline-flex; }
+}
 @media (max-width: 640px) {
   .hero { padding: 36px 0 48px; }
   .prompt-card .actions {
@@ -2175,12 +2253,6 @@ body.is-deck-thumbs-resizing * {
   .prompt-card .actions select.pk.slide-count-select { width: auto; }
   .deck-item { flex-direction: column; align-items: stretch; }
   .deck-item .pk-btn { width: 100%; }
-  .head-email {
-    max-width: 11ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   .deck-thumbs {
     padding: 10px;
     gap: 8px;

@@ -78,3 +78,12 @@ describe("PkHeader profile menu", () => {
     expect(html).not.toContain("Осталось:");
   });
 });
+
+describe("PkHeader burger", () => {
+  it("renders mobile burger control", () => {
+    const html = renderHeader(signedIn, "/app");
+    expect(html).toContain("head-burger");
+    expect(html).toContain('data-pk="nav-burger"');
+    expect(html).toContain("head-actions--desktop");
+  });
+});

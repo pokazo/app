@@ -12,9 +12,11 @@ import { PkHeader } from "../components/PkHeader";
 import { apiUrl } from "../api";
 import { embedDeckUrl, slidevNavigateMessage, slidevPageForOutlineIndex, stageNavShouldPost } from "../deck-view";
 import {
+  currentFullscreenElement,
   isPresentChromeRevealZone,
   isTypingTarget,
   PRESENT_CHROME_HIDE_MS,
+  requestElementFullscreen,
   shouldAdvanceKey,
   shouldRetreatKey,
 } from "../deck-present";
@@ -164,6 +166,7 @@ export function DeckView() {
   const lastPostedSlidevPageRef = useRef<number | null>(null);
   const postedStageLoadRef = useRef(0);
   const stageHostRef = useRef<HTMLDivElement>(null);
+  const pendingFullscreenRef = useRef(false);
   const presentChromeHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [presenting, setPresenting] = useState(false);
@@ -699,11 +702,23 @@ export function DeckView() {
 
   useEffect(() => {
     function onFullscreenChange() {
-      setPresenting(document.fullscreenElement === stageHostRef.current);
+      setPresenting(currentFullscreenElement() === stageHostRef.current);
     }
     document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange as EventListener);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!pendingFullscreenRef.current) return;
+    if (mobileOverview && !mobilePresent) return;
+    if (!stageHostRef.current) return;
+    pendingFullscreenRef.current = false;
+    void requestElementFullscreen(stageHostRef.current);
+  }, [mobileOverview, mobilePresent, showStage]);
 
   const clearPresentChromeHide = useCallback(() => {
     if (presentChromeHideRef.current != null) {
@@ -1101,19 +1116,34 @@ export function DeckView() {
   }
 
   async function enterPresent() {
-    const el = stageHostRef.current;
-    if (!el || typeof el.requestFullscreen !== "function") return;
-    try {
-      await el.requestFullscreen();
-    } catch {
-      /* denied / unavailable — stay in normal view */
+    setMobileSideOpen(false);
+    if (mobileOverview && !mobilePresent) {
+      pendingFullscreenRef.current = true;
+      setStageReady(false);
+      setMobilePresent(true);
+      return;
     }
+    await requestElementFullscreen(stageHostRef.current);
   }
 
   async function exitPresent() {
-    if (!document.fullscreenElement) return;
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => void | Promise<void>;
+      webkitCancelFullScreen?: () => void | Promise<void>;
+    };
+    if (!currentFullscreenElement()) return;
     try {
-      await document.exitFullscreen();
+      if (typeof document.exitFullscreen === "function") {
+        await document.exitFullscreen();
+        return;
+      }
+      if (typeof doc.webkitExitFullscreen === "function") {
+        await Promise.resolve(doc.webkitExitFullscreen());
+        return;
+      }
+      if (typeof doc.webkitCancelFullScreen === "function") {
+        await Promise.resolve(doc.webkitCancelFullScreen());
+      }
     } catch {
       /* ignore */
     }
@@ -1552,19 +1582,7 @@ export function DeckView() {
             {copied ? "Скопировано" : "Скопировать ссылку"}
           </button>
           {meta && meta.status === "ready" && !presenting ? (
-            <button
-              type="button"
-              className="deck-side-item"
-              onClick={() => {
-                if (mobileOverview) {
-                  setMobileSideOpen(false);
-                  setStageReady(false);
-                  setMobilePresent(true);
-                  return;
-                }
-                void enterPresent();
-              }}
-            >
+            <button type="button" className="deck-side-item" onClick={() => void enterPresent()}>
               <DeckSideIcon name="full" />
               На весь экран
             </button>

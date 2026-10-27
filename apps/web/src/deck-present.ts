@@ -29,3 +29,36 @@ export function isPresentChromeRevealZone(
   const bottom = hostRect.top + hostRect.height;
   return clientY >= bottom - bottomPx;
 }
+
+type FullscreenCapable = HTMLElement & {
+  webkitRequestFullscreen?: () => void | Promise<void>;
+  webkitRequestFullScreen?: () => void | Promise<void>;
+};
+
+/** Request element fullscreen (standard + webkit). Returns false if unavailable/denied. */
+export async function requestElementFullscreen(el: HTMLElement | null): Promise<boolean> {
+  if (!el) return false;
+  const node = el as FullscreenCapable;
+  try {
+    if (typeof node.requestFullscreen === "function") {
+      await node.requestFullscreen();
+      return true;
+    }
+    if (typeof node.webkitRequestFullscreen === "function") {
+      await Promise.resolve(node.webkitRequestFullscreen());
+      return true;
+    }
+    if (typeof node.webkitRequestFullScreen === "function") {
+      await Promise.resolve(node.webkitRequestFullScreen());
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export function currentFullscreenElement(): Element | null {
+  const doc = document as Document & { webkitFullscreenElement?: Element | null };
+  return document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+}

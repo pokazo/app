@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isPresentChromeRevealZone,
   isTypingTarget,
+  requestElementFullscreen,
   shouldAdvanceKey,
   shouldRetreatKey,
 } from "./deck-present";
@@ -49,5 +50,18 @@ describe("isPresentChromeRevealZone", () => {
   it("hides above the band", () => {
     expect(isPresentChromeRevealZone(479, host, 120)).toBe(false);
     expect(isPresentChromeRevealZone(200, host, 120)).toBe(false);
+  });
+});
+
+describe("requestElementFullscreen", () => {
+  it("returns false without an element", async () => {
+    expect(await requestElementFullscreen(null)).toBe(false);
+  });
+
+  it("calls requestFullscreen when available", async () => {
+    const el = {
+      requestFullscreen: async () => undefined,
+    } as unknown as HTMLElement;
+    expect(await requestElementFullscreen(el)).toBe(true);
   });
 });
