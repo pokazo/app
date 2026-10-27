@@ -44,7 +44,7 @@ try {
         index.includes(`<h3>${item.q}</h3>`) &&
         index.includes(item.a),
     );
-  const outlines = audience.map((page) => page.outline.join("|"));
+  const exampleSets = audience.map((page) => page.examples.map((ex) => ex.id).join("|"));
 
   const checks = [
     ["landing h1", index.includes("<h1>Нейросеть для презентаций</h1>")],
@@ -68,10 +68,10 @@ try {
     ["urok canonical", urok.includes('href="https://pokazo.ru/urok"')],
     ["urok not main h1", !urok.includes("<h1>Нейросеть для презентаций</h1>")],
     ["urok faq ld", urok.includes("FAQPage")],
-    ["urok outline", urok.includes("Вопрос классу")],
+    ["urok examples", urok.includes("Фотосинтез") && urok.includes("ПДД")],
     ["biznes h1", biznes.includes("<h1>Презентация для бизнеса</h1>")],
-    ["biznes outline", biznes.includes("Следующий шаг")],
-    ["outlines differ", new Set(outlines).size === audience.length],
+    ["biznes examples", biznes.includes("Питч") && biznes.includes("Найм команды")],
+    ["examples differ", new Set(exampleSets).size === audience.length],
     ["landing audience links", index.includes('href="/urok"')],
     ["landing contact link", index.includes('href="/contact"')],
     ["contact h1", (await readFile(join(dir, "contact/index.html"), "utf8")).includes("<h1>Контакты</h1>")],
@@ -81,8 +81,8 @@ try {
   for (const page of audience) {
     const html = await readFile(join(dir, page.slug, "index.html"), "utf8");
     checks.push([
-      `${page.slug} outline`,
-      page.outline.every((item) => html.includes(item)) && html.includes(page.outlineTitle),
+      `${page.slug} examples`,
+      page.examples.every((ex) => html.includes(ex.title)) && html.includes("<h2>Примеры</h2>"),
     ]);
   }
   const failed = checks.filter(([, ok]) => !ok);

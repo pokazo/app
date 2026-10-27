@@ -88,18 +88,13 @@ export function AudienceLanding(props: { slug: AudienceSlug }) {
           </div>
         </section>
         <section className="section wrap">
-          <h2>{page.outlineTitle}</h2>
-          <p className="lead">{page.scenario}</p>
+          <p className="kicker" style={{ textAlign: "center" }}>Примеры</p>
+          <h2>Что можно создать</h2>
           <div className="thumbs">
             {page.examples.map((ex) => (
               <ExampleThumb key={ex.id} id={ex.id} title={ex.title} />
             ))}
           </div>
-          <ol>
-            {page.outline.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ol>
           <p>{homeCopy.offerNote}</p>
         </section>
         <section className="section alt who">

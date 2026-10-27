@@ -99,7 +99,9 @@ function audienceBody(page, pages, home) {
         : `<a href="/${item.slug}">${escapeHtml(item.chip)}</a>`,
     )
     .join(" · ");
-  const outline = page.outline.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n      ");
+  const examples = page.examples
+    .map((ex) => `<li>${escapeHtml(ex.title)}</li>`)
+    .join("\n      ");
   return `${headerHtml()}
 <main>
   <section>
@@ -115,11 +117,10 @@ function audienceBody(page, pages, home) {
     </ol>
   </section>
   <section>
-    <h2>${escapeHtml(page.outlineTitle)}</h2>
-    <p>${escapeHtml(page.scenario)}</p>
-    <ol>
-      ${outline}
-    </ol>
+    <h2>Примеры</h2>
+    <ul>
+      ${examples}
+    </ul>
     <p>${escapeHtml(home.offerNote)}</p>
   </section>
   <section>
@@ -340,7 +341,7 @@ export async function runSeoBuild(distDir = defaultDist) {
       hasH1: html.includes(`<h1>${page.h1}</h1>`),
       hasCanonical: html.includes(`href="${SITE}/${page.slug}"`),
       notMainH1: !html.includes("<h1>Нейросеть для презентаций</h1>"),
-      hasOutline: page.outline.every((item) => html.includes(escapeHtml(item))),
+      hasExamples: page.examples.every((ex) => html.includes(escapeHtml(ex.title))),
     });
   }
 
@@ -354,7 +355,7 @@ export async function runSeoBuild(distDir = defaultDist) {
     landingHasH1: indexHtml.includes("<h1>Нейросеть для презентаций</h1>"),
     hasCanonical: indexHtml.includes('rel="canonical"'),
     hasFaqLd: indexHtml.includes("FAQPage"),
-    audienceOk: audienceResults.every((r) => r.hasH1 && r.hasCanonical && r.notMainH1 && r.hasOutline),
+    audienceOk: audienceResults.every((r) => r.hasH1 && r.hasCanonical && r.notMainH1 && r.hasExamples),
     audienceResults,
   };
 }
