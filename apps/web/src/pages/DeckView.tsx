@@ -184,6 +184,7 @@ export function DeckView() {
   const [themeOpen, setThemeOpen] = useState(false);
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeErr, setThemeErr] = useState("");
+  const [mobileSideOpen, setMobileSideOpen] = useState(false);
 
   const [meta, setMeta] = useState<ViewMeta | null>(null);
   const [err, setErr] = useState("");
@@ -633,8 +634,25 @@ export function DeckView() {
   );
 
   useEffect(() => {
-    if (!mobileOverview) setMobilePresent(false);
+    if (!mobileOverview) {
+      setMobilePresent(false);
+      setMobileSideOpen(false);
+    }
   }, [mobileOverview]);
+
+  useEffect(() => {
+    if (!mobileSideOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileSideOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [mobileSideOpen]);
 
   const showStage = !mobileOverview || mobilePresent;
 
@@ -1029,6 +1047,7 @@ export function DeckView() {
     "deck-shell",
     mobileOverview ? "is-mobile-overview" : "",
     mobileOverview && mobilePresent ? "is-mobile-present" : "",
+    mobileOverview && mobileSideOpen ? "is-mobile-side-open" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -1126,9 +1145,33 @@ export function DeckView() {
             <span className="deck-pos">
               {current} / {last}
             </span>
+            <button
+              type="button"
+              className="pk ghost deck-mobile-menu"
+              aria-expanded={mobileSideOpen}
+              aria-controls="deck-side-panel"
+              data-pk="deck-mobile-menu"
+              onClick={() => setMobileSideOpen(true)}
+            >
+              Меню
+            </button>
           </>
         ) : (
-          <p className="deck-title">{meta?.topic || "Презентация"}</p>
+          <>
+            <p className="deck-title">{meta?.topic || "Презентация"}</p>
+            {mobileOverview ? (
+              <button
+                type="button"
+                className="pk ghost deck-mobile-menu"
+                aria-expanded={mobileSideOpen}
+                aria-controls="deck-side-panel"
+                data-pk="deck-mobile-menu"
+                onClick={() => setMobileSideOpen(true)}
+              >
+                Меню
+              </button>
+            ) : null}
+          </>
         )}
       </div>
       {err ? <p className="err app-note">{err}</p> : null}
@@ -1472,19 +1515,56 @@ export function DeckView() {
             ) : null}
           </div>
         ) : null}
-        <aside className="deck-side" aria-label="Действия с презентацией">
+        <aside
+          id="deck-side-panel"
+          className="deck-side"
+          aria-label="Действия с презентацией"
+          aria-hidden={mobileOverview && !mobileSideOpen ? true : undefined}
+        >
+          {mobileOverview ? (
+            <div className="deck-side-mobile-head">
+              <p className="deck-side-mobile-title">Меню</p>
+              <button
+                type="button"
+                className="pk ghost"
+                aria-label="Закрыть меню"
+                onClick={() => setMobileSideOpen(false)}
+              >
+                Закрыть
+              </button>
+            </div>
+          ) : null}
           {meta ? (
             <p className="deck-side-pos">
               {current} / {last}
             </p>
           ) : null}
           <h3>Показ</h3>
-          <button type="button" className="deck-side-item" onClick={() => void copyLink()}>
+          <button
+            type="button"
+            className="deck-side-item"
+            onClick={() => {
+              void copyLink();
+              if (mobileOverview) setMobileSideOpen(false);
+            }}
+          >
             <DeckSideIcon name="link" />
             {copied ? "Скопировано" : "Скопировать ссылку"}
           </button>
           {meta && meta.status === "ready" && !presenting ? (
-            <button type="button" className="deck-side-item" onClick={() => void enterPresent()}>
+            <button
+              type="button"
+              className="deck-side-item"
+              onClick={() => {
+                if (mobileOverview) {
+                  setMobileSideOpen(false);
+                  setStageReady(false);
+                  setMobilePresent(true);
+                  return;
+                }
+                void enterPresent();
+              }}
+            >
               <DeckSideIcon name="full" />
               На весь экран
             </button>
@@ -1498,7 +1578,10 @@ export function DeckView() {
                   className={`deck-side-item${themeOpen ? " is-open" : ""}`}
                   disabled={building && !themeOpen}
                   title="Сменить тему (пересборка)"
-                  onClick={() => setThemeOpen((o) => !o)}
+                  onClick={() => {
+                    setThemeOpen((o) => !o);
+                    if (mobileOverview) setMobileSideOpen(false);
+                  }}
                 >
                   <DeckSideIcon name="theme" />
                   Тема
@@ -1509,7 +1592,10 @@ export function DeckView() {
                 className="deck-side-item"
                 disabled={building}
                 title={building ? "Дождитесь окончания сборки" : undefined}
-                onClick={() => setSpeechOpen(true)}
+                onClick={() => {
+                  setSpeechOpen(true);
+                  if (mobileOverview) setMobileSideOpen(false);
+                }}
               >
                 <DeckSideIcon name="speech" />
                 Спич
@@ -1518,7 +1604,10 @@ export function DeckView() {
                 type="button"
                 className="deck-side-item"
                 disabled={!!exporting || building}
-                onClick={() => void downloadExport("facts")}
+                onClick={() => {
+                  void downloadExport("facts");
+                  if (mobileOverview) setMobileSideOpen(false);
+                }}
               >
                 <DeckSideIcon name="facts" />
                 {exporting === "facts" ? "Собираем архив…" : "Факты"}
@@ -1528,7 +1617,10 @@ export function DeckView() {
                 type="button"
                 className="deck-side-item"
                 disabled={!!exporting || building}
-                onClick={() => void downloadExport("pdf")}
+                onClick={() => {
+                  void downloadExport("pdf");
+                  if (mobileOverview) setMobileSideOpen(false);
+                }}
               >
                 {exporting === "pdf" ? "Сохраняем PDF…" : "Скачать PDF"}
               </button>
@@ -1536,7 +1628,10 @@ export function DeckView() {
                 type="button"
                 className="deck-side-item"
                 disabled={!!exporting || building}
-                onClick={() => void downloadExport("pptx")}
+                onClick={() => {
+                  void downloadExport("pptx");
+                  if (mobileOverview) setMobileSideOpen(false);
+                }}
               >
                 {exporting === "pptx" ? "Сохраняем PPTX…" : "Скачать PPTX"}
               </button>
