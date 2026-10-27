@@ -91,7 +91,9 @@ export function AudienceLanding(props: { slug: AudienceSlug }) {
           <h2>{page.outlineTitle}</h2>
           <p className="lead">{page.scenario}</p>
           <div className="thumbs">
-            <ExampleThumb id={page.exampleThumb} title={page.exampleTitle} />
+            {page.examples.map((ex) => (
+              <ExampleThumb key={ex.id} id={ex.id} title={ex.title} />
+            ))}
           </div>
           <ol>
             {page.outline.map((item) => (

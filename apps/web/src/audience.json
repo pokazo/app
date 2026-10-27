@@ -16,8 +16,11 @@
       "Где это происходит в листе",
       "Вопрос классу"
     ],
-    "exampleThumb": "photosynthesis",
-    "exampleTitle": "Фотосинтез",
+    "examples": [
+      { "id": "photosynthesis", "title": "Фотосинтез" },
+      { "id": "pdd", "title": "ПДД" },
+      { "id": "fractions", "title": "Дроби" }
+    ],
     "faq": [
       {
         "q": "Подойдёт учителю к уроку?",
@@ -50,8 +53,11 @@
       "Планеты и орбиты",
       "Вывод в двух фразах"
     ],
-    "exampleThumb": "report",
-    "exampleTitle": "Как сделать доклад",
+    "examples": [
+      { "id": "cosmos", "title": "Космос" },
+      { "id": "volcano", "title": "Вулканы" },
+      { "id": "war1812", "title": "1812 год" }
+    ],
     "faq": [
       {
         "q": "Это для школьного доклада?",
@@ -84,8 +90,11 @@
       "Одно место в городе",
       "Что мы узнали"
     ],
-    "exampleThumb": "ai",
-    "exampleTitle": "Город моей семьи",
+    "examples": [
+      { "id": "city-family", "title": "Город моей семьи" },
+      { "id": "class-hour", "title": "Дружба в классе" },
+      { "id": "eco", "title": "Меньше пластика" }
+    ],
     "faq": [
       {
         "q": "Чем это отличается от презентации к уроку?",
@@ -118,8 +127,11 @@
       "Главная цифра",
       "Вывод для комиссии"
     ],
-    "exampleThumb": "defense",
-    "exampleTitle": "Курсовая",
+    "examples": [
+      { "id": "defense", "title": "Курсовая" },
+      { "id": "seminar-ai", "title": "ИИ в науке" },
+      { "id": "med", "title": "Клинический случай" }
+    ],
     "faq": [
       {
         "q": "Подойдёт для курсовой?",
@@ -152,8 +164,11 @@
       "Для кого",
       "Следующий шаг"
     ],
-    "exampleThumb": "pitch",
-    "exampleTitle": "Питч для работы",
+    "examples": [
+      { "id": "pitch", "title": "Питч" },
+      { "id": "kpi", "title": "Цифры недели" },
+      { "id": "hire", "title": "Найм команды" }
+    ],
     "faq": [
       {
         "q": "Это для питча?",

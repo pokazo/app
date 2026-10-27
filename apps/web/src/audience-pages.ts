@@ -19,8 +19,7 @@ export type AudiencePage = {
   scenario: string;
   outlineTitle: string;
   outline: string[];
-  exampleThumb: ExampleThumbId;
-  exampleTitle: string;
+  examples: { id: ExampleThumbId; title: string }[];
   faq: AudienceFaq[];
 };
 
