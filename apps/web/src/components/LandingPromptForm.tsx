@@ -16,6 +16,12 @@ import {
 } from "../decks";
 import { sanitizeAudience, type AudienceSlug } from "../audience-pages";
 import { stashPendingUploadFiles } from "../pending-uploads";
+import { stashPendingTopic } from "../pending-topic";
+import {
+  TOPIC_MAX_CHARS,
+  TOPIC_MIN_CHARS,
+  TOPIC_URL_SAFE_ENCODED,
+} from "../topic-limits";
 
 export function LandingPromptForm(props: {
   placeholder: string;
@@ -63,19 +69,26 @@ export function LandingPromptForm(props: {
       return;
     }
     const text = t.trim();
-    if (text.length < 5 || busy) return;
+    if (text.length < TOPIC_MIN_CHARS || text.length > TOPIC_MAX_CHARS || busy) return;
     setBusy(true);
     const pick = sanitizeDeckTheme(theme);
     const audience = sanitizeAudience(props.audience);
-    const q = `topic=${encodeURIComponent(text)}&theme=${encodeURIComponent(pick)}&slides=${slideCount}&audience=${encodeURIComponent(audience)}`;
-    const dest = `/app?${q}`;
+    stashPendingTopic(text);
+    const q = new URLSearchParams();
+    if (encodeURIComponent(text).length <= TOPIC_URL_SAFE_ENCODED) q.set("topic", text);
+    else q.set("topicStash", "1");
+    q.set("theme", pick);
+    q.set("slides", String(slideCount));
+    q.set("audience", audience);
+    const qs = q.toString();
+    const dest = `/app?${qs}`;
     try {
       if (files.length) await stashPendingUploadFiles(files);
       const res = await fetch(apiUrl("/api/auth/me"), { credentials: "include" });
       if (res.ok) nav(dest);
-      else nav(`/login?next=/app&${q}`);
+      else nav(`/login?next=/app&${qs}`);
     } catch {
-      nav(`/login?next=/app&${q}`);
+      nav(`/login?next=/app&${qs}`);
     } finally {
       setBusy(false);
     }
@@ -92,8 +105,9 @@ export function LandingPromptForm(props: {
         <textarea
           className="pk"
           value={topic}
-          onChange={(e) => setTopic(e.target.value)}
+          onChange={(e) => setTopic(e.target.value.slice(0, TOPIC_MAX_CHARS))}
           placeholder={props.placeholder}
+          maxLength={TOPIC_MAX_CHARS}
           disabled={Boolean(lockLabel)}
         />
         <div className="actions">
@@ -103,7 +117,12 @@ export function LandingPromptForm(props: {
           </div>
           <PkButton
             data-pk="cta-create"
-            disabled={!lockLabel && (topic.trim().length < 5 || busy)}
+            disabled={
+              !lockLabel &&
+              (topic.trim().length < TOPIC_MIN_CHARS ||
+                topic.trim().length > TOPIC_MAX_CHARS ||
+                busy)
+            }
             type="submit"
           >
             {lockLabel || (busy ? "Создаём…" : "Создать")}

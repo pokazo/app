@@ -12,6 +12,7 @@ export function Login() {
   const next = useMemo(() => {
     const base = isSafePath(params.get("next"));
     const topic = params.get("topic") ?? "";
+    const topicStash = params.get("topicStash") ?? "";
     const theme = params.get("theme") ?? "";
     const slides = params.get("slides") ?? "";
     const audience = params.get("audience") ?? "";
@@ -19,6 +20,9 @@ export function Login() {
     if (topic) {
       const join = dest.includes("?") ? "&" : "?";
       dest = `${dest}${join}topic=${encodeURIComponent(topic)}`;
+    } else if (topicStash === "1") {
+      const join = dest.includes("?") ? "&" : "?";
+      dest = `${dest}${join}topicStash=1`;
     }
     if (theme) {
       const join = dest.includes("?") ? "&" : "?";

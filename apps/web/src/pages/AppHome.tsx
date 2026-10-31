@@ -26,6 +26,8 @@ import { BuildLoader } from "../components/BuildLoader";
 import { trackPaymentSuccess } from "../payment-metrika";
 import { BillingMe } from "../billing";
 import { clearPendingUploadFiles, getPendingUploadFiles } from "../pending-uploads";
+import { clearPendingTopic, getPendingTopic } from "../pending-topic";
+import { TOPIC_MAX_CHARS, TOPIC_MIN_CHARS } from "../topic-limits";
 
 type Me = { id: string; email: string; name: string };
 
@@ -41,7 +43,9 @@ export function AppHome() {
   const [billing, setBilling] = useState<BillingMe | null>(null);
   const [paywall, setPaywall] = useState<BillingMe | null>(null);
   const [resumeDecks, setResumeDecks] = useState<Deck[]>([]);
-  const [topic, setTopic] = useState(params.get("topic") ?? "");
+  const [topic, setTopic] = useState(
+    () => (params.get("topic") ?? "").trim() || getPendingTopic(),
+  );
   const [theme, setTheme] = useState(() => sanitizeDeckTheme(params.get("theme")));
   const [slideCount, setSlideCount] = useState(() => sanitizeSlideCount(params.get("slides")));
   const [audience] = useState(() => sanitizeAudience(params.get("audience")));
@@ -166,6 +170,7 @@ export function AppHome() {
     const audienceNow = audienceRef.current;
     const filesNow = filesRef.current;
     clearPendingUploadFiles();
+    clearPendingTopic();
     setErr("");
     setStatus("queued");
     setActivity("Создаём…");
@@ -221,9 +226,10 @@ export function AppHome() {
 
   function stripTopicParam() {
     setParams((current) => {
-      if (!current.get("topic")) return current;
+      if (!current.get("topic") && current.get("topicStash") !== "1") return current;
       const next = new URLSearchParams(current);
       next.delete("topic");
+      next.delete("topicStash");
       return next;
     }, { replace: true });
   }
@@ -234,7 +240,9 @@ export function AppHome() {
     let cancelled = false;
 
     void (async () => {
-      const qTopic = (params.get("topic") ?? "").trim();
+      const qTopic =
+        (params.get("topic") ?? "").trim() ||
+        (params.get("topicStash") === "1" ? getPendingTopic().trim() : "");
       let pending: Deck | null = null;
       let listOk = false;
       try {
@@ -329,8 +337,9 @@ export function AppHome() {
               <textarea
                 className="pk"
                 value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="Тема новой презентации…"
+                onChange={(e) => setTopic(e.target.value.slice(0, TOPIC_MAX_CHARS))}
+                placeholder="Тема или конспект презентации…"
+                maxLength={TOPIC_MAX_CHARS}
               />
               <div className="actions">
                 <div className="prompt-card-actions-left">
@@ -345,7 +354,14 @@ export function AppHome() {
                     disabled={Boolean(status)}
                   />
                 </div>
-                <PkButton disabled={topic.trim().length < 5 || Boolean(status)} type="submit">
+                <PkButton
+                  disabled={
+                    topic.trim().length < TOPIC_MIN_CHARS ||
+                    topic.trim().length > TOPIC_MAX_CHARS ||
+                    Boolean(status)
+                  }
+                  type="submit"
+                >
                   Создать
                 </PkButton>
               </div>

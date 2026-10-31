@@ -29,6 +29,7 @@ import {
 import { requestWantsStaticPlayer } from "./slidev-dev-proxy.js";
 import { sanitizePickerTheme } from "./themes.js";
 import { sanitizeAudience } from "./audience.js";
+import { TOPIC_MAX_CHARS, TOPIC_MIN_CHARS } from "./topic-limits.js";
 import {
   contentDisposition,
   downloadBasename,
@@ -388,7 +389,9 @@ export function createApp() {
     if (!session) return c.json({ error: "unauthorized" }, 401);
     const { fields, files } = await parseDeckCreateRequest(c);
     const topic = (fields.topic ?? "").trim();
-    if (topic.length < 5 || topic.length > 500) return c.json({ error: "bad topic" }, 400);
+    if (topic.length < TOPIC_MIN_CHARS || topic.length > TOPIC_MAX_CHARS) {
+      return c.json({ error: "bad topic" }, 400);
+    }
     const slideCount = Math.min(16, Math.max(3, Number(fields.slideCount ?? 8)));
     const id = randomUUID();
     await pool.query(
