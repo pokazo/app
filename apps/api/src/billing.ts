@@ -73,7 +73,7 @@ export function deckFileDownloadAllowed(opts: {
   return opts.billingKind !== "free";
 }
 
-/** Insert / move / delete slides — only with an active month plan (тариф ≠ 0). */
+/** Insert / move / delete slides — only with an active month plan (тариф ≠ 0). Free plan is blocked. */
 export function structureEditAllowed(opts: { plan: "free" | "month" }): boolean {
   return opts.plan === "month";
 }
