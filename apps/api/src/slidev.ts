@@ -1,10 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { assertLayoutsInMarkdown } from "./layout-md-assert.js";
 import { guardMarkdown } from "./md-guard.js";
+import { applyPokazoCredit } from "./pokazo-credit.js";
+import { pool } from "./migrate.js";
 
 export type SlidevSpawnSpec = {
   bin: string;
@@ -101,10 +103,35 @@ export function assertSlidevDist(workDir: string): void {
   }
 }
 
-export async function writeSlides(workDir: string, markdown: string, theme = "default"): Promise<string> {
+const DECK_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Free-slot decks get a Pokazo credit on first + last slides. */
+export async function deckWantsPokazoCredit(workDir: string): Promise<boolean> {
+  const id = basename(workDir);
+  if (!DECK_UUID.test(id) || !pool) return false;
+  try {
+    const { rows } = await pool.query<{ billing_kind: string | null }>(
+      `SELECT billing_kind FROM deck WHERE id=$1`,
+      [id],
+    );
+    return rows[0]?.billing_kind === "free";
+  } catch {
+    return false;
+  }
+}
+
+export async function writeSlides(
+  workDir: string,
+  markdown: string,
+  theme = "default",
+  opts?: { pokazoCredit?: boolean },
+): Promise<string> {
   await mkdir(workDir, { recursive: true });
   const file = join(workDir, "slides.md");
-  await writeFile(file, guardMarkdown(markdown, theme), "utf8");
+  const credit = opts?.pokazoCredit ?? (await deckWantsPokazoCredit(workDir));
+  const md = applyPokazoCredit(guardMarkdown(markdown, theme), credit);
+  await writeFile(file, md, "utf8");
   return file;
 }
 
@@ -187,7 +214,10 @@ export async function buildSlidev(workDir: string, base = "./", timeoutMs = 180_
   await ensureDeckViteConfig(workDir);
   const slidesPath = join(workDir, "slides.md");
   if (existsSync(slidesPath)) {
-    assertLayoutsInMarkdown(readFileSync(slidesPath, "utf8"));
+    const credit = await deckWantsPokazoCredit(workDir);
+    const md = applyPokazoCredit(readFileSync(slidesPath, "utf8"), credit);
+    writeFileSync(slidesPath, md, "utf8");
+    assertLayoutsInMarkdown(md);
   }
   const spec = slidevSpawnSpec(workDir, base);
   const t0 = Date.now();
