@@ -18,11 +18,21 @@ export type BillingState = {
   freeAvailable: boolean;
   plan: "free" | "month";
   planUntil: string | null;
+  hasPaid?: boolean;
 };
 
 export type BillingMe = BillingState & BillingCatalog & {
   label: string;
+  hasPaid: boolean;
 };
+
+/** Slide add/move/delete/rewrite — unlocked after any purchase (or active month). */
+export function structureEditAllowed(opts: {
+  plan: "free" | "month";
+  hasPaid?: boolean;
+}): boolean {
+  return Boolean(opts.hasPaid) || opts.plan === "month";
+}
 
 /** PDF/PPTX of a free-slot deck stay locked until an active month. Paid decks still download. */
 export function deckFileDownloadAllowed(opts: {

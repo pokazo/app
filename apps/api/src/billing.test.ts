@@ -8,12 +8,17 @@ import {
 } from "./billing.js";
 
 describe("structureEditAllowed", () => {
-  it("blocks insert/move/delete on the free plan (тариф 0)", () => {
-    expect(structureEditAllowed({ plan: "free" })).toBe(false);
+  it("blocks slide edits for never-paid free users", () => {
+    expect(structureEditAllowed({ plan: "free", hasPaid: false })).toBe(false);
+  });
+
+  it("allows slide edits after any purchase", () => {
+    expect(structureEditAllowed({ plan: "free", hasPaid: true })).toBe(true);
   });
 
   it("allows structure edits while a month plan is active", () => {
-    expect(structureEditAllowed({ plan: "month" })).toBe(true);
+    expect(structureEditAllowed({ plan: "month", hasPaid: false })).toBe(true);
+    expect(structureEditAllowed({ plan: "month", hasPaid: true })).toBe(true);
   });
 });
 
@@ -42,6 +47,7 @@ describe("billingLabel", () => {
         freeAvailable: true,
         plan: "free",
         planUntil: null,
+        hasPaid: false,
       }),
     ).toBe("Осталось: 1 бесплатная");
   });
@@ -53,6 +59,7 @@ describe("billingLabel", () => {
         freeAvailable: false,
         plan: "free",
         planUntil: null,
+        hasPaid: false,
       }),
     ).toBe("Осталось: 2 презентации");
   });
@@ -64,6 +71,7 @@ describe("billingLabel", () => {
         freeAvailable: false,
         plan: "month",
         planUntil: "2026-11-12T00:00:00.000Z",
+        hasPaid: true,
       }),
     ).toMatch(/^Безлимит до /);
   });

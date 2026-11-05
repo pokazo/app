@@ -89,7 +89,7 @@ export function structureErrorMessage(raw: string): string {
   if (/bad slide/i.test(raw)) return "Нельзя удалить этот слайд";
   if (/busy/i.test(raw)) return "Подождите, идёт сборка";
   if (/upgrade_required|payment_required/i.test(raw)) {
-    return "Добавление и порядок слайдов — на тарифе «Месяц»";
+    return "Добавление и правка слайдов — после покупки";
   }
   if (/unauthorized|401/i.test(raw)) return "Войдите, чтобы править слайды";
   return "Не удалось изменить слайды";

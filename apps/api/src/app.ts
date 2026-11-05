@@ -618,6 +618,16 @@ export function createApp() {
     ]);
     const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
+    const billing = await getBillingMe(session.user.id);
+    if (!structureEditAllowed({ plan: billing.plan, hasPaid: billing.hasPaid })) {
+      billingLog("info", "rewrite_denied", {
+        deckId: id,
+        userId: session.user.id,
+        plan: billing.plan,
+        hasPaid: billing.hasPaid,
+      });
+      return c.json({ error: "upgrade_required", billing }, 402);
+    }
     if (deck.status !== "ready") {
       console.warn(
         `[edit] rewrite_rejected deck=${id} slide=${n} reason=deck_not_ready status=${deck.status}`,
@@ -730,12 +740,13 @@ export function createApp() {
     const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
     const billing = await getBillingMe(session.user.id);
-    if (!structureEditAllowed({ plan: billing.plan })) {
+    if (!structureEditAllowed({ plan: billing.plan, hasPaid: billing.hasPaid })) {
       billingLog("info", "structure_denied", {
         deckId: id,
         userId: session.user.id,
         op: op.op,
         plan: billing.plan,
+        hasPaid: billing.hasPaid,
       });
       return c.json({ error: "upgrade_required", billing }, 402);
     }

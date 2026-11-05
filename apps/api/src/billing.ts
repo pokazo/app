@@ -21,6 +21,8 @@ export type BillingMe = BillingCatalog & {
   freeAvailable: boolean;
   plan: "free" | "month";
   planUntil: string | null;
+  /** True after any successful payment (credit or month). */
+  hasPaid: boolean;
   label: string;
 };
 
@@ -73,9 +75,15 @@ export function deckFileDownloadAllowed(opts: {
   return opts.billingKind !== "free";
 }
 
-/** Insert / move / delete slides — only with an active month plan (тариф ≠ 0). Free plan is blocked. */
-export function structureEditAllowed(opts: { plan: "free" | "month" }): boolean {
-  return opts.plan === "month";
+/**
+ * Insert / move / delete / rewrite slides.
+ * Blocked only for never-paid free users; any purchase unlocks edits.
+ */
+export function structureEditAllowed(opts: {
+  plan: "free" | "month";
+  hasPaid: boolean;
+}): boolean {
+  return opts.hasPaid || opts.plan === "month";
 }
 
 export function billingLabel(me: BillingState): string {
@@ -136,6 +144,13 @@ export async function getBillingMe(userId: string): Promise<BillingMe> {
   const row = result.rows[0];
   if (!row) throw new Error(`User not found: ${userId}`);
 
+  const paid = await requirePool().query<{ has_paid: boolean }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM payment WHERE user_id = $1 AND status = 'paid'
+     ) AS has_paid`,
+    [userId],
+  );
+
   const planActive =
     row.plan === "month" &&
     row.plan_until !== null &&
@@ -145,6 +160,7 @@ export async function getBillingMe(userId: string): Promise<BillingMe> {
     freeAvailable: !row.free_used,
     plan: planActive ? "month" : "free",
     planUntil: planActive ? toIso(row.plan_until) : null,
+    hasPaid: Boolean(paid.rows[0]?.has_paid),
   };
 
   return {

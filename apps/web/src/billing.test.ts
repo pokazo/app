@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { formatBillingLabel, deckFileDownloadAllowed } from "./billing";
+import { formatBillingLabel, deckFileDownloadAllowed, structureEditAllowed } from "./billing";
 import { PaywallModal } from "./components/PaywallModal";
 import { MemoryRouter } from "react-router-dom";
 import { Pricing } from "./pages/Pricing";
@@ -11,6 +11,14 @@ describe("deckFileDownloadAllowed", () => {
     expect(deckFileDownloadAllowed({ plan: "free", billingKind: "free" })).toBe(false);
     expect(deckFileDownloadAllowed({ plan: "month", billingKind: "free" })).toBe(true);
     expect(deckFileDownloadAllowed({ plan: "free", billingKind: "credit" })).toBe(true);
+  });
+});
+
+describe("structureEditAllowed", () => {
+  it("blocks never-paid free users and unlocks after purchase", () => {
+    expect(structureEditAllowed({ plan: "free", hasPaid: false })).toBe(false);
+    expect(structureEditAllowed({ plan: "free", hasPaid: true })).toBe(true);
+    expect(structureEditAllowed({ plan: "month", hasPaid: false })).toBe(true);
   });
 });
 
@@ -49,6 +57,7 @@ describe("PaywallModal", () => {
           credits: 0,
           plan: "free",
           planUntil: null,
+          hasPaid: false,
           label: "",
           prices: { creditRub: 249, monthRub: 499 },
         },

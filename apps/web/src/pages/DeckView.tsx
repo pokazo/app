@@ -66,7 +66,7 @@ import { ThemePicker } from "../components/ThemePicker";
 import { shouldShowBuildLoader } from "../deck-ws";
 import { useDeckSocket } from "../useDeckSocket";
 import { nextFreeDeckWatch, noteFreeDeckBuilding, trackFreeDeckReady, watchForDeck } from "../free-deck-metrika";
-import { deckFileDownloadAllowed } from "../billing";
+import { deckFileDownloadAllowed, structureEditAllowed } from "../billing";
 
 type Me = { id: string; email: string; name: string };
 type Slide = {
@@ -176,6 +176,7 @@ export function DeckView() {
   const [exportGate, setExportGate] = useState<{
     plan: "free" | "month";
     billingKind: string | null;
+    hasPaid: boolean;
   } | null>(null);
   const freeWatchRef = useRef(watchForDeck(id));
   const freeWatchDeckRef = useRef(id);
@@ -332,12 +333,16 @@ export function DeckView() {
           if (freeStep.track) trackFreeDeckReady(id);
           const billingRes = await fetch(apiUrl("/api/billing/me"), { credentials: "include" });
           const billing = billingRes.ok
-            ? ((await billingRes.json()) as { plan?: "free" | "month" })
+            ? ((await billingRes.json()) as {
+                plan?: "free" | "month";
+                hasPaid?: boolean;
+              })
             : null;
           if (!cancelled && (billing?.plan === "free" || billing?.plan === "month")) {
             setExportGate({
               plan: billing.plan,
               billingKind,
+              hasPaid: Boolean(billing.hasPaid),
             });
           }
         } catch {
@@ -830,6 +835,9 @@ export function DeckView() {
     }
   }
 
+  const slideEditsUnlocked = Boolean(
+    exportGate && structureEditAllowed(exportGate),
+  );
   const structureReady = Boolean(
     me &&
       isOwner &&
@@ -837,7 +845,7 @@ export function DeckView() {
       meta.status === "ready" &&
       !building &&
       !rewriteBusy &&
-      exportGate?.plan === "month",
+      slideEditsUnlocked,
   );
   const rethemeReady = canRethemeDeck({
     isOwner: Boolean(me && isOwner),
@@ -1025,6 +1033,16 @@ export function DeckView() {
         setRewriteErr("Войдите, чтобы пересобрать слайд.");
         return;
       }
+      if (res.status === 402) {
+        forcePollRef.current = false;
+        setBuilding(false);
+        markRewriteBusy(false);
+        setRewritingSlide(null);
+        stayOnSlideRef.current = null;
+        console.warn("[edit] rewrite_rejected", { deckId: id, slide: current, status: 402 });
+        setRewriteErr(structureErrorMessage(body.error || "upgrade_required"));
+        return;
+      }
       if (res.status === 409) {
         // Server may still be rewriting — keep polling; do not pretend we are idle.
         forcePollRef.current = true;
@@ -1062,7 +1080,13 @@ export function DeckView() {
 
   const slides = meta?.slides ?? [];
   const rewriteReady = Boolean(
-    me && isOwner && meta && meta.status === "ready" && !building && !rewriteBusy,
+    me &&
+      isOwner &&
+      meta &&
+      meta.status === "ready" &&
+      !building &&
+      !rewriteBusy &&
+      slideEditsUnlocked,
   );
   const shellClass = [
     "deck-shell",
@@ -1383,8 +1407,8 @@ export function DeckView() {
               className="deck-thumb-add"
               disabled={!structureReady || last >= SLIDE_COUNT_MAX}
               title={
-                exportGate?.plan === "free"
-                  ? "Добавление и порядок слайдов — на тарифе «Месяц»"
+                exportGate && !slideEditsUnlocked
+                  ? "Добавление и правка слайдов — после покупки"
                   : undefined
               }
               onClick={() => void onAddSlide()}
@@ -1392,8 +1416,8 @@ export function DeckView() {
               Добавить слайд
             </button>
           ) : null}
-          {isOwner && meta?.status === "ready" && exportGate?.plan === "free" ? (
-            <p className="deck-thumb-err">Добавление и порядок слайдов — на тарифе «Месяц»</p>
+          {isOwner && meta?.status === "ready" && exportGate && !slideEditsUnlocked ? (
+            <p className="deck-thumb-err">Добавление и правка слайдов — после покупки</p>
           ) : null}
           {structureErr ? <p className="err deck-thumb-err">{structureErr}</p> : null}
         </nav>
