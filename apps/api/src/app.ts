@@ -64,6 +64,7 @@ import {
   billingLog,
   finalizeDeckBilling,
   deckFileDownloadAllowed,
+  structureEditAllowed,
   getBillingCatalog,
   getBillingMe,
   reserveGenerate,
@@ -716,6 +717,16 @@ export function createApp() {
     ]);
     const deck = rows[0] as DeckRow | undefined;
     if (!deck) return c.json({ error: "not found" }, 404);
+    const billing = await getBillingMe(session.user.id);
+    if (!structureEditAllowed({ plan: billing.plan })) {
+      billingLog("info", "structure_denied", {
+        deckId: id,
+        userId: session.user.id,
+        op: op.op,
+        plan: billing.plan,
+      });
+      return c.json({ error: "upgrade_required", billing }, 402);
+    }
     if (deck.status !== "ready") {
       console.warn(
         `[edit] structure_rejected deck=${id} op=${op.op} reason=deck_not_ready status=${deck.status}`,

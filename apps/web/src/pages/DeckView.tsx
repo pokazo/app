@@ -831,7 +831,13 @@ export function DeckView() {
   }
 
   const structureReady = Boolean(
-    me && isOwner && meta && meta.status === "ready" && !building && !rewriteBusy,
+    me &&
+      isOwner &&
+      meta &&
+      meta.status === "ready" &&
+      !building &&
+      !rewriteBusy &&
+      exportGate?.plan === "month",
   );
   const rethemeReady = canRethemeDeck({
     isOwner: Boolean(me && isOwner),
@@ -1376,10 +1382,18 @@ export function DeckView() {
               type="button"
               className="deck-thumb-add"
               disabled={!structureReady || last >= SLIDE_COUNT_MAX}
+              title={
+                exportGate?.plan === "free"
+                  ? "Добавление и порядок слайдов — на тарифе «Месяц»"
+                  : undefined
+              }
               onClick={() => void onAddSlide()}
             >
               Добавить слайд
             </button>
+          ) : null}
+          {isOwner && meta?.status === "ready" && exportGate?.plan === "free" ? (
+            <p className="deck-thumb-err">Добавление и порядок слайдов — на тарифе «Месяц»</p>
           ) : null}
           {structureErr ? <p className="err deck-thumb-err">{structureErr}</p> : null}
         </nav>

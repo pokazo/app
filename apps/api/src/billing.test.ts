@@ -4,7 +4,18 @@ import {
   computeFinalizeBillingAction,
   computeReserveKind,
   deckFileDownloadAllowed,
+  structureEditAllowed,
 } from "./billing.js";
+
+describe("structureEditAllowed", () => {
+  it("blocks insert/move/delete on the free plan (тариф 0)", () => {
+    expect(structureEditAllowed({ plan: "free" })).toBe(false);
+  });
+
+  it("allows structure edits while a month plan is active", () => {
+    expect(structureEditAllowed({ plan: "month" })).toBe(true);
+  });
+});
 
 describe("deckFileDownloadAllowed", () => {
   it("blocks a free-slot deck on the free plan", () => {
