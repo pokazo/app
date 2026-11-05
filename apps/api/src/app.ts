@@ -70,6 +70,13 @@ import {
   reserveGenerate,
   type BillingProduct,
 } from "./billing.js";
+import { stripPokazoCreditsAfterPayment } from "./pokazo-credit-strip.js";
+
+function scheduleStripPokazoCreditsAfterPayment(userId: string): void {
+  void stripPokazoCreditsAfterPayment(userId).catch((error) => {
+    billingLog("error", "pokazo_credit_strip_failed", { userId }, error);
+  });
+}
 import {
   getTochkaClient,
   isTochkaPaidStatus,
@@ -234,7 +241,8 @@ export function createApp() {
     const successRedirectUrl = `${config.publicBaseUrl}/app?paid=1&product=${encodeURIComponent(product)}`;
     if (config.billingFreeUnlock) {
       const operationId = `free-${paymentId}`;
-      await applyPaidPayment(paymentId, operationId);
+      const paid = await applyPaidPayment(paymentId, operationId);
+      if (paid.outcome === "applied") scheduleStripPokazoCreditsAfterPayment(paid.userId);
       await pool.query(
         `UPDATE payment SET payment_url=$2 WHERE id=$1`,
         [paymentId, successRedirectUrl],
@@ -356,9 +364,13 @@ export function createApp() {
           paymentId,
           event.operationId ?? `stub-payment-${paymentId}`,
         );
+        if (result.outcome === "applied") {
+          scheduleStripPokazoCreditsAfterPayment(result.userId);
+        }
         billingLog("info", "webhook_activated", {
           paymentId,
-          result,
+          result: result.outcome,
+          userId: result.userId,
           paymentLinkId: event.paymentLinkId,
           operationId: event.operationId,
         });

@@ -3,8 +3,20 @@ import {
   POKAZO_CREDIT_ATTR,
   POKAZO_CREDIT_URL,
   applyPokazoCredit,
+  pokazoCreditEnabled,
+  slidesHavePokazoCredit,
   stripPokazoCredit,
 } from "./pokazo-credit.js";
+
+describe("pokazoCreditEnabled", () => {
+  it("enables only free decks for users who never paid", () => {
+    expect(pokazoCreditEnabled({ billingKind: "free", userHasPaid: false })).toBe(true);
+    expect(pokazoCreditEnabled({ billingKind: "free", userHasPaid: true })).toBe(false);
+    expect(pokazoCreditEnabled({ billingKind: "credit", userHasPaid: false })).toBe(false);
+    expect(pokazoCreditEnabled({ billingKind: "month", userHasPaid: false })).toBe(false);
+    expect(pokazoCreditEnabled({ billingKind: null, userHasPaid: false })).toBe(false);
+  });
+});
 
 const TWO = `---
 theme: default
@@ -76,5 +88,7 @@ variant: ribbon
 `;
     const out = applyPokazoCredit(one, true);
     expect(out.match(new RegExp(`${POKAZO_CREDIT_ATTR}(?:\\s|>)`, "g"))).toHaveLength(1);
+    expect(slidesHavePokazoCredit(out)).toBe(true);
+    expect(slidesHavePokazoCredit(stripPokazoCredit(out))).toBe(false);
   });
 });

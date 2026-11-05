@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { assertLayoutsInMarkdown } from "./layout-md-assert.js";
 import { guardMarkdown } from "./md-guard.js";
-import { applyPokazoCredit } from "./pokazo-credit.js";
+import { applyPokazoCredit, pokazoCreditEnabled } from "./pokazo-credit.js";
 import { pool } from "./migrate.js";
 
 export type SlidevSpawnSpec = {
@@ -106,16 +106,27 @@ export function assertSlidevDist(workDir: string): void {
 const DECK_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Free-slot decks get a Pokazo credit on first + last slides. */
+/** Free-slot decks get a Pokazo credit until the owner has any paid payment. */
 export async function deckWantsPokazoCredit(workDir: string): Promise<boolean> {
   const id = basename(workDir);
   if (!DECK_UUID.test(id) || !pool) return false;
   try {
-    const { rows } = await pool.query<{ billing_kind: string | null }>(
-      `SELECT billing_kind FROM deck WHERE id=$1`,
+    const { rows } = await pool.query<{ billing_kind: string | null; has_paid: boolean }>(
+      `SELECT d.billing_kind,
+              EXISTS(
+                SELECT 1 FROM payment p
+                 WHERE p.user_id = d.user_id AND p.status = 'paid'
+              ) AS has_paid
+         FROM deck d
+        WHERE d.id = $1`,
       [id],
     );
-    return rows[0]?.billing_kind === "free";
+    const row = rows[0];
+    if (!row) return false;
+    return pokazoCreditEnabled({
+      billingKind: row.billing_kind,
+      userHasPaid: Boolean(row.has_paid),
+    });
   } catch {
     return false;
   }

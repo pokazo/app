@@ -311,7 +311,10 @@ export async function finalizeDeckBilling(
   }
 }
 
-export type ApplyPaidResult = "applied" | "already_paid";
+export type ApplyPaidResult = {
+  outcome: "applied" | "already_paid";
+  userId: string;
+};
 
 export async function applyPaidPayment(
   paymentId: string,
@@ -342,7 +345,7 @@ export async function applyPaidPayment(
         product: payment.product,
         operationId: tochkaOperationId,
       });
-      return "already_paid";
+      return { outcome: "already_paid", userId: payment.user_id };
     }
 
     if (payment.product === "credit_1") {
@@ -379,7 +382,7 @@ export async function applyPaidPayment(
       operationId: tochkaOperationId,
       unlock: payment.product === "credit_1" ? "credit+1" : "month+30d",
     });
-    return "applied";
+    return { outcome: "applied", userId: payment.user_id };
   } catch (error) {
     await client.query("ROLLBACK");
     billingLog("error", "mark_paid_failed", { paymentId, operationId: tochkaOperationId }, error);

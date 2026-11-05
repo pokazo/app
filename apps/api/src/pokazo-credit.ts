@@ -4,6 +4,18 @@ export const POKAZO_CREDIT_ATTR = "data-pk-credit";
 export const POKAZO_CREDIT_TEXT = "Создано с помощью pokazo.ru";
 export const POKAZO_CREDIT_URL = "https://pokazo.ru";
 
+/** Free deck watermark only until the user has any paid payment. */
+export function pokazoCreditEnabled(opts: {
+  billingKind: string | null | undefined;
+  userHasPaid: boolean;
+}): boolean {
+  return opts.billingKind === "free" && !opts.userHasPaid;
+}
+
+export function slidesHavePokazoCredit(md: string): boolean {
+  return new RegExp(`${POKAZO_CREDIT_ATTR}(?:\\s|>)`).test(md);
+}
+
 const CREDIT_STYLE_RE =
   /<style\b[^>]*\bdata-pk-style="credit"[^>]*>[\s\S]*?<\/style>\s*/gi;
 const CREDIT_BLOCK_RE = /<div\b[^>]*\bdata-pk-credit(?:\s|>)[^>]*>[\s\S]*?<\/div>\s*/gi;
