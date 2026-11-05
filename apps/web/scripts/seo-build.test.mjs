@@ -56,7 +56,7 @@ try {
     ["description length", home.description.length <= 180],
     ["aggregate offer", index.includes("AggregateOffer") && index.includes('"highPrice":"399"')],
     ["faq html matches ld", faqMatch],
-    ["text faq", index.includes("до 500 символов") && index.includes("Word или PDF")],
+    ["text faq", index.includes("до 4000 символов") && index.includes("Word или PDF")],
     ["shell empty root", /<div id="root"><\/div>/.test(shell)],
     ["shell noindex", shell.includes('content="noindex"')],
     ["pricing h1", pricing.includes("<h1>Тарифы</h1>")],
