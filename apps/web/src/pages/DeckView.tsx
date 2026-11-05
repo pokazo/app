@@ -1408,7 +1408,7 @@ export function DeckView() {
               disabled={!structureReady || last >= SLIDE_COUNT_MAX}
               title={
                 exportGate && !slideEditsUnlocked
-                  ? "Добавление и правка слайдов — после покупки"
+                  ? "Правка слайдов и снятие отметки pokazo.ru — после покупки"
                   : undefined
               }
               onClick={() => void onAddSlide()}
@@ -1417,7 +1417,9 @@ export function DeckView() {
             </button>
           ) : null}
           {isOwner && meta?.status === "ready" && exportGate && !slideEditsUnlocked ? (
-            <p className="deck-thumb-err">Добавление и правка слайдов — после покупки</p>
+            <p className="deck-thumb-err">
+              Правка слайдов и снятие отметки pokazo.ru — после покупки
+            </p>
           ) : null}
           {structureErr ? <p className="err deck-thumb-err">{structureErr}</p> : null}
         </nav>

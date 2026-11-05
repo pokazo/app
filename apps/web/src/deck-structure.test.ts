@@ -65,6 +65,7 @@ describe("structureErrorMessage", () => {
     expect(structureErrorMessage("max slides")).toMatch(/максимум 16/);
     expect(structureErrorMessage("bad slide")).toMatch(/удалить/);
     expect(structureErrorMessage("bad move")).toMatch(/сдвинуть/);
+    expect(structureErrorMessage("upgrade_required")).toMatch(/pokazo\.ru/);
     expect(structureErrorMessage("upgrade_required")).toMatch(/покупки/);
   });
 });

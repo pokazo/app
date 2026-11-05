@@ -84,6 +84,10 @@ describe("Pricing page", () => {
     expect(html).toContain("249");
     expect(html).toContain("499");
     expect(html).toContain("<h1>Тарифы</h1>");
+    expect(html).toContain("Отметка «Создано с помощью pokazo.ru» на колоде");
+    expect(html).toContain("Правки слайдов и PDF/PPTX — после оплаты");
+    expect(html).toContain("Правка слайдов и снятие отметки pokazo.ru");
+    expect(html).toContain("Что за отметка pokazo.ru на бесплатной колоде?");
     expect(html).not.toContain("экспорт PDF");
   });
 

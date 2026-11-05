@@ -86,7 +86,8 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 <ul className="pricing-features">
                   <li>1 готовая презентация на аккаунт</li>
                   <li>Показ по ссылке в браузере</li>
-                  <li>Правки слайдов</li>
+                  <li>Отметка «Создано с помощью pokazo.ru» на колоде</li>
+                  <li>Правки слайдов и PDF/PPTX — после оплаты</li>
                 </ul>
               </article>
 
@@ -103,6 +104,7 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 </Link>
                 <ul className="pricing-features">
                   <li>+1 новая презентация после бесплатной</li>
+                  <li>Правка слайдов и снятие отметки pokazo.ru</li>
                   <li>Скачивание PDF и PPTX этой колоды</li>
                   <li>Оплата в момент создания</li>
                   <li>Готовые колоды остаются в истории</li>
@@ -122,7 +124,8 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 </Link>
                 <ul className="pricing-features">
                   <li>Неограниченные генерации в рамках лимитов сервиса</li>
-                  <li>Правка слайдов и скачивание PDF и PPTX</li>
+                  <li>Правка слайдов, без отметки pokazo.ru</li>
+                  <li>Скачивание PDF и PPTX, в том числе бесплатной колоды</li>
                   <li>Оформление в приложении при создании колоды</li>
                 </ul>
               </article>
@@ -145,7 +148,15 @@ export function Pricing(props: { catalog?: BillingCatalog }) {
                 <summary>Что считается одной генерацией?</summary>
                 <p>
                   Новая колода по теме. Правка слайда кредит не тратит. PDF и PPTX бесплатной колоды
-                  скачиваются после оплаты тарифа.
+                  скачиваются на безлимите; у разовой оплаты — у оплаченной колоды.
+                </p>
+              </details>
+              <details>
+                <summary>Что за отметка pokazo.ru на бесплатной колоде?</summary>
+                <p>
+                  На первой и последней странице бесплатной презентации стоит подпись «Создано с
+                  помощью pokazo.ru». После любой оплаты (разово или безлимит) отметка снимается, а
+                  добавление и правка слайдов открываются.
                 </p>
               </details>
               <details>
