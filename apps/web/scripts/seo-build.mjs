@@ -79,7 +79,7 @@ function landingBody(home) {
       <a href="/doklad">Доклад</a> ·
       <a href="/shkola">Школа</a> ·
       <a href="/studenty">Студенты</a> ·
-      <a href="/biznes">Бизнес</a>
+      <a href="/business">Бизнес</a>
     </p>
   </section>
   <section>

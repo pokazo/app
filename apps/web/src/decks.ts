@@ -163,7 +163,7 @@ export const DECK_THEMES: DeckTheme[] = [
   { id: "wine", title: "Бордо", hint: "Редакционный бордо", preview: "wine", colors: ["#1f1418", "#f6ecef", "#8b3a4a"] },
   { id: "neon", title: "Неон", hint: "Кибер cyan / magenta", preview: "neon", colors: ["#0a0a12", "#00f0ff", "#ff2bd6"] },
   { id: "sunset", title: "Закат", hint: "Яркий тёплый градиент", preview: "sunset", colors: ["#ff6b35", "#f72585", "#7b2cbf"] },
-  { id: "candy", title: "Конфети", hint: "Розовый жёлтый голубой", preview: "candy", colors: ["#ff2d95", "#ffd60a", "#00bbf9"] },
+  { id: "candy", title: "Конфетти", hint: "Розовый жёлтый голубой", preview: "candy", colors: ["#ff2d95", "#ffd60a", "#00bbf9"] },
   { id: "volt", title: "Вольт", hint: "Чёрный + лайм", preview: "volt", colors: ["#111111", "#c8ff00", "#f5f5f5"] },
 ];
 

@@ -2,7 +2,7 @@ import audienceJson from "./audience.json";
 import type { ExampleThumbId } from "./components/ExampleThumb";
 
 /** SEO landings for Wordstat audience clusters — paths are slashless canonicals. */
-export type AudienceSlug = "urok" | "doklad" | "shkola" | "studenty" | "biznes";
+export type AudienceSlug = "urok" | "doklad" | "shkola" | "studenty" | "business";
 
 export type AudienceFaq = { q: string; a: string };
 
@@ -31,5 +31,6 @@ export const AUDIENCE_PATHS = AUDIENCE_PAGES.map((p) => p.slug);
 /** Create-flow audience: landing slug, or general when opened from main /app (not school). */
 export function sanitizeAudience(raw: string | null | undefined): AudienceSlug | "general" {
   const id = (raw ?? "").trim().toLowerCase();
+  if (id === "biznes") return "business";
   return AUDIENCE_PATHS.includes(id as AudienceSlug) ? (id as AudienceSlug) : "general";
 }

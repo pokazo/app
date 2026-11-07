@@ -185,6 +185,7 @@ export function DeckView() {
     freeWatchRef.current = watchForDeck(id);
   }
   const [deckTheme, setDeckTheme] = useState("default");
+  const [deckAudience, setDeckAudience] = useState<string | null>(null);
   const [themeOpen, setThemeOpen] = useState(false);
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeErr, setThemeErr] = useState("");
@@ -322,15 +323,21 @@ export function DeckView() {
         setIsOwner(r.ok);
         if (!r.ok) return;
         try {
-          const body = (await r.json()) as { theme?: string; billingKind?: string | null };
+          const body = (await r.json()) as {
+            theme?: string;
+            billingKind?: string | null;
+            audience?: string | null;
+          };
           setDeckTheme(sanitizeEditableDeckTheme(body.theme));
+          const audience = typeof body.audience === "string" ? body.audience : null;
+          setDeckAudience(audience);
           const billingKind = body.billingKind ?? null;
           const freeStep = nextFreeDeckWatch(freeWatchRef.current, {
             billingKnown: true,
             billingKind,
           });
           freeWatchRef.current = freeStep.watch;
-          if (freeStep.track) trackFreeDeckReady(id);
+          if (freeStep.track) trackFreeDeckReady(id, { audience });
           const billingRes = await fetch(apiUrl("/api/billing/me"), { credentials: "include" });
           const billing = billingRes.ok
             ? ((await billingRes.json()) as {
@@ -368,8 +375,8 @@ export function DeckView() {
     const freeStep = nextFreeDeckWatch(freeWatchRef.current, { status: meta.status });
     freeWatchRef.current = freeStep.watch;
     noteFreeDeckBuilding(id, meta.status);
-    if (freeStep.track) trackFreeDeckReady(id);
-  }, [id, meta?.status]);
+    if (freeStep.track) trackFreeDeckReady(id, { audience: deckAudience });
+  }, [id, meta?.status, deckAudience]);
 
   // Wait for first preview dist, then poll until compose finishes (remount iframe on ready).
   useEffect(() => {

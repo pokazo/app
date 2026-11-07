@@ -5,6 +5,11 @@ describe("sanitizeAudience", () => {
   it("keeps landing path slugs", () => {
     expect(sanitizeAudience("shkola")).toBe("shkola");
     expect(sanitizeAudience("urok")).toBe("urok");
+    expect(sanitizeAudience("business")).toBe("business");
+  });
+
+  it("maps legacy biznes slug to business", () => {
+    expect(sanitizeAudience("biznes")).toBe("business");
   });
 
   it("defaults to general (school only via /shkola slug)", () => {

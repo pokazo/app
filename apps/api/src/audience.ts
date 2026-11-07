@@ -21,6 +21,7 @@ const AUDIENCE_SET = new Set<string>(AUDIENCE_IDS);
  */
 export function sanitizeAudience(raw: string | null | undefined): AudienceId {
   const id = (raw ?? "").trim().toLowerCase();
+  if (id === "biznes") return "business";
   return AUDIENCE_SET.has(id) ? (id as AudienceId) : "general";
 }
 
@@ -39,9 +40,10 @@ export function audienceForPrompt(raw: string): string {
     shkola: "школа (/shkola): школьная аудитория; простой язык, возраст/класс если указан",
     studenty:
       "студенты (/studenty): семинар, курсовая, защита; академичный тон без воды",
-    biznes: "бизнес (/biznes): питч и рабочие встречи; одна идея на слайд, следующий шаг",
+    biznes: "бизнес (/business): презентация компании или продукта; одна идея на слайд, следующий шаг",
     school: "школа: школьная аудитория; простой язык, возраст/класс если указан",
-    business: "бизнес: питч и рабочие встречи; одна идея на слайд, следующий шаг",
+    business:
+      "бизнес (/business): презентация компании или продукта; одна идея на слайд, следующий шаг",
     investors: "инвесторы: питч, проблема → решение → метрики → следующий шаг",
   };
   return labels[id];

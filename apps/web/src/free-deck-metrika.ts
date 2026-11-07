@@ -1,7 +1,10 @@
-import { reachPkGoal } from "./metrika";
+import { reachGoal, reachPkGoal } from "./metrika";
 
 /** JS goal `deck_free_ready` — first free deck reached status ready. */
 export const FREE_DECK_READY_GOAL = "deck-free-ready";
+
+/** Free deck ready from /business create flow — must exist on the counter. */
+export const FREE_DECK_READY_BUSINESS_GOAL = "deck_free_ready_business";
 
 const STORAGE_PREFIX = "pk-deck-free-ready:";
 const BUILDING_PREFIX = "pk-deck-free-building:";
@@ -95,9 +98,17 @@ export function markFreeDeckReadyTracked(deckId: string, storage: Storage | null
   return true;
 }
 
-export function trackFreeDeckReady(deckId: string, storage: Storage | null = freeDeckStorage()): void {
+export function trackFreeDeckReady(
+  deckId: string,
+  opts?: { audience?: string | null; storage?: Storage | null },
+): void {
+  const storage = opts?.storage === undefined ? freeDeckStorage() : opts.storage;
   if (!markFreeDeckReadyTracked(deckId, storage)) return;
   reachPkGoal(FREE_DECK_READY_GOAL);
+  const audience = (opts?.audience ?? "").trim().toLowerCase();
+  if (audience === "business" || audience === "biznes") {
+    reachGoal(FREE_DECK_READY_BUSINESS_GOAL);
+  }
 }
 
 function freeDeckStorage(): Storage | null {

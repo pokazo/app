@@ -30,7 +30,7 @@ try {
   const pricing = await readFile(join(dir, "pricing/index.html"), "utf8");
   const offer = await readFile(join(dir, "legal/offer/index.html"), "utf8");
   const urok = await readFile(join(dir, "urok/index.html"), "utf8");
-  const biznes = await readFile(join(dir, "biznes/index.html"), "utf8");
+  const business = await readFile(join(dir, "business/index.html"), "utf8");
   const ld = [...index.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(
     (match) => JSON.parse(match[1]),
   );
@@ -69,8 +69,8 @@ try {
     ["urok not main h1", !urok.includes("<h1>Нейросеть для презентаций</h1>")],
     ["urok faq ld", urok.includes("FAQPage")],
     ["urok examples", urok.includes("Фотосинтез") && urok.includes("ПДД")],
-    ["biznes h1", biznes.includes("<h1>Презентация для бизнеса</h1>")],
-    ["biznes examples", biznes.includes("Питч") && biznes.includes("Найм команды")],
+    ["business h1", business.includes("<h1>Презентация компании или продукта</h1>")],
+    ["business examples", business.includes("Компания") && business.includes("Партнёрам")],
     ["examples differ", new Set(exampleSets).size === audience.length],
     ["landing audience links", index.includes('href="/urok"')],
     ["landing contact link", index.includes('href="/contact"')],

@@ -5,7 +5,8 @@ describe("sanitizeAudience", () => {
   it("keeps landing path slugs", () => {
     expect(sanitizeAudience("shkola")).toBe("shkola");
     expect(sanitizeAudience("Urok")).toBe("urok");
-    expect(sanitizeAudience("biznes")).toBe("biznes");
+    expect(sanitizeAudience("business")).toBe("business");
+    expect(sanitizeAudience("biznes")).toBe("business");
   });
 
   it("falls back to general (not school)", () => {

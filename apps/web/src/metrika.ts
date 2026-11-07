@@ -10,6 +10,9 @@ declare global {
 /** JS goal for every interface click. Must exist on the counter. */
 export const UI_CLICK_GOAL = "ui_click";
 
+/** Create CTA from /business landing — must exist on the counter. */
+export const CTA_CREATE_BUSINESS_GOAL = "cta_create_business";
+
 /** `data-pk="cta-create"` → JS goal id `cta_create`. */
 export function pkGoalId(dataPk: string): string {
   return dataPk.trim().replace(/-/g, "_");
@@ -111,6 +114,9 @@ export function initPkMetrika(): void {
       const source = clickSourceFromElement(target);
       if (source.dataPk) reachPkGoal(source.dataPk);
       const path = typeof location === "undefined" ? "" : location.pathname;
+      if (source.dataPk === "cta-create" && (path === "/business" || path === "/biznes")) {
+        reachGoal(CTA_CREATE_BUSINESS_GOAL);
+      }
       reachGoal(UI_CLICK_GOAL, clickGoalParams(path, source));
     },
     true,
